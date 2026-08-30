@@ -39,6 +39,7 @@ export function openSheet(title, buildBody) {
   body.replaceChildren();
   sheet.classList.remove('is-closing');
   sheet.hidden = false;
+  document.body.classList.add('has-sheet');
   const content = buildBody(closeSheet);
   body.append(...[].concat(content));
   stagger(body, ':scope > *');
@@ -52,6 +53,7 @@ export function closeSheet() {
   const sheet = $('#sheet');
   if (sheet.hidden) return;
   document.removeEventListener('keydown', sheetEsc);
+  document.body.classList.remove('has-sheet');
   if (!motionOn()) { sheet.hidden = true; return; }
   sheet.classList.add('is-closing');
   setTimeout(() => { sheet.hidden = true; sheet.classList.remove('is-closing'); }, 300);

@@ -45,6 +45,7 @@ body{
 button,input,textarea,select{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
 input,textarea,select{background:none;border:0;outline:0}
+input[type="checkbox"],input[type="radio"]{accent-color:var(--accent);width:18px;height:18px}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
 [hidden]{display:none!important}
 h1,h2,h3,p{margin:0}
@@ -674,6 +675,9 @@ button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
 }
 .toast{display:flex;align-items:center}
 .toast.has-act{pointer-events:auto}
+/* com um modal aberto, o aviso sobe pro topo pra não cobrir os botões */
+body.has-sheet .toast{bottom:auto;top:calc(var(--topbar) + 1rem);transform:translate(-50%,-140%)}
+body.has-sheet .toast.is-on{transform:translate(-50%,0)}
 
 /* ── 25. Nível e conquistas ────────────────────────────────── */
 .level{border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.3rem;background:var(--surface)}
