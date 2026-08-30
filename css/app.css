@@ -318,6 +318,29 @@ svg{display:block}
 .scale__dot:hover{border-color:var(--fg);color:var(--fg)}
 .scale__dot.is-on{background:var(--accent);border-color:var(--accent);color:var(--ink)}
 
+/* medidor de escala longa (0–10) + referência escrita */
+.meter{display:flex;gap:3px}
+.meter__s{
+  flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:8px;
+  display:grid;place-items:center;font-family:var(--font-mono);font-size:11px;color:var(--dim);
+  transition:background .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease),transform .25s var(--ease);
+}
+.meter__s:hover{border-color:var(--fg);color:var(--fg)}
+.meter__s.is-on{background:var(--accent);border-color:var(--accent);color:var(--ink);transform:translateY(-2px)}
+.lvl{
+  margin-top:.6rem;font-size:.95rem;font-weight:600;letter-spacing:-.02em;color:var(--accent);
+  min-height:1.25em;animation:rv .35s var(--ease);
+}
+.lvl.is-empty{color:var(--dim);font-weight:400}
+.reflink{
+  margin-top:.5rem;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);text-decoration:underline;text-underline-offset:3px;
+}
+.reflink:hover{color:var(--fg)}
+.refs{display:grid;gap:1px;margin-top:.6rem;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.refs__r{display:flex;gap:.7rem;align-items:baseline;background:var(--bg);padding:.45rem .7rem;font-size:.86rem}
+.refs__n{color:var(--accent);font-size:11px;min-width:1.6em}
+
 /* nota */
 .note{
   width:100%;min-height:76px;resize:vertical;padding:.85rem 1rem;border:1px solid var(--line);
@@ -463,6 +486,12 @@ svg{display:block}
 }
 .switch[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
 .switch[aria-checked="true"]::after{transform:translateX(20px);background:var(--ink)}
+
+.lvledit{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;max-height:290px;overflow-y:auto}
+.lvledit__r{display:flex;align-items:center;gap:.7rem;background:var(--bg);padding:.35rem .7rem}
+.lvledit__n{color:var(--accent);font-size:11px;min-width:1.8em}
+.lvledit input{flex:1;min-width:0;padding:.4rem 0;font-size:.9rem;border-bottom:1px solid transparent}
+.lvledit input:focus{border-bottom-color:var(--accent)}
 
 /* ── 15. Sheet ─────────────────────────────────────────────── */
 .sheet{position:fixed;inset:0;z-index:60;display:grid;align-items:end;justify-items:center}
@@ -610,6 +639,7 @@ button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
 .batch__cell:disabled{opacity:.3;cursor:not-allowed}
 .batch__cell.is-on{background:var(--accent);color:var(--ink);font-weight:600}
 .batch__cell.is-on.is-reduce{background:color-mix(in srgb,var(--fg) 22%,transparent);color:var(--fg)}
+.batch__cell.is-on.is-zero{background:transparent;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 .batch__h{font-size:1rem}
 .batch__row.is-today .batch__day{box-shadow:inset 2px 0 0 var(--accent)}
 .batch__close{color:var(--dim);opacity:.3}
@@ -645,7 +675,51 @@ button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
 .toast{display:flex;align-items:center}
 .toast.has-act{pointer-events:auto}
 
-/* ── 25. Movimento reduzido ────────────────────────────────── */
+/* ── 25. Nível e conquistas ────────────────────────────────── */
+.level{border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.3rem;background:var(--surface)}
+.level__top{display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.level__n{font-size:clamp(1.7rem,5vw,2.6rem);margin:.4rem 0 .35rem}
+.level__l{color:var(--dim);font-size:.9rem;max-width:44ch}
+.level__xp{text-align:right}
+.level__xp .stat__n{font-size:clamp(1.6rem,4vw,2.2rem)}
+.level__bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:1.1rem 0 .6rem}
+.level__bar i{display:block;height:100%;width:0;background:var(--accent);transition:width 1s var(--ease)}
+
+.levelline{
+  display:flex;align-items:center;gap:.8rem;width:100%;margin-bottom:1rem;
+  border:1px solid var(--line);border-radius:12px;padding:.7rem 1rem;background:var(--surface);
+  transition:border-color .3s var(--ease),transform .3s var(--ease);
+}
+.levelline:hover{border-color:var(--accent);transform:translateY(-1px)}
+.levelline__n{font-weight:650;letter-spacing:-.02em;font-size:.95rem;white-space:nowrap}
+.levelline__bar{flex:1;min-width:40px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.levelline__bar i{display:block;height:100%;width:0;background:var(--accent);transition:width 1s var(--ease)}
+
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:.6rem}
+.badge{
+  position:relative;display:grid;gap:.3rem;justify-items:start;text-align:left;
+  border:1px solid var(--line);border-radius:12px;padding:.85rem .9rem;min-height:112px;
+  background:var(--surface);opacity:.55;overflow:hidden;
+  transition:opacity .3s var(--ease),border-color .3s var(--ease),transform .3s var(--ease);
+}
+.badge:hover{transform:translateY(-3px);border-color:var(--fg);opacity:.85}
+.badge.is-got{opacity:1;border-color:var(--accent)}
+.badge.is-got:hover{border-color:var(--accent)}
+.badge__e{font-size:1.5rem;line-height:1;filter:grayscale(1)}
+.badge.is-got .badge__e{filter:none}
+.badge__n{font-size:.86rem;font-weight:650;letter-spacing:-.01em;line-height:1.25}
+.badge__h{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-top:auto}
+.badge__bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--line)}
+.badge__bar i{display:block;height:100%;background:var(--accent);opacity:.7}
+
+.award{display:flex;gap:1rem;align-items:center;border:1px solid var(--accent);border-radius:14px;padding:1.1rem;background:var(--surface)}
+.award--level{border-width:2px}
+.award__e{font-size:2.6rem;line-height:1;animation:award .8s var(--ease)}
+@keyframes award{0%{transform:scale(.3) rotate(-25deg);opacity:0}60%{transform:scale(1.15) rotate(6deg)}100%{transform:none;opacity:1}}
+.award__n{font-size:1.15rem;font-weight:700;letter-spacing:-.02em}
+.award__d{color:var(--dim);font-size:.9rem;margin-top:.2rem}
+
+/* ── 26. Movimento reduzido ────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }

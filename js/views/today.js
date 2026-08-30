@@ -8,6 +8,7 @@ import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, W
 import * as store from '../store.js';
 import { currentStreak, goalProgress, isReduce } from '../analysis.js';
 import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
+import { summary as badgeSummary } from '../badges.js';
 
 const HOUR_PRESETS = [2, 4, 6, 8];
 const STRIP_DAYS = 10;
@@ -82,6 +83,18 @@ export function render(ctx) {
     ]),
   ]));
   requestAnimationFrame(() => { bar.style.width = `${cats.length ? (answered / cats.length) * 100 : 0}%`; });
+
+  const b = badgeSummary();
+  const xpBar = el('i');
+  view.append(el('button.levelline', {
+    type: 'button', onclick: () => ctx.go('insights'), title: 'Ver conquistas',
+  }, [
+    el('span.micro', { text: `NÍVEL ${b.level.i + 1}` }),
+    el('span.levelline__n', { text: b.level.name }),
+    el('span.levelline__bar', {}, [xpBar]),
+    el('span.micro', { text: `${b.ganhas}/${b.total} ✦` }),
+  ]));
+  requestAnimationFrame(() => { xpBar.style.width = `${Math.round(b.level.pct * 100)}%`; });
 
   /* ── categorias ── */
   const entries = el('div.entries');
@@ -246,7 +259,7 @@ function entryCard(cat, day, ctx) {
 
 /* ── Controles por tipo ────────────────────────────────────── */
 export function control(cat, day, card, ctx) {
-  const save = v => { store.setVal(day, cat.id, v); ctx.softRefresh?.(); };
+  const save = (v, opts) => { store.setVal(day, cat.id, v, opts); ctx.softRefresh?.(); };
 
   if (cat.type === 'toggle') {
     const on0 = !!store.getVal(day, cat.id);
@@ -266,6 +279,12 @@ export function control(cat, day, card, ctx) {
   if (cat.type === 'count') {
     const wrap = el('div');
     const cur = () => Number(store.getVal(day, cat.id) || 0);
+    const lvlNote = el('p.lvl');
+    const pintaNota = v => {
+      const txt = store.levelLabel(cat, v);
+      lvlNote.textContent = txt || '';
+      lvlNote.classList.toggle('is-empty', !txt);
+    };
     const valEl = el('span.step__val.num', { text: String(cur()) });
     if (!cur()) valEl.classList.add('is-zero');
     const set = n => {
@@ -275,8 +294,10 @@ export function control(cat, day, card, ctx) {
       valEl.classList.remove('pop'); void valEl.offsetWidth; valEl.classList.add('pop');
       card?.classList.toggle('is-on', v > 0);
       wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('is-on', Number(c.dataset.v) === v));
+      pintaNota(v);
       save(v);
     };
+    pintaNota(cur());
     wrap.append(el('div.step', {}, [
       el('button.step__btn', { type: 'button', 'aria-label': 'Menos', onclick: () => set(cur() - 1), text: '−' }),
       el('span', {}, [valEl, el('span.step__unit', { text: cat.unit || '' })]),
@@ -284,6 +305,7 @@ export function control(cat, day, card, ctx) {
     ]));
     wrap.append(el('div.chips', {}, [0, 1, 2, 3, 5].map(n =>
       el('button.chip' + (cur() === n ? '.is-on' : ''), { type: 'button', 'data-v': n, onclick: () => set(n), text: String(n) }))));
+    if (cat.levels) wrap.append(lvlNote);
     return wrap;
   }
 
@@ -316,19 +338,62 @@ export function control(cat, day, card, ctx) {
   }
 
   if (cat.type === 'scale') {
-    const cur = () => Number(store.getVal(day, cat.id) || 0);
-    const box = el('div.scale');
-    [1, 2, 3, 4, 5].forEach(n => {
-      const b = el('button.scale__dot' + (cur() === n ? '.is-on' : ''), { type: 'button', text: String(n) });
+    const min = store.scaleMin(cat);
+    const max = store.scaleMax(cat);
+    const niveis = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    const largo = niveis.length > 6;                    // muitos níveis → medidor compacto
+    const cur = () => {
+      const v = store.getVal(day, cat.id);
+      return v === undefined || v === '' ? null : Number(v);
+    };
+
+    const wrap = el('div');
+    const box = el('div' + (largo ? '.meter' : '.scale'));
+    const nota = el('p.lvl');
+
+    const pinta = () => {
+      const v = cur();
+      box.querySelectorAll('[data-v]').forEach(b =>
+        b.classList.toggle('is-on', Number(b.dataset.v) === v));
+      const txt = store.levelLabel(cat, v);
+      nota.textContent = v === null ? 'sem resposta' : (txt ? `${v} · ${txt}` : String(v));
+      nota.classList.toggle('is-empty', v === null);
+      card?.classList.toggle('is-on', v !== null && v > 0);
+    };
+
+    niveis.forEach(n => {
+      const b = el('button' + (largo ? '.meter__s' : '.scale__dot'), {
+        type: 'button', 'data-v': n, text: String(n),
+        title: store.levelLabel(cat, n) || `nível ${n}`,
+      });
       b.addEventListener('click', () => {
-        const next = cur() === n ? 0 : n;
-        box.querySelectorAll('.scale__dot').forEach((d, i) => d.classList.toggle('is-on', i + 1 === next));
-        card?.classList.toggle('is-on', next > 0);
-        save(next);
+        const next = cur() === n ? null : n;         // tocar de novo limpa a resposta
+        save(next === null ? undefined : next, { keepZero: min === 0 });
+        pinta();
       });
       box.append(b);
     });
-    return box;
+
+    wrap.append(box, nota);
+
+    if (cat.levels && Object.keys(cat.levels).length) {
+      const lista = el('div.refs', { hidden: true }, niveis.map(n => el('div.refs__r', {}, [
+        el('span.refs__n.num', { text: String(n) }),
+        el('span', { text: store.levelLabel(cat, n) || '—' }),
+      ])));
+      const toggle = el('button.reflink', {
+        type: 'button',
+        onclick: () => {
+          lista.hidden = !lista.hidden;
+          toggle.textContent = lista.hidden ? 'ver referências' : 'esconder referências';
+        },
+        text: 'ver referências',
+      });
+      wrap.append(toggle, lista);
+    }
+
+    pinta();
+    return wrap;
   }
 
   const ta = el('textarea.note', { rows: 2, placeholder: 'Escreva…' });

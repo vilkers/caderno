@@ -1,11 +1,13 @@
 /* main.js — arranque, tela de senha, roteador e atalhos */
 
-import { $, $$, el, todayKey, addDays, longDay, humanDay } from './utils.js';
+import { $, $$, todayKey, addDays, longDay, humanDay } from './utils.js';
 import * as store from './store.js';
 import * as vault from './vault.js';
 import * as sync from './sync.js';
+import * as badges from './badges.js';
 import { PALETTES, applyPalette } from './palettes.js';
 import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn } from './ui.js';
+import { el, debounce } from './utils.js';
 
 import * as viewToday from './views/today.js';
 import * as viewMonth from './views/month.js';
@@ -209,11 +211,59 @@ function wire() {
   });
   sync.onStatus(paintSync);
   sync.start();
+
+  store.subscribe(reason => { if (reason !== 'badges') conferirConquistas(); });
   store.subscribe(reason => {
     if (reason === 'settings' || reason === 'categories') {
       document.documentElement.dataset.motion = store.state.settings.motion ? 'on' : 'off';
     }
   });
+}
+
+/* ── Conquistas ────────────────────────────────────────────── */
+const conferirConquistas = debounce(() => {
+  if (!store.isUnlocked()) return;
+  const novas = badges.claim();
+  const resumo = badges.summary();
+  const subiu = resumo.level.i > (store.state.levelSeen || 0);
+
+  if (!novas.length && !subiu) return;
+  if (subiu) store.state.levelSeen = resumo.level.i;
+  store.emit('badges');
+
+  // subir de nível é raro: merece a tela. Conquista é aviso que não atrapalha.
+  if (subiu) celebrar(novas, resumo);
+  else {
+    toast(`✦ ${novas[0].name}${novas.length > 1 ? ` +${novas.length - 1}` : ''}`, {
+      action: 'ver', ms: 6000,
+      onAction: () => celebrar(novas, resumo),
+    });
+  }
+}, 900);
+
+function celebrar(novas, resumo) {
+  const subiu = resumo.level.i > 0 && resumo.level.i === (store.state.levelSeen || 0);
+  openSheet(subiu ? 'Subiu de nível' : (novas.length > 1 ? `${novas.length} conquistas` : 'Conquista'), close => [
+    subiu ? el('div.award.award--level', {}, [
+      el('span.award__e', { text: '✦' }),
+      el('div', {}, [
+        el('p.award__n', { text: resumo.level.name }),
+        el('p.award__d', { text: resumo.level.lore }),
+      ]),
+    ]) : null,
+    ...novas.map(b => el('div.award', {}, [
+      el('span.award__e', { text: b.emoji }),
+      el('div', {}, [
+        el('p.award__n', { text: b.name }),
+        el('p.award__d', { text: b.desc }),
+      ]),
+    ])),
+    el('p.micro', { text: `${resumo.level.name.toUpperCase()} · ${resumo.xp} XP · ${resumo.ganhas}/${resumo.total} CONQUISTAS` }),
+    el('div.sheet__actions', {}, [
+      el('button.btn', { type: 'button', onclick: () => { close(); ctx.go('insights'); } }, [el('span', { text: 'ver todas' })]),
+      el('button.btn.btn--solid', { type: 'button', onclick: close }, [el('span', { text: 'valeu' })]),
+    ]),
+  ].filter(Boolean));
 }
 
 const SYNC_TXT = {

@@ -139,10 +139,12 @@ function batchCell(cat, k, futuro, ctx) {
   });
   const pinta = () => {
     const v = store.getVal(k, cat.id);
-    const cheio = cat.type === 'toggle' ? !!v : Number(v) > 0 || (cat.type === 'text' && !!v);
+    const cheio = cat.type === 'toggle' ? !!v : Number(v) > 0 || (cat.type === 'text' && !!v) || v === 0;
     cell.classList.toggle('is-on', !!cheio);
     cell.classList.toggle('is-reduce', isReduce(cat) && !!cheio);
+    cell.classList.toggle('is-zero', v === 0);
     cell.textContent = !cheio ? ''
+      : v === 0 ? '0'
       : cat.type === 'toggle' ? '✓'
       : cat.type === 'text' ? '✎'
       : cat.type === 'hours' ? fmtH(Number(v))
@@ -150,8 +152,9 @@ function batchCell(cat, k, futuro, ctx) {
   };
   pinta();
 
+  const escalaLonga = cat.type === 'scale' && (store.scaleMax(cat) - store.scaleMin(cat)) > 5;
   cell.addEventListener('click', () => {
-    if (cat.type === 'hours' || cat.type === 'text') {
+    if (cat.type === 'hours' || cat.type === 'text' || escalaLonga) {
       openSheet(`${cat.emoji || '•'} ${cat.label} · ${humanDay(k)}`, () => [
         control(cat, k, null, { ...ctx, softRefresh: pinta }),
         el('p.micro', { text: 'FECHA SOZINHO — O VALOR JÁ ESTÁ SALVO' }),
@@ -159,10 +162,10 @@ function batchCell(cat, k, futuro, ctx) {
       return;
     }
     const v = store.getVal(k, cat.id);
+    const teto = cat.type === 'scale' ? store.scaleMax(cat) : 3;
     let next;
     if (cat.type === 'toggle') next = !v;
-    else if (cat.type === 'scale') next = (Number(v) || 0) >= 5 ? 0 : (Number(v) || 0) + 1;
-    else next = (Number(v) || 0) >= 3 ? 0 : (Number(v) || 0) + 1;   // contagem: 0→1→2→3→0
+    else next = (Number(v) || 0) >= teto ? 0 : (Number(v) || 0) + 1;   // 0→1→…→teto→0
     store.setVal(k, cat.id, next);
     pinta();
   });

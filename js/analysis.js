@@ -241,8 +241,16 @@ export function suggestions(limit = 7) {
   }
 
   const seen = new Set();
+  const porTipo = {};
   return out
     .sort((x, y) => y.weight - x.weight)
-    .filter(s => { const k = s.kind + s.title; if (seen.has(k)) return false; seen.add(k); return true; })
+    .filter(s => {
+      const k = s.kind + s.title;
+      if (seen.has(k)) return false;
+      porTipo[s.kind] = (porTipo[s.kind] || 0) + 1;
+      if (porTipo[s.kind] > 2) return false;      // no máximo duas leituras do mesmo tipo
+      seen.add(k);
+      return true;
+    })
     .slice(0, limit);
 }

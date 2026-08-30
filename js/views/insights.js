@@ -7,7 +7,8 @@ import {
   num, did, isReduce, loggedDays, logStreak, currentStreak, bestStreak,
   meanLogged, weekdayProfile, goalProgress, suggestions,
 } from '../analysis.js';
-import { countUp, stagger } from '../ui.js';
+import { countUp, stagger, openSheet } from '../ui.js';
+import * as badges from '../badges.js';
 
 const RANGES = [[7, '7 dias'], [30, '30 dias'], [90, '90 dias']];
 
@@ -41,6 +42,9 @@ export function render(ctx) {
     statBig(store.openTodos().length, 'afazeres abertos'),
   ]);
   view.append(stats);
+
+  /* ── nível e conquistas ── */
+  view.append(section('NÍVEL', nivelCard()));
 
   if (logged === 0) {
     view.append(el('div.empty', {}, [
@@ -104,11 +108,66 @@ export function render(ctx) {
   ])));
   view.append(section('O QUE EU LEIO NISSO', box));
 
+  /* ── conquistas ── */
+  const b = badges.summary();
+  const grade = el('div.badges', {}, b.lista.map(x => el('button.badge' + (x.got ? '.is-got' : ''), {
+    type: 'button',
+    onclick: () => openSheet(x.name, close => [
+      el('div.award', {}, [
+        el('span.award__e', { text: x.emoji }),
+        el('div', {}, [
+          el('p.award__n', { text: x.name }),
+          el('p.award__d', { text: x.desc }),
+          el('p.micro', { style: { marginTop: '.4rem' },
+            text: x.got
+              ? (x.at ? `CONQUISTADA EM ${new Date(x.at).toLocaleDateString('pt-BR')}` : 'CONQUISTADA')
+              : (x.hint ? `FALTA: ${x.hint.toUpperCase()}` : 'AINDA NÃO') }),
+        ]),
+      ]),
+      el('div.sheet__actions', {}, [
+        el('button.btn.btn--solid', { type: 'button', onclick: close }, [el('span', { text: 'fechar' })]),
+      ]),
+    ]),
+  }, [
+    el('span.badge__e', { text: x.emoji }),
+    el('span.badge__n', { text: x.name }),
+    el('span.badge__h', { text: x.got ? (x.at ? new Date(x.at).toLocaleDateString('pt-BR') : 'feito') : (x.hint || 'bloqueada') }),
+    !x.got && x.progress > 0 ? el('span.badge__bar', {}, [el('i', { style: { width: `${Math.round(x.progress * 100)}%` } })]) : null,
+  ])));
+  view.append(section(`CONQUISTAS · ${b.ganhas}/${b.total}`, grade));
+
   stagger(view, '.stat');
   stagger(view, '.tip');
+  stagger(view, '.badge', 24, 22);
   view.querySelectorAll('[data-count]').forEach(n =>
     countUp(n, Number(n.dataset.count), { suffix: n.dataset.suffix || '' }));
   return view;
+}
+
+function nivelCard() {
+  const b = badges.summary();
+  const bar = el('i');
+  const card = el('div.level', {}, [
+    el('div.level__top', {}, [
+      el('div', {}, [
+        el('p.micro', { text: `NÍVEL ${b.level.i + 1} DE ${badges.LEVELS.length}` }),
+        el('h3.display.level__n', { text: b.level.name }),
+        el('p.level__l', { text: b.level.lore }),
+      ]),
+      el('div.level__xp', {}, [
+        el('span.stat__n.num', { text: String(b.xp) }),
+        el('p.micro', { text: 'XP' }),
+      ]),
+    ]),
+    el('div.level__bar', {}, [bar]),
+    el('p.micro', {
+      text: b.level.proximo
+        ? `FALTAM ${b.level.falta} XP PARA "${b.level.proximo.name.toUpperCase()}"`
+        : 'ÚLTIMO NÍVEL. NÃO HÁ MAIS PRA ONDE SUBIR.',
+    }),
+  ]);
+  requestAnimationFrame(() => { bar.style.width = `${Math.round(b.level.pct * 100)}%`; });
+  return card;
 }
 
 function statBig(n, label, sub, suffix = '') {

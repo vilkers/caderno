@@ -97,5 +97,14 @@ console.log('configuração e casos de borda');
   ok(Object.keys(mergeDays({ a: { updatedAt: 1 } }, {})).length === 1, 'juntar com nada é inofensivo');
 }
 
+console.log('conquistas');
+{
+  const local = base({ badges: { a: T + 100 } });
+  const remote = base({ badges: { a: T, b: T + 5 } });
+  const { doc } = mergeDocs(local, remote, T + 200);
+  ok(doc.badges.a === T, 'fica a data mais antiga da conquista');
+  ok(doc.badges.b === T + 5, 'conquista do outro aparelho entra');
+}
+
 console.log(falhas ? `\n${falhas} teste(s) falharam` : '\ntodos os testes passaram');
 process.exit(falhas ? 1 : 0);

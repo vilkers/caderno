@@ -88,10 +88,18 @@ Um cartão por categoria, cada um com o controle certo pro tipo de dado:
 | Tipo | Controle | Serve pra |
 |---|---|---|
 | Sim / não | botão grande de um toque | academia, louça, lixo |
-| Contagem | `−` / `+` com atalhos 0·1·2·3·5 | doses, passeios |
+| Contagem | `−` / `+` com atalhos 0·1·2·3·5 | passeios, vezes |
 | Horas | slider + passo de 30 min + presets | trabalho, sono |
-| Escala 1–5 | cinco alvos lado a lado | humor, energia |
+| Escala | faixa configurável (1–5, 0–10…) com **referência escrita em cada nível** | bebida, humor |
 | Texto livre | campo curto | o que não vira número |
+
+**Escalas com referência** são o que faz um "5" querer dizer alguma coisa. A
+Bebida já vem 0–10 com a régua escrita — *0 seco · 1 uma no almoço ·
+5 bebedeira média · 8 apagando · 10 ressaca de dois dias* — e o texto do nível
+escolhido aparece embaixo do controle na hora do check-in, com um "ver
+referências" que abre a régua inteira. Tudo editável em Ajustes → Categorias:
+você define a faixa e escreve o que cada número significa pra você. Em escalas
+que começam no zero, o zero é resposta ("seco"), não ausência.
 
 Tudo salva no toque — não existe botão "salvar". No fim tem **Fechar o dia**,
 que marca o dia como respondido de propósito (diferente de "esqueci").
@@ -118,6 +126,16 @@ Filtrando por uma categoria, vira mapa de calor com os valores.
 Afazeres soltos: escreva e dê Enter. Toque no quadrado pra concluir, na
 estrela pra fixar, no texto pra editar no lugar. As abertas aparecem também no
 fim do check-in do dia.
+
+### Nível e conquistas
+Um contador de XP tirado dos próprios dados — dia registrado, dia fechado,
+anotação escrita, meta batida, sequência mantida, tarefa concluída — e oito
+níveis, de **Modo caos** a **Lenda doméstica**, passando por **Menos fudido**.
+As conquistas nascem em parte das *suas* categorias (se você criar "Corrida",
+aparecem as conquistas de sequência dela) e ficam em Insights, com o quanto
+falta pra cada uma. Conquista nova dá um aviso discreto no rodapé; subir de
+nível abre a tela, porque é raro. Nada disso invented: apague um dia e o XP
+cai junto.
 
 ### Insights
 Números do período (7/30/90 dias), frequência por categoria, sequência atual e
@@ -182,6 +200,7 @@ js/vault.js             PBKDF2 + AES-GCM (o cofre)
 js/sync.js              grava e lê o arquivo do repositório (API do GitHub)
 js/merge.js             junta dois cadernos item a item (funções puras)
 js/analysis.js          sequências, metas, padrões, sugestões
+js/badges.js            XP, níveis e conquistas
 js/ui.js                toast, sheet, scramble, contadores, stagger
 js/palettes.js          as 8 paletas
 js/utils.js             datas, DOM, formatação

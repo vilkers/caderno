@@ -25,7 +25,22 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
-## Nesta rodada
+## Rodada 3
+
+- **Escalas com régua escrita.** Faixa configurável (0–10, 1–5…) e um texto de
+  referência por nível, que aparece embaixo do controle na hora de responder.
+  É o que separa "anotei 6" de "sei o que 6 quer dizer". Bebida já nasce
+  assim; Maconha virou quantidade com referência por dose.
+- **Nível e conquistas.** XP tirado dos dados reais (dia registrado, dia
+  fechado, anotação, meta batida, sequência, tarefa feita), oito níveis de
+  "Modo caos" a "Lenda doméstica", e conquistas que se adaptam às suas
+  categorias. Aviso discreto quando cai uma; tela cheia só quando sobe de
+  nível.
+- **Correção importante no XP:** metas de abstinência estavam contando como
+  batidas em semanas sem nenhum registro — dava centenas de pontos de graça.
+  Agora só semana com dia anotado rende meta.
+
+## Rodada 2
 
 - **Banco de dados no repositório.** `dados/caderno.enc.json`, cifrado, escrito
   a cada mudança pela API do GitHub. Cada gravação é um commit — o histórico
@@ -44,21 +59,25 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
 1. **Lembrete diário.** Notificação local às 21h ("fecha o dia?"). Precisa de
    permissão de notificação + Periodic Background Sync; no iOS só funciona
    com o app instalado na tela de início. É o que mais aumenta constância —
-   nenhuma melhoria de tela compete com um empurrão na hora certa.
-2. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
+   nenhuma melhoria de tela compete com um empurrão na hora certa. Agora que
+   existe XP, o lembrete pode dizer o que você perde se não fechar o dia.
+2. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
+   ("domingo de sofá honesto", "semana sem álcool no mês do aniversário").
+   Surpresa vale mais que lista visível — mas não abuse, senão vira ruído.
+3. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
    posição. Com uma cor por categoria (matiz derivado do acento, pra não
    brigar com as paletas), o mês fica legível de relance.
-3. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
+4. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
    ontem × humor hoje" costuma ser bem mais revelador.
-4. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
+5. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
    fui?"), escondido atrás de um toque, sem poluir o check-in.
-5. **Arrastar pra reordenar categorias.** Hoje são setas — funcionam em
+6. **Arrastar pra reordenar categorias.** Hoje são setas — funcionam em
    qualquer aparelho, mas arrastar é o gesto que a pessoa tenta primeiro.
-6. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
+7. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
    ("bebi 2 às 19h e 1 às 23h"), ao custo de complicar o modelo.
-7. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
-8. **Exportar CSV** pra abrir em planilha, além do JSON.
-9. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
+8. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
+9. **Exportar CSV** pra abrir em planilha, além do JSON.
+10. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.
 
@@ -66,8 +85,10 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
 
 - **Login e servidor.** O arquivo no seu repositório resolve persistência sem
   criar conta, sem backend e sem confiar em terceiro nenhum.
-- **Gamificação pesada** (pontos, medalhas, ofensiva com fogo). Sequência e
-  recorde bastam; o resto vira dívida emocional e faz mentir no registro.
+- **Gamificação que castiga.** Tem XP e conquista, mas nada de perder pontos,
+  ofensiva quebrada com aviso vermelho ou culpa por dia vazio. Punição faz
+  mentir no registro, e dado falso não serve pra nada. A régua sobe; ela
+  nunca desce sozinha.
 - **Gráfico de linha por padrão.** Com 30 pontos ruidosos ele engana mais do
   que explica; barra de frequência e comparação entre períodos são mais
   honestas.

@@ -255,8 +255,9 @@ function catRow(c, i, ctx) {
 /* ── Editor de categoria ───────────────────────────────────── */
 function editCategory(cat, ctx) {
   const isNew = !cat;
-  const draft = cat ? { ...cat, goal: cat.goal ? { ...cat.goal } : null }
-                    : { emoji: '✳️', label: '', type: 'toggle', unit: '', goal: null };
+  const draft = cat
+    ? { ...cat, goal: cat.goal ? { ...cat.goal } : null, levels: { ...(cat.levels || {}) } }
+    : { emoji: '✳️', label: '', type: 'toggle', unit: '', goal: null, levels: {} };
 
   openSheet(isNew ? 'Nova categoria' : 'Editar categoria', close => {
     const emoji = field('ÍCONE (EMOJI)', el('input', { type: 'text', value: draft.emoji, maxlength: 4 }));
@@ -265,6 +266,43 @@ function editCategory(cat, ctx) {
       el('option', { value: k, text: v.label, selected: draft.type === k ? true : null })));
     const typeHint = el('p.micro', { text: TYPES[draft.type].hint });
     const unit = field('UNIDADE (OPCIONAL)', el('input', { type: 'text', value: draft.unit || '', placeholder: 'doses, km, h…' }));
+
+    /* ── faixa e referências escritas de cada nível ── */
+    const minIn = el('input', { type: 'number', min: '0', max: '9', value: String(draft.min ?? 1), style: { width: '64px' } });
+    const maxIn = el('input', { type: 'number', min: '1', max: '20', value: String(draft.max ?? 5), style: { width: '64px' } });
+    const faixa = el('div.wrap', { style: { alignItems: 'center' } }, [
+      el('span.micro', { text: 'DE' }), minIn, el('span.micro', { text: 'ATÉ' }), maxIn,
+    ]);
+    const refs = el('div.lvledit');
+    const refsBox = el('div', {}, [
+      el('p.micro', { text: 'REFERÊNCIAS DE CADA NÍVEL (OPCIONAL)' }),
+      el('p.row__d', { style: { marginBottom: '.5rem' }, text: 'O texto aparece embaixo do controle na hora do check-in — é o que faz um "5" querer dizer alguma coisa.' }),
+      refs,
+    ]);
+
+    const lerNiveis = () => {
+      const t = type.value;
+      if (t === 'scale') {
+        const a = Math.max(0, Number(minIn.value) || 0);
+        const b = Math.min(20, Math.max(a + 1, Number(maxIn.value) || 5));
+        return Array.from({ length: b - a + 1 }, (_, i) => a + i);
+      }
+      if (t === 'count') return [0, 1, 2, 3, 4, 5];
+      return [];
+    };
+    const montaRefs = () => {
+      const atuais = colheRefs();
+      refs.replaceChildren();
+      for (const n of lerNiveis()) {
+        const inp = el('input', { type: 'text', value: atuais[n] ?? (draft.levels?.[n] || ''), placeholder: '—', 'data-n': n });
+        refs.append(el('label.lvledit__r', {}, [el('span.lvledit__n.num', { text: String(n) }), inp]));
+      }
+    };
+    const colheRefs = () => {
+      const out = {};
+      refs.querySelectorAll('input[data-n]').forEach(i => { if (i.value.trim()) out[i.dataset.n] = i.value.trim(); });
+      return out;
+    };
 
     const goalOn = el('input', { type: 'checkbox' });
     goalOn.checked = !!draft.goal;
@@ -280,7 +318,17 @@ function editCategory(cat, ctx) {
     const goalBox = el('div.wrap', { style: { alignItems: 'center' } }, [goalMode, goalVal, goalPeriod]);
     goalBox.style.opacity = goalOn.checked ? '1' : '.4';
     goalOn.addEventListener('change', () => { goalBox.style.opacity = goalOn.checked ? '1' : '.4'; });
-    type.addEventListener('change', () => { typeHint.textContent = TYPES[type.value].hint; });
+    const pintaTipo = () => {
+      typeHint.textContent = TYPES[type.value].hint;
+      faixa.hidden = type.value !== 'scale';
+      refsBox.hidden = !['scale', 'count'].includes(type.value);
+      unit.hidden = !['count', 'hours'].includes(type.value);
+      montaRefs();
+    };
+    type.addEventListener('change', pintaTipo);
+    [minIn, maxIn].forEach(i => i.addEventListener('change', montaRefs));
+
+    setTimeout(pintaTipo, 0);
 
     return [
       el('div.wrap', { style: { gap: '1rem' } }, [
@@ -288,7 +336,9 @@ function editCategory(cat, ctx) {
         el('div', { style: { flex: '1', minWidth: '160px' } }, [label]),
       ]),
       field('TIPO DE RESPOSTA', el('div', {}, [type, typeHint])),
+      faixa,
       unit,
+      refsBox,
       el('label.row', { style: { cursor: 'pointer' } }, [
         el('div.row__l', {}, [
           el('p.row__t', { text: 'Definir meta' }),
@@ -328,11 +378,15 @@ function editCategory(cat, ctx) {
         el('button.btn.btn--solid', {
           type: 'button',
           onclick: () => {
+            const niveis = colheRefs();
             const patch = {
               emoji: emoji.querySelector('input').value.trim() || '•',
               label: label.querySelector('input').value.trim() || 'Sem nome',
               type: type.value,
               unit: unit.querySelector('input').value.trim(),
+              min: type.value === 'scale' ? Math.max(0, Number(minIn.value) || 0) : undefined,
+              max: type.value === 'scale' ? Math.max(1, Number(maxIn.value) || 5) : (cat?.max ?? undefined),
+              levels: Object.keys(niveis).length ? niveis : undefined,
               goal: goalOn.checked
                 ? { mode: goalMode.value, value: Number(goalVal.value) || 0, period: goalPeriod.value }
                 : null,

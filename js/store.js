@@ -14,7 +14,7 @@ export const TYPES = {
   toggle: { label: 'Sim / não',    hint: 'Um toque: fiz ou não fiz.' },
   count:  { label: 'Contagem',     hint: 'Quantas vezes / quantas unidades.' },
   hours:  { label: 'Horas',        hint: 'Duração, com meia hora de precisão.' },
-  scale:  { label: 'Escala 1–5',   hint: 'Intensidade, humor, qualidade.' },
+  scale:  { label: 'Escala',       hint: 'Uma nota com referência escrita em cada nível.' },
   text:   { label: 'Texto livre',  hint: 'Uma anotação curta.' },
 };
 
@@ -23,13 +23,22 @@ const now = () => Date.now();
 export const DEFAULT_CATEGORIES = () => ([
   { emoji: '🏋️', label: 'Academia',  type: 'toggle', goal: { mode: 'min', value: 4, period: 'week' } },
   { emoji: '💼', label: 'Trabalho',  type: 'hours',  unit: 'h', max: 16, goal: { mode: 'min', value: 6, period: 'day' } },
-  { emoji: '🍺', label: 'Bebida',    type: 'count',  unit: 'doses', goal: { mode: 'max', value: 6, period: 'week' } },
-  { emoji: '🌿', label: 'Maconha',   type: 'toggle', goal: { mode: 'max', value: 3, period: 'week' } },
+  { emoji: '🍺', label: 'Bebida', type: 'scale', min: 0, max: 10,
+    levels: {
+      0: 'seco', 1: 'uma no almoço', 2: 'duas, social', 3: 'happy hour comportado',
+      4: 'já tô alegre', 5: 'bebedeira média', 6: 'passei do ponto', 7: 'mó porre',
+      8: 'apagando', 9: 'filme queimado', 10: 'ressaca de dois dias',
+    },
+    goal: { mode: 'max', value: 12, period: 'week' } },
+  { emoji: '🌿', label: 'Maconha', type: 'count', unit: 'vezes',
+    levels: { 1: 'um de leve', 2: 'dose dupla', 3: 'chapei', 4: 'dia perdido' },
+    goal: { mode: 'max', value: 4, period: 'week' } },
   { emoji: '🐾', label: 'Passeio com o Estojo', type: 'count', unit: 'passeios', goal: { mode: 'min', value: 7, period: 'week' } },
   { emoji: '🍽️', label: 'Louça',     type: 'toggle', goal: { mode: 'min', value: 5, period: 'week' } },
   { emoji: '🗑️', label: 'Lixo',      type: 'toggle', goal: { mode: 'min', value: 3, period: 'week' } },
   { emoji: '😴', label: 'Sono',      type: 'hours',  unit: 'h', max: 14, goal: { mode: 'min', value: 7, period: 'day' } },
-  { emoji: '🙂', label: 'Humor',     type: 'scale' },
+  { emoji: '🙂', label: 'Humor', type: 'scale', min: 1, max: 5,
+    levels: { 1: 'no fundo do poço', 2: 'mal', 3: 'normal', 4: 'bem', 5: 'dia ótimo' } },
 ].map((c, i) => ({ id: uid(), order: i, updatedAt: now(), ...c })));
 
 export const blankSettings = () => ({
@@ -47,6 +56,8 @@ export const blankState = () => ({
   categories: DEFAULT_CATEGORIES(),
   days: {},
   todos: [],
+  badges: {},          // id da conquista → quando caiu
+  levelSeen: 0,        // último nível já comemorado
 });
 
 /* ── Estado vivo ───────────────────────────────────────────── */
@@ -106,6 +117,8 @@ export function migrate(data) {
     updatedAt: t,
     deviceId: data.deviceId || fresh.deviceId,
     settings, categories, days, todos,
+    badges: data.badges && typeof data.badges === 'object' ? data.badges : {},
+    levelSeen: Number(data.levelSeen) || 0,
   };
 }
 
@@ -175,9 +188,11 @@ export function getVal(k, id) {
   return d ? d.v[id] : undefined;
 }
 
-export function setVal(k, id, value) {
+export function setVal(k, id, value, { keepZero = false } = {}) {
   const d = ensureDay(k);
-  if (value === undefined || value === null || value === '' || value === false || value === 0) delete d.v[id];
+  const vazio = value === undefined || value === null || value === '' || value === false
+    || (value === 0 && !keepZero);
+  if (vazio) delete d.v[id];
   else d.v[id] = value;
   d.updatedAt = now();
   tidyDay(k);
@@ -273,6 +288,15 @@ export function resetCategories() {
   DEFAULT_CATEGORIES().forEach(c => state.categories.push(c));
   emit('categories');
 }
+
+/** O texto de referência de um valor, quando a categoria tem níveis escritos. */
+export function levelLabel(cat, value) {
+  if (!cat?.levels || value === undefined || value === null || value === '') return '';
+  return cat.levels[String(value)] || cat.levels[Number(value)] || '';
+}
+/** A escala começa em 0? Então 0 é resposta ("seco"), não ausência. */
+export const scaleMin = cat => (cat.type === 'scale' ? (cat.min ?? 1) : 0);
+export const scaleMax = cat => (cat.type === 'scale' ? (cat.max ?? 5) : (cat.max ?? 99));
 
 /* ── Afazeres ──────────────────────────────────────────────── */
 export const listTodos = () => state.todos.filter(t => !t.deletedAt);
