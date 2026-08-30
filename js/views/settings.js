@@ -16,8 +16,11 @@ export function render(ctx) {
 
   view.append(el('div.vhead', {}, [
     el('div.vhead__l', {}, [
-      el('p.micro', { text: '05 — AJUSTES' }),
+      el('p.micro', { text: '06 — AJUSTES' }),
       el('h2.display.h-lg', { text: 'AJUSTES' }),
+    ]),
+    el('div.vhead__r', {}, [
+      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
     ]),
   ]));
 

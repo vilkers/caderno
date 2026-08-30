@@ -63,11 +63,17 @@ export const blankSettings = () => ({
   sync: { enabled: false, owner: '', repo: '', branch: 'main', path: 'dados/caderno.enc.json', token: '', lastSync: 0, lastSha: '' },
 });
 
+/** Quem usa o caderno. Foto e nome ficam dentro do cofre, cifrados. */
+export const blankProfile = () => ({
+  nome: '', foto: '', frase: '', desde: now(), updatedAt: now(),
+});
+
 export const blankState = () => ({
   version: VERSION,
   rev: 0,
   updatedAt: now(),
   deviceId: uid(),
+  profile: blankProfile(),
   settings: blankSettings(),
   categories: DEFAULT_CATEGORIES(),
   days: {},
@@ -131,15 +137,27 @@ export function migrate(data) {
     updatedAt: Number(x.updatedAt) || Number(x.doneAt) || Number(x.createdAt) || t,
   }));
 
+  const profile = { ...fresh.profile, ...(data.profile || {}) };
+  profile.desde = Number(data.profile?.desde) || menorData(days) || t;
+  profile.updatedAt = Number(data.profile?.updatedAt) || t;
+
   return {
     version: VERSION,
     rev: Number(data.rev) || 0,
     updatedAt: t,
     deviceId: data.deviceId || fresh.deviceId,
-    settings, categories, days, todos,
+    profile, settings, categories, days, todos,
     badges: data.badges && typeof data.badges === 'object' ? data.badges : {},
     levelSeen: Number(data.levelSeen) || 0,
   };
+}
+
+/** O primeiro dia registrado — serve de "no caderno desde". */
+function menorData(days) {
+  const chaves = Object.keys(days || {}).sort();
+  if (!chaves.length) return 0;
+  const [y, m, d] = chaves[0].split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
 }
 
 /** Reidrata mantendo a referência de `state` (as telas apontam para ela). */
@@ -367,6 +385,19 @@ export function clearDoneTodos() {
   cleared.forEach(t => { t.deletedAt = now(); t.updatedAt = now(); });
   emit('todos');
   return cleared.map(t => ({ ...t, deletedAt: undefined }));
+}
+
+/* ── Perfil ────────────────────────────────────────────────── */
+export function setProfile(patch) {
+  state.profile = { ...state.profile, ...patch, updatedAt: now() };
+  emit('profile');
+}
+/** Iniciais para quando não há foto. */
+export function iniciais() {
+  const n = (state.profile?.nome || '').trim();
+  if (!n) return '✳';
+  const p = n.split(/\s+/).filter(Boolean);
+  return ((p[0]?.[0] || '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 }
 
 /* ── Preferências ──────────────────────────────────────────── */

@@ -8,6 +8,7 @@ import * as badges from './badges.js';
 import { PALETTES, applyPalette } from './palettes.js';
 import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn, revelarAoRolar, observarTopo } from './ui.js';
 import { icon } from './icons.js';
+import { avatar } from './avatar.js';
 import { el, debounce } from './utils.js';
 
 import * as viewToday from './views/today.js';
@@ -15,12 +16,15 @@ import * as viewMonth from './views/month.js';
 import * as viewTodos from './views/todos.js';
 import * as viewInsights from './views/insights.js';
 import * as viewMetas from './views/metas.js';
+import * as viewPerfil from './views/perfil.js';
 import * as viewSettings from './views/settings.js';
 
 const VIEWS = {
-  hoje: viewToday, mes: viewMonth, lista: viewTodos,
-  insights: viewInsights, metas: viewMetas, ajustes: viewSettings,
+  hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
+  insights: viewInsights, ajustes: viewSettings, perfil: viewPerfil,
 };
+/* embaixo fica a rotina; o resto se alcança pelo topo e pelo menu */
+const PRIMARIAS = ['hoje', 'mes', 'lista', 'metas'];
 
 /* ── Contexto compartilhado entre as telas ─────────────────── */
 const ctx = {
@@ -31,7 +35,18 @@ const ctx = {
   monthFilter: null,
   monthMode: 'mes',
   weekAnchor: null,
-  go(v) { if (VIEWS[v]) { ctx.view = v; paint(); } },
+  go(v) {
+    if (!VIEWS[v] || v === ctx.view) return;
+    history.pushState({ view: v }, '');
+    ctx.view = v;
+    paint();
+  },
+  /* volta pela pilha do navegador — o botão físico do Android também serve */
+  voltar() {
+    if (history.state?.view && history.state.view !== 'hoje') history.back();
+    else { ctx.view = PRIMARIAS[0]; history.replaceState({ view: PRIMARIAS[0] }, ''); paint(); }
+  },
+  pintaTopo() { pintaIdentidade(); },
   setDay(k) { ctx.day = k; if (ctx.view === 'hoje') paint(); },
   rerender() { paint(); },
   lock() { doLock(); },
@@ -41,14 +56,18 @@ const ctx = {
 function paint() {
   const main = $('#main');
   ctx.softRefresh = null;              // cada tela instala o seu, se quiser
-  const node = VIEWS[ctx.view].render(ctx);
-  main.replaceChildren(node);
+  main.replaceChildren(VIEWS[ctx.view].render(ctx));
   main.scrollTop = 0;
+  window.scrollTo({ top: 0, behavior: 'auto' });   // antes de medir a dobra
   revelarAoRolar(main);
+
   $$('.nav__item').forEach(b => b.classList.toggle('is-active', b.dataset.view === ctx.view));
-  const wide = window.matchMedia('(min-width:700px)').matches;
+  document.body.classList.toggle('em-secundaria', !PRIMARIAS.includes(ctx.view));
+  pintaIdentidade();
+
+  const largo = window.matchMedia('(min-width:700px)').matches;
   $('#topDate').textContent = ctx.view === 'hoje'
-    ? (wide ? longDay(ctx.day) : humanDay(ctx.day))
+    ? (largo ? longDay(ctx.day) : humanDay(ctx.day))
     : humanDay(todayKey());
 }
 
@@ -125,6 +144,7 @@ function enterApp() {
   ctx.day = todayKey();
   ctx.view = 'hoje';
   aplicarAtalhoDaURL();
+  history.replaceState({ view: ctx.view }, '');
   paint();
   armAutolock();
   paintSync(sync.getStatus());
@@ -182,19 +202,32 @@ function armAutolock() {
 function wire() {
   $$('.nav__item').forEach(b => {
     b.prepend(icon(b.dataset.icon || 'hoje'));
-    b.addEventListener('click', () => ctx.go(b.dataset.view));
+    b.addEventListener('click', () => {
+      if (b.dataset.view === 'hoje' && ctx.view === 'hoje') { ctx.day = todayKey(); paint(); return; }
+      ctx.go(b.dataset.view);
+    });
   });
   observarTopo();
-  $('#brandBtn').addEventListener('click', () => { ctx.day = todayKey(); ctx.go('hoje'); });
-  $('#lockNowBtn').addEventListener('click', doLock);
-  $('#paletteBtn').addEventListener('click', paletteSheet);
+  $('#identBtn').addEventListener('click', () => ctx.go('perfil'));
+  $('#insightsBtn').append(icon('insights', 18));
+  $('#insightsBtn').addEventListener('click', () => ctx.go('insights'));
+  $('#menuBtn').append(icon('menu', 18));
+  $('#menuBtn').addEventListener('click', menuSheet);
+
+  window.addEventListener('popstate', e => {
+    const v = e.state?.view;
+    if (!v || !VIEWS[v] || $('#app').hidden) return;
+    ctx.view = v;
+    paint();
+  });
 
   document.addEventListener('keydown', e => {
     if ($('#app').hidden) return;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'insights', 5: 'metas', 6: 'ajustes' };
+    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil' };
     if (keys[e.key]) { ctx.go(keys[e.key]); return; }
+    if (e.key === 'Escape' && ctx.view !== 'hoje' && $('#sheet').hidden) { ctx.voltar(); return; }
     if (ctx.view === 'hoje') {
       if (e.key === 'ArrowLeft') ctx.setDay(addDays(ctx.day, -1));
       if (e.key === 'ArrowRight') ctx.setDay(addDays(ctx.day, 1));
@@ -226,6 +259,7 @@ function wire() {
     }
     // dados trocados por fora (junção da sincronia, outra aba): repinta
     if (reason === 'replace' && !$('#app').hidden) paint();
+    if (reason === 'profile') pintaIdentidade();
   });
 }
 
@@ -273,6 +307,59 @@ function celebrar(novas, resumo) {
       el('button.btn.btn--solid', { type: 'button', onclick: close }, [el('span', { text: 'valeu' })]),
     ]),
   ].filter(Boolean));
+}
+
+/* ── Identidade no topo ────────────────────────────────────── */
+function pintaIdentidade() {
+  const av = $('#identAv');
+  if (av) av.replaceChildren(avatar(30));
+  const nome = $('#identNome');
+  if (nome) {
+    const p = store.state.profile || {};
+    nome.textContent = p.nome?.trim() || 'Caderno';
+  }
+  $('#identBtn')?.classList.toggle('is-active', ctx.view === 'perfil');
+  $('#insightsBtn')?.classList.toggle('is-active', ctx.view === 'insights');
+}
+
+/* ── Menu ──────────────────────────────────────────────────── */
+function menuSheet() {
+  openSheet('Menu', close => {
+    const ir = v => { close(); ctx.go(v); };
+    const grupo = (titulo, itens) => el('div.menugrupo', {}, [
+      el('p.micro', { text: titulo }),
+      el('div.menulista', {}, itens.filter(Boolean)),
+    ]);
+    const item = (ic, titulo, desc, onclick) => el('button.menuitem', { type: 'button', onclick }, [
+      el('span.menuitem__i', {}, [icon(ic, 18)]),
+      el('span.menuitem__t', {}, [
+        el('span.row__t', { text: titulo }),
+        el('span.row__d', { text: desc }),
+      ]),
+      el('span.atalho__seta', { text: '→' }),
+    ]);
+
+    return [
+      grupo('VOCÊ', [
+        item('perfil', 'Perfil', 'Nome, foto e o que o caderno sabe de você.', () => ir('perfil')),
+        item('insights', 'Insights', 'Padrões, sequências e conquistas.', () => ir('insights')),
+      ]),
+      grupo('CADERNO', [
+        item('metas', 'Metas e cobrança', 'O que o dia exige e o que é da semana.', () => ir('metas')),
+        item('ajustes', 'Ajustes', 'Categorias, sincronia, senha e backup.', () => ir('ajustes')),
+        item('paleta', 'Paleta', 'Trocar as cores do app.', () => { close(); paletteSheet(); }),
+        item('jogo', 'Caderno 2.0', 'A mesma rotina em forma de fase.', () => { location.href = './retro/'; }),
+      ]),
+      grupo('COFRE', [
+        sync.configured() ? item('nuvem', 'Sincronizar agora', 'Gravar e puxar do repositório.', async () => {
+          close();
+          try { await sync.syncNow(); toast('sincronizado'); }
+          catch (err) { toast(err.message, { ms: 5000 }); }
+        }) : null,
+        item('cadeado', 'Trancar', 'Fecha a sessão e pede a senha.', () => { close(); doLock(); }),
+      ]),
+    ];
+  });
 }
 
 const SYNC_TXT = {

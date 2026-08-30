@@ -186,10 +186,58 @@ svg{display:block}
   transition:border-color .3s var(--ease),background .3s var(--ease);
 }
 body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,var(--bg) 94%,transparent)}
-.topbar__brand{display:flex;align-items:baseline;gap:.8rem;text-align:left;flex:1;min-width:0;overflow:hidden}
-.topbar__brand .display{font-size:1.35rem;flex:none}
-.topbar__date{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* identidade: avatar + nome, e daqui se chega ao perfil */
+.ident{
+  display:flex;align-items:center;gap:.65rem;text-align:left;flex:1;min-width:0;
+  padding:.3rem .5rem .3rem .3rem;margin-left:-.3rem;border-radius:999px;
+  transition:background .25s var(--ease);
+}
+.ident:hover,.ident.is-active{background:var(--surface-2)}
+.ident__av{flex:none}
+.ident__txt{display:grid;min-width:0}
+.ident__n{font-weight:700;letter-spacing:-.02em;font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ident__txt .micro{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .topbar__right{display:flex;gap:.5rem;flex:none}
+.iconbtn.is-active{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+/* avatar */
+.av{
+  display:grid;place-items:center;border-radius:50%;overflow:hidden;flex:none;
+  background:var(--surface-2);color:var(--fg);border:1px solid var(--line);
+  font-weight:700;letter-spacing:-.02em;line-height:1;
+}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av--letras{background:var(--accent);color:var(--ink);border-color:transparent}
+.av--grande{border-width:2px}
+
+/* menu */
+.menugrupo{display:grid;gap:.5rem}
+.menugrupo + .menugrupo{margin-top:.4rem}
+.menulista{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.menuitem{
+  display:flex;align-items:center;gap:.9rem;text-align:left;background:var(--bg);
+  padding:.85rem 1rem;transition:background .25s var(--ease);
+}
+.menuitem:hover{background:var(--surface)}
+.menuitem__i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);flex:none;color:var(--fg)}
+.menuitem__t{flex:1;min-width:0;display:grid;gap:.1rem}
+.atalho__seta{color:var(--dim);font-family:var(--font-mono);flex:none}
+
+/* perfil */
+.perfil{display:flex;gap:1.4rem;flex-wrap:wrap;align-items:flex-start;
+  border:1px solid var(--line);border-radius:16px;padding:1.2rem;background:var(--surface)}
+.perfil__lado{display:grid;gap:.7rem;justify-items:center}
+.perfil__foto{display:grid;place-items:center}
+.perfil__campos{flex:1;min-width:220px;display:grid;gap:1rem}
+.perfil__nome{font-size:1.3rem;font-weight:700;letter-spacing:-.03em;padding:.5rem 0;border-bottom:1px solid var(--line);width:100%}
+.perfil__frase{font-size:.95rem;padding:.5rem 0;border-bottom:1px solid var(--line);width:100%;color:var(--dim)}
+.perfil__nome:focus,.perfil__frase:focus{border-color:var(--accent);color:var(--fg)}
+.atalhos{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.atalho{
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;text-align:left;
+  background:var(--bg);padding:.95rem 1.1rem;transition:background .25s var(--ease),padding-left .25s var(--ease);
+}
+.atalho:hover{background:var(--surface);padding-left:1.3rem}
 
 .nav{
   position:fixed;bottom:0;left:0;right:0;z-index:45;

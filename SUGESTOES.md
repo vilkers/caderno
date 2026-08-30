@@ -25,6 +25,20 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 6 — navegação em três camadas
+
+- **A barra de baixo virou o que devia ser**: só rotina (Hoje, Mês, Lista,
+  Metas). Insights subiu para um botão no topo; Ajustes e o resto foram para
+  um menu agrupado (VOCÊ · CADERNO · COFRE).
+- **Perfil**: nome, frase e foto, com a foto reduzida a 192px e guardada
+  cifrada dentro do cofre. O avatar no topo é a porta de entrada.
+- **Voltar de verdade**: a navegação usa o histórico do navegador, então o
+  botão físico do Android, o gesto do iOS e o `Esc` funcionam. Telas
+  secundárias têm "← voltar".
+- Correção: `paint()` não estava repintando a identidade nem rolando ao topo
+  antes de medir a dobra — dois `replace` meus não tinham encontrado a
+  âncora e falharam em silêncio.
+
 ## Rodada 5 — o dia passa a saber o que cobra
 
 - **Cadência por categoria** (todo dia · na semana · quando rolar). O
@@ -100,23 +114,26 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
 2. **Lembrete que sabe o que falta.** Agora que existe o status do dia, a
    notificação das 21h pode dizer *"faltam remédio e sono"* em vez de um
    genérico "fecha o dia?".
-3. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
+3. **Perfil que serve pra algo mais.** Hoje ele é identidade e vitrine.
+   Podia guardar preferências de leitura (quais insights te interessam) e a
+   foto podia virar o ícone do app instalado.
+4. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
    ("domingo de sofá honesto", "semana sem álcool no mês do aniversário").
    Surpresa vale mais que lista visível — mas não abuse, senão vira ruído.
-4. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
+5. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
    posição. Com uma cor por categoria (matiz derivado do acento, pra não
    brigar com as paletas), o mês fica legível de relance.
-5. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
+6. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
    ontem × humor hoje" costuma ser bem mais revelador.
-6. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
+7. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
    fui?"), escondido atrás de um toque, sem poluir o check-in.
-7. **Arrastar pra reordenar categorias.** Hoje são setas — funcionam em
+8. **Arrastar pra reordenar categorias.** Hoje são setas — funcionam em
    qualquer aparelho, mas arrastar é o gesto que a pessoa tenta primeiro.
-8. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
+9. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
    ("bebi 2 às 19h e 1 às 23h"), ao custo de complicar o modelo.
-9. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
-10. **Exportar CSV** pra abrir em planilha, além do JSON.
-11. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
+10. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
+11. **Exportar CSV** pra abrir em planilha, além do JSON.
+12. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.
 

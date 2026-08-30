@@ -57,33 +57,29 @@
 <!-- ── App ───────────────────────────────────────────────────── -->
 <div id="app" class="app" hidden>
   <header class="topbar">
-    <button class="topbar__brand" id="brandBtn" title="Ir para hoje">
-      <span class="display">CADERNO</span>
-      <span class="micro topbar__date" id="topDate"></span>
+    <button class="ident" id="identBtn" title="Seu perfil">
+      <span class="ident__av" id="identAv"></span>
+      <span class="ident__txt">
+        <span class="ident__n" id="identNome">Caderno</span>
+        <span class="micro" id="topDate"></span>
+      </span>
     </button>
     <div class="topbar__right">
       <button class="syncchip" id="syncBtn" hidden title="Sincronizar com o repositório">
         <span class="syncchip__dot"></span>
         <span class="syncchip__t micro"></span>
       </button>
-      <button class="iconbtn" id="paletteBtn" title="Paleta de cores" aria-label="Paleta de cores">
-        <span class="swatchdot"></span>
-      </button>
-      <button class="iconbtn" id="lockNowBtn" title="Trancar agora" aria-label="Trancar">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6">
-          <rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
-        </svg>
-      </button>
+      <button class="iconbtn" id="insightsBtn" title="Insights" aria-label="Insights"></button>
+      <button class="iconbtn" id="menuBtn" title="Menu" aria-label="Menu"></button>
     </div>
   </header>
 
+  <!-- embaixo mora a rotina: o que se toca todo dia -->
   <nav class="nav" id="nav" aria-label="Navegação principal">
     <button class="nav__item is-active" data-view="hoje" data-icon="hoje"><span class="nav__l">Hoje</span></button>
     <button class="nav__item" data-view="mes" data-icon="mes"><span class="nav__l">Mês</span></button>
     <button class="nav__item" data-view="lista" data-icon="lista"><span class="nav__l">Lista</span></button>
-    <button class="nav__item" data-view="insights" data-icon="insights"><span class="nav__l">Insights</span></button>
     <button class="nav__item" data-view="metas" data-icon="metas"><span class="nav__l">Metas</span></button>
-    <button class="nav__item" data-view="ajustes" data-icon="ajustes"><span class="nav__l">Ajustes</span></button>
   </nav>
 
   <main id="main" class="main" tabindex="-1"></main>

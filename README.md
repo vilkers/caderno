@@ -201,6 +201,25 @@ de 14 dias contra os 14 anteriores, dia da semana fora da curva e cruzamentos
 entre categorias ("nos dias com X, Y fica em tanto; sem, em tanto"). Tudo
 calculado no seu navegador, em cima dos seus dados.
 
+### Navegação
+Três camadas, para a barra de baixo não virar depósito:
+
+- **Embaixo, a rotina** — Hoje, Mês, Lista, Metas. O que se toca todo dia.
+- **No topo, você e a leitura** — o avatar abre o **Perfil**, e ao lado ficam
+  o estado da sincronia, o atalho de **Insights** e o **menu**.
+- **No menu, a configuração** — Perfil, Insights, Metas, Ajustes, Paleta,
+  Caderno 2.0 e Trancar, agrupados por assunto.
+
+As telas secundárias trazem **← voltar**, e a navegação usa o histórico do
+navegador: o botão físico de voltar do Android (e o gesto do iOS) funciona,
+assim como `Esc` no teclado.
+
+### Perfil
+Nome, uma frase sua e foto — reduzida a 192px e guardada **dentro do cofre**,
+cifrada como o resto e viajando na sincronia junto. Sem foto, o avatar mostra
+as suas iniciais. Do lado, o que o caderno sabe: dias registrados, sequência,
+nível e conquistas.
+
 ### Ajustes
 Sincronia com o repositório, paleta (8 opções), categorias (criar, editar,
 reordenar, arquivar, apagar), metas, início da semana, movimento ligado/
@@ -208,8 +227,8 @@ desligado, trava automática, troca de senha e backup.
 
 ## Atalhos (teclado)
 
-`1`–`6` trocam de tela · `←` `→` mudam o dia · `t` volta pra hoje ·
-`f` fecha/reabre o dia · `l` tranca.
+`1`–`7` trocam de tela · `←` `→` mudam o dia · `t` volta pra hoje ·
+`f` fecha/reabre o dia · `l` tranca · `Esc` volta.
 
 Ações destrutivas (apagar tarefa, apagar categoria, limpar concluídas,
 repetir ontem) aparecem no rodapé com **desfazer**.
@@ -261,7 +280,8 @@ js/badges.js            XP, níveis e conquistas
 js/ui.js                toast, sheet, scramble, contadores, stagger
 js/palettes.js          as 8 paletas
 js/utils.js             datas, DOM, formatação
-js/views/*.js           as seis telas
+js/views/*.js           as sete telas
+js/avatar.js            avatar e redução da foto de perfil
 js/icons.js             o traço da interface (24×24, sem preenchimento)
 temas/                  peles guardadas para enxertar no app (ver temas/README.md)
 dados/backups/          cópias congeladas do cofre

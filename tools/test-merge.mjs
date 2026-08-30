@@ -106,5 +106,19 @@ console.log('conquistas');
   ok(doc.badges.b === T + 5, 'conquista do outro aparelho entra');
 }
 
+console.log('perfil');
+{
+  const local = base({ profile: { nome: 'Daqui', foto: 'A', updatedAt: T } });
+  const remote = base({ profile: { nome: 'De lá', foto: 'B', updatedAt: T + 50 } });
+  const { doc } = mergeDocs(local, remote, T + 60);
+  ok(doc.profile.nome === 'De lá' && doc.profile.foto === 'B', 'perfil editado depois vence inteiro');
+}
+{
+  const local = base({ profile: { nome: 'Daqui', updatedAt: T + 50 } });
+  const remote = base({ profile: { nome: 'De lá', updatedAt: T } });
+  const { doc } = mergeDocs(local, remote, T + 60);
+  ok(doc.profile.nome === 'Daqui', 'perfil mais novo daqui não é sobrescrito');
+}
+
 console.log(falhas ? `\n${falhas} teste(s) falharam` : '\ntodos os testes passaram');
 process.exit(falhas ? 1 : 0);

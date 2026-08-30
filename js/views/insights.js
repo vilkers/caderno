@@ -21,10 +21,11 @@ export function render(ctx) {
 
   view.append(el('div.vhead', {}, [
     el('div.vhead__l', {}, [
-      el('p.micro', { text: '04 — INSIGHTS' }),
+      el('p.micro', { text: '05 — INSIGHTS' }),
       el('h2.display.h-lg', { text: 'PADRÕES' }),
     ]),
     el('div.vhead__r', {}, [
+      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
       el('div.chips', {}, RANGES.map(([n, label]) =>
         el('button.chip' + (range === n ? '.is-on' : ''), {
           type: 'button', onclick: () => { ctx.range = n; ctx.rerender(); }, text: label,

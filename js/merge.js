@@ -53,6 +53,11 @@ export function mergeDocs(local, remote, now = Date.now()) {
     ? { ...local.settings, ...remote.settings, sync: local.settings?.sync }
     : local.settings;
 
+  // perfil: vence quem editou por último (foto e nome andam juntos)
+  const profile = ts(remote.profile) > ts(local.profile)
+    ? { ...local.profile, ...remote.profile }
+    : local.profile;
+
   const badges = { ...(remote.badges || {}) };
   for (const [id, at] of Object.entries(local.badges || {})) {
     badges[id] = badges[id] ? Math.min(badges[id], at) : at;    // vale a primeira vez
@@ -63,7 +68,7 @@ export function mergeDocs(local, remote, now = Date.now()) {
     version: Math.max(local.version || 2, remote.version || 2),
     rev: Math.max(local.rev || 0, remote.rev || 0) + 1,
     updatedAt: Math.max(local.updatedAt || 0, remote.updatedAt || 0, now),
-    settings, categories, days, todos, badges,
+    profile, settings, categories, days, todos, badges,
   };
 
   const changed = JSON.stringify([local.days, local.categories, local.todos])
