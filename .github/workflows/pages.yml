@@ -1,4 +1,7 @@
-name: Deploy no GitHub Pages
+# O Pages deste repositório serve a branch gh-pages (foi assim que ele ligou
+# sozinho: o token do Actions não tem permissão para criar o site pela API).
+# Este workflow só espelha main em gh-pages a cada push — não há build.
+name: Publicar no GitHub Pages
 
 on:
   push:
@@ -6,29 +9,18 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
         with:
-          # liga o GitHub Pages no repositório sozinho, sem passar pelas
-          # configurações na mão (precisa da permissão pages: write acima)
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          fetch-depth: 0
+      - name: Espelhar main em gh-pages
+        run: git push --force origin HEAD:gh-pages
