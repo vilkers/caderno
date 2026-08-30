@@ -12,7 +12,12 @@ export function el(spec, props = {}, kids = []) {
     if (v === null || v === undefined || v === false) continue;
     if (k === 'html') node.innerHTML = v;
     else if (k === 'text') node.textContent = v;
-    else if (k === 'style') Object.assign(node.style, v);
+    else if (k === 'style') {
+      for (const [prop, val] of Object.entries(v)) {
+        if (prop.startsWith('--')) node.style.setProperty(prop, val);
+        else node.style[prop] = val;
+      }
+    }
     else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
     else node.setAttribute(k, v === true ? '' : String(v));
   }
@@ -60,14 +65,27 @@ export function longDay(k) {
   return `${WD_LONG[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
-/** Matriz do mês: 6 semanas x 7 dias, começando no domingo */
-export function monthMatrix(year, month) {
+/** Matriz do mês: 6 semanas x 7 dias. `weekStart`: 0 = domingo, 1 = segunda */
+export function monthMatrix(year, month, weekStart = 0) {
   const first = new Date(year, month, 1);
-  const start = new Date(year, month, 1 - first.getDay());
+  const shift = (first.getDay() - weekStart + 7) % 7;
+  const start = new Date(year, month, 1 - shift);
   return Array.from({ length: 42 }, (_, i) => {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     return { key: keyOf(d), day: d.getDate(), out: d.getMonth() !== month };
   });
+}
+
+/** Rótulos dos dias da semana na ordem certa pro `weekStart`. */
+export const weekLabels = (weekStart = 0) =>
+  Array.from({ length: 7 }, (_, i) => WD[(i + weekStart) % 7]);
+
+/** A semana (7 chaves) que contém `key`. */
+export function weekOfKey(key, weekStart = 0) {
+  const d = parseKey(key);
+  const shift = (d.getDay() - weekStart + 7) % 7;
+  const start = addDays(key, -shift);
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
 export const lastNDays = (n, end = todayKey()) =>

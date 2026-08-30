@@ -1,26 +1,35 @@
 /* views/today.js — o check-in do dia: um cartão por categoria,
-   alvo grande, um toque salva. Nada de "salvar" no fim. */
+   alvo grande, um toque salva. Nada de "salvar" no fim.
 
-import { el, $, humanDay, longDay, todayKey, addDays, clamp, nf } from '../utils.js';
+   A faixa de dias no topo existe pro caso mais comum de esquecimento:
+   voltar dois, três dias e preencher o que ficou em branco. */
+
+import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, WD } from '../utils.js';
 import * as store from '../store.js';
 import { currentStreak, goalProgress, isReduce } from '../analysis.js';
-import { toast, stagger, onSwipe } from '../ui.js';
+import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
 
 const HOUR_PRESETS = [2, 4, 6, 8];
+const STRIP_DAYS = 10;
 
 export function render(ctx) {
   const day = ctx.day;
   const cats = store.activeCategories();
   const rec = store.getDay(day) || { v: {}, note: '' };
   const view = el('div.view');
+  const isFuture = day > todayKey();
 
   /* ── cabeçalho + navegação de dia ── */
-  const label = el('span.daynav__label', { text: humanDay(day) });
   const nav = el('div.daynav', {}, [
     iconBtn('M15 6l-6 6 6 6', () => ctx.setDay(addDays(day, -1)), 'Dia anterior'),
-    label,
+    el('span.daynav__label', { text: humanDay(day) }),
     iconBtn('M9 6l6 6-6 6', () => ctx.setDay(addDays(day, 1)), 'Próximo dia'),
   ]);
+  const picker = el('input.daypick', {
+    type: 'date', value: day, max: addDays(todayKey(), 1), 'aria-label': 'Escolher data',
+  });
+  picker.addEventListener('change', () => { if (picker.value) ctx.setDay(picker.value); });
+  nav.append(picker);
   if (day !== todayKey()) {
     nav.append(el('button.chip', { onclick: () => ctx.setDay(todayKey()), text: 'hoje' }));
   }
@@ -28,31 +37,50 @@ export function render(ctx) {
   view.append(el('div.vhead', {}, [
     el('div.vhead__l', {}, [
       el('p.micro', { text: `01 — CHECK-IN · ${longDay(day)}` }),
-      el('h2.display.h-lg', { text: humanDay(day) === 'Hoje' ? 'HOJE' : humanDay(day).toUpperCase() }),
+      el('h2.display.h-lg', { text: tituloDoDia(day) }),
     ]),
     el('div.vhead__r', {}, [nav]),
   ]));
 
+  /* ── faixa dos últimos dias ── */
+  view.append(dayStrip(day, ctx));
+
+  /* ── pendências da semana ── */
+  const buracos = ultimosDias(14).filter(k => k !== todayKey() && !store.hasEntry(k));
+  const recentes = buracos.filter(k => k >= addDays(todayKey(), -7));
+  if (recentes.length >= 2) {
+    view.append(el('button.alert', {
+      type: 'button',
+      onclick: () => { ctx.monthMode = 'semana'; ctx.go('mes'); },
+      html: `<span class="micro">EM BRANCO</span>
+             <span><b>${recentes.length} dias</b> da última semana sem registro. Preencher na grade da semana →</span>`,
+    }));
+  }
+
   /* ── resumo + fechar o dia ── */
   const answered = cats.filter(c => rec.v[c.id] !== undefined && rec.v[c.id] !== false).length;
   const bar = el('div.progress__bar');
-  const summary = el('div.summary', {}, [
+  view.append(el('div.summary', {}, [
     el('div', {}, [
       el('p.micro', { text: 'PREENCHIDO' }),
-      el('p', { class: 'num', style: { fontSize: '1.3rem', marginTop: '.2rem' },
-        text: `${answered}/${cats.length}` }),
+      el('p', { class: 'num', style: { fontSize: '1.3rem', marginTop: '.2rem' }, text: `${answered}/${cats.length}` }),
     ]),
     el('div.progress', {}, [bar]),
-    el('button.btn' + (rec.closed ? '.btn--solid' : ''), {
-      type: 'button',
-      onclick: () => {
-        store.closeDay(day, !rec.closed);
-        toast(rec.closed ? 'dia reaberto' : 'dia fechado');
-        ctx.rerender();
-      },
-    }, [el('span', { text: rec.closed ? 'DIA FECHADO ✓' : 'FECHAR O DIA' })]),
-  ]);
-  view.append(summary);
+    el('div.wrap', {}, [
+      answered < cats.length && !isFuture
+        ? el('button.btn.btn--sm', { type: 'button', onclick: () => repetirDiaAnterior(day, ctx) },
+            [el('span', { text: 'repetir ontem' })])
+        : null,
+      el('button.btn' + (rec.closed ? '.btn--solid' : ''), {
+        type: 'button',
+        onclick: () => {
+          store.closeDay(day, !rec.closed);
+          toast(rec.closed ? 'dia reaberto' : 'dia fechado');
+          ctx.rerender();
+        },
+      }, [el('span', { text: rec.closed ? 'DIA FECHADO ✓' : 'FECHAR O DIA' })]),
+    ]),
+  ]));
   requestAnimationFrame(() => { bar.style.width = `${cats.length ? (answered / cats.length) * 100 : 0}%`; });
 
   /* ── categorias ── */
@@ -68,10 +96,7 @@ export function render(ctx) {
   cats.forEach(cat => entries.append(entryCard(cat, day, ctx)));
 
   /* ── nota do dia ── */
-  const note = el('textarea.note', {
-    placeholder: 'Como foi o dia? (opcional)',
-    rows: 3,
-  });
+  const note = el('textarea.note', { placeholder: 'Como foi o dia? (opcional)', rows: 3 });
   note.value = rec.note || '';
   let noteT;
   note.addEventListener('input', () => {
@@ -85,7 +110,6 @@ export function render(ctx) {
     ]),
     el('div.entry__ctl', {}, [note]),
   ]));
-
   view.append(entries);
 
   /* ── afazeres em aberto ── */
@@ -95,10 +119,11 @@ export function render(ctx) {
       el('div.section__h', {}, [el('p.micro', { text: 'NA LISTA HOJE' })]),
       el('div.todos', {}, abertas.map(t => el('div.todo', {}, [
         el('button.todo__box', {
-          'aria-label': 'Concluir', onclick: e => {
+          'aria-label': 'Concluir',
+          onclick: e => {
             store.updateTodo(t.id, { done: true });
             e.currentTarget.closest('.todo').classList.add('is-leaving');
-            toast('feito');
+            toast('feito', { action: 'desfazer', onAction: () => { store.updateTodo(t.id, { done: false }); ctx.rerender(); } });
             setTimeout(() => ctx.rerender(), 320);
           },
         }, [check()]),
@@ -112,6 +137,78 @@ export function render(ctx) {
   stagger(entries, ':scope > .entry');
   onSwipe(view, { left: () => ctx.setDay(addDays(day, 1)), right: () => ctx.setDay(addDays(day, -1)) });
   return view;
+}
+
+/* ── Faixa de dias ─────────────────────────────────────────── */
+function dayStrip(day, ctx) {
+  const strip = el('div.strip', { role: 'group', 'aria-label': 'Últimos dias' });
+  const dias = ultimosDias(STRIP_DAYS);
+  if (day > dias[dias.length - 1] || day < dias[0]) dias.push(day);   // dia escolhido fora da faixa
+
+  for (const k of dias) {
+    const d = parseKey(k);
+    const rec = store.getDay(k);
+    const btn = el('button.strip__d', {
+      type: 'button',
+      'aria-current': k === day ? 'date' : null,
+      title: longDay(k),
+      onclick: () => ctx.setDay(k),
+    }, [
+      el('span.strip__w', { text: WD[d.getDay()] }),
+      el('span.strip__n.num', { text: String(d.getDate()) }),
+      el('span.strip__s'),
+    ]);
+    if (k === day) btn.classList.add('is-sel');
+    if (k === todayKey()) btn.classList.add('is-today');
+    if (rec?.closed) btn.classList.add('is-closed');
+    else if (store.hasEntry(k)) btn.classList.add('is-filled');
+    strip.append(btn);
+  }
+  requestAnimationFrame(() => {
+    strip.querySelector('.is-sel')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
+  return strip;
+}
+
+const ultimosDias = n => Array.from({ length: n }, (_, i) => addDays(todayKey(), -(n - 1 - i)));
+
+function tituloDoDia(day) {
+  const h = humanDay(day);
+  if (h === 'Hoje') return 'HOJE';
+  if (h === 'Ontem') return 'ONTEM';
+  const d = parseKey(day);
+  return `${WD[d.getDay()].toUpperCase()} ${d.getDate()}`;
+}
+
+/* ── Repetir o dia anterior ────────────────────────────────── */
+function repetirDiaAnterior(day, ctx) {
+  const from = addDays(day, -1);
+  const origem = store.getDay(from);
+  if (!origem || !Object.keys(origem.v).length) {
+    toast('o dia anterior está em branco');
+    return;
+  }
+  const antes = structuredClone(store.getDay(day) || { v: {}, note: '', closed: false });
+  const aplicar = () => {
+    const n = store.copyDay(from, day);
+    ctx.rerender();
+    toast(`${n} valor(es) copiados`, {
+      action: 'desfazer',
+      onAction: () => {
+        store.state.days[day] = { ...antes, updatedAt: Date.now() };
+        store.emit('day');
+        ctx.rerender();
+      },
+    });
+  };
+  const atual = store.getDay(day);
+  if (atual && Object.keys(atual.v).length) {
+    confirmSheet({
+      title: 'Repetir o dia anterior?',
+      text: `Os valores de ${humanDay(from).toLowerCase()} substituem o que já está preenchido aqui. Dá pra desfazer logo depois.`,
+      ok: 'Repetir', onOk: aplicar,
+    });
+  } else aplicar();
 }
 
 /* ── Cartão de uma categoria ───────────────────────────────── */
@@ -148,11 +245,8 @@ function entryCard(cat, day, ctx) {
 }
 
 /* ── Controles por tipo ────────────────────────────────────── */
-function control(cat, day, card, ctx) {
-  const save = v => {
-    store.setVal(day, cat.id, v);
-    ctx.softRefresh?.();
-  };
+export function control(cat, day, card, ctx) {
+  const save = v => { store.setVal(day, cat.id, v); ctx.softRefresh?.(); };
 
   if (cat.type === 'toggle') {
     const on0 = !!store.getVal(day, cat.id);
@@ -163,7 +257,7 @@ function control(cat, day, card, ctx) {
       const next = btn.getAttribute('aria-pressed') !== 'true';
       btn.setAttribute('aria-pressed', String(next));
       txt.textContent = next ? 'FEITO' : 'MARCAR';
-      card.classList.toggle('is-on', next);
+      card?.classList.toggle('is-on', next);
       save(next);
     });
     return btn;
@@ -179,7 +273,7 @@ function control(cat, day, card, ctx) {
       valEl.textContent = String(v);
       valEl.classList.toggle('is-zero', !v);
       valEl.classList.remove('pop'); void valEl.offsetWidth; valEl.classList.add('pop');
-      card.classList.toggle('is-on', v > 0);
+      card?.classList.toggle('is-on', v > 0);
       wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('is-on', Number(c.dataset.v) === v));
       save(v);
     };
@@ -188,9 +282,8 @@ function control(cat, day, card, ctx) {
       el('span', {}, [valEl, el('span.step__unit', { text: cat.unit || '' })]),
       el('button.step__btn', { type: 'button', 'aria-label': 'Mais', onclick: () => set(cur() + 1), text: '+' }),
     ]));
-    const chips = el('div.chips', {}, [0, 1, 2, 3, 5].map(n =>
-      el('button.chip' + (cur() === n ? '.is-on' : ''), { type: 'button', 'data-v': n, onclick: () => set(n), text: String(n) })));
-    wrap.append(chips);
+    wrap.append(el('div.chips', {}, [0, 1, 2, 3, 5].map(n =>
+      el('button.chip' + (cur() === n ? '.is-on' : ''), { type: 'button', 'data-v': n, onclick: () => set(n), text: String(n) }))));
     return wrap;
   }
 
@@ -206,7 +299,7 @@ function control(cat, day, card, ctx) {
       valEl.textContent = fmtH(v);
       valEl.classList.toggle('is-zero', !v);
       slider.value = v;
-      card.classList.toggle('is-on', v > 0);
+      card?.classList.toggle('is-on', v > 0);
       wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('is-on', Number(c.dataset.v) === v));
       save(v);
     };
@@ -230,7 +323,7 @@ function control(cat, day, card, ctx) {
       b.addEventListener('click', () => {
         const next = cur() === n ? 0 : n;
         box.querySelectorAll('.scale__dot').forEach((d, i) => d.classList.toggle('is-on', i + 1 === next));
-        card.classList.toggle('is-on', next > 0);
+        card?.classList.toggle('is-on', next > 0);
         save(next);
       });
       box.append(b);
@@ -238,21 +331,20 @@ function control(cat, day, card, ctx) {
     return box;
   }
 
-  /* text */
   const ta = el('textarea.note', { rows: 2, placeholder: 'Escreva…' });
   ta.value = store.getVal(day, cat.id) || '';
   let t;
   ta.addEventListener('input', () => {
     clearTimeout(t);
-    t = setTimeout(() => { save(ta.value.trim()); card.classList.toggle('is-on', !!ta.value.trim()); }, 400);
+    t = setTimeout(() => { save(ta.value.trim()); card?.classList.toggle('is-on', !!ta.value.trim()); }, 400);
   });
   return ta;
 }
 
 /* ── Peças ─────────────────────────────────────────────────── */
-const fmtH = v => (v % 1 ? v.toFixed(1).replace('.', ',') : String(v));
+export const fmtH = v => (v % 1 ? v.toFixed(1).replace('.', ',') : String(v));
 
-function check() {
+export function check() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '13'); svg.setAttribute('height', '13');
   svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '3');
@@ -263,7 +355,7 @@ function check() {
   return svg;
 }
 
-function iconBtn(d, onclick, label) {
+export function iconBtn(d, onclick, label) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
   svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '1.8');
@@ -273,4 +365,4 @@ function iconBtn(d, onclick, label) {
   return el('button.iconbtn', { type: 'button', onclick, 'aria-label': label }, [svg]);
 }
 
-export { check, iconBtn };
+export { keyOf };

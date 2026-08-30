@@ -530,7 +530,122 @@ svg{display:block}
   .entry--wide{grid-column:1/-1}
 }
 
-/* ── 19. Movimento reduzido ────────────────────────────────── */
+
+/* ── 20. Faixa de dias (voltar e preencher) ────────────────── */
+.strip{
+  display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;
+  margin:-.4rem 0 1rem;padding:.4rem .1rem;scroll-snap-type:x proximity;
+}
+.strip::-webkit-scrollbar{display:none}
+.strip__d{
+  position:relative;flex:none;width:52px;padding:.5rem 0 .55rem;border-radius:12px;
+  border:1px solid var(--line);display:grid;justify-items:center;gap:.15rem;
+  scroll-snap-align:center;transition:all .3s var(--ease);
+}
+.strip__d:hover{border-color:var(--fg)}
+.strip__w{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.strip__n{font-size:1rem;font-weight:600;line-height:1}
+.strip__s{width:5px;height:5px;border-radius:50%;background:transparent;margin-top:.15rem}
+.strip__d.is-filled .strip__s{background:var(--dim)}
+.strip__d.is-closed .strip__s{background:var(--accent)}
+.strip__d.is-today{border-color:color-mix(in srgb,var(--fg) 45%,transparent)}
+.strip__d.is-sel{background:var(--accent);border-color:var(--accent)}
+.strip__d.is-sel .strip__w,.strip__d.is-sel .strip__n{color:var(--ink)}
+.strip__d.is-sel .strip__s{background:var(--ink)}
+.daypick{
+  border:1px solid var(--line);border-radius:999px;padding:.42rem .7rem;
+  font-family:var(--font-mono);font-size:10px;color:var(--dim);
+  background:transparent;transition:border-color .3s var(--ease),color .3s var(--ease);
+}
+.daypick:hover{border-color:var(--fg);color:var(--fg)}
+.daypick::-webkit-calendar-picker-indicator{filter:invert(.6);cursor:pointer}
+
+/* ── 21. Aviso / chamada ───────────────────────────────────── */
+.alert{
+  display:grid;gap:.35rem;width:100%;text-align:left;
+  border:1px solid var(--line);border-left:2px solid var(--accent);
+  border-radius:0 12px 12px 0;padding:.9rem 1.1rem;margin-bottom:1rem;
+  background:var(--surface);font-size:.92rem;line-height:1.5;
+  transition:transform .3s var(--ease),border-color .3s var(--ease);
+}
+button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
+.alert b{color:var(--accent);font-weight:650}
+
+/* ── 22. Segmentado (semana | mês) ─────────────────────────── */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px}
+.seg__b{
+  padding:.45rem 1rem;border-radius:999px;font-family:var(--font-mono);
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+  transition:background .3s var(--ease),color .3s var(--ease);
+}
+.seg__b:hover{color:var(--fg)}
+.seg__b.is-on{background:var(--accent);color:var(--ink)}
+
+/* ── 23. Grade da semana (preenchimento em lote) ───────────── */
+.batchwrap{position:relative}
+.batchwrap::after{
+  content:"";position:absolute;top:0;right:0;bottom:0;width:44px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--bg));border-radius:0 12px 12px 0;
+}
+@media (min-width:900px){.batchwrap::after{display:none}}
+.batch__scroll{overflow-x:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.batch{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:max-content;width:100%}
+.batch__row{display:grid;grid-template-columns:74px repeat(var(--cols,9),minmax(56px,1fr)) 56px;gap:1px;background:var(--line)}
+.batch__row--head .batch__cell,.batch__row--head .batch__day{background:var(--surface);height:38px}
+.batch__day{
+  position:sticky;left:0;z-index:2;background:var(--bg);
+  display:flex;align-items:center;gap:.4rem;padding:0 .6rem;height:52px;
+  border-right:1px solid var(--line);
+}
+.batch__row:not(.batch__row--head) .batch__day:hover{background:var(--surface)}
+.batch__wd{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.batch__n{font-size:.95rem;font-weight:600}
+.batch__dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.batch__cell{
+  background:var(--bg);height:52px;display:grid;place-items:center;
+  font-family:var(--font-mono);font-size:12px;color:var(--fg);
+  transition:background .25s var(--ease),color .25s var(--ease);
+}
+.batch__cell:hover:not(:disabled){background:var(--surface-2)}
+.batch__cell:disabled{opacity:.3;cursor:not-allowed}
+.batch__cell.is-on{background:var(--accent);color:var(--ink);font-weight:600}
+.batch__cell.is-on.is-reduce{background:color-mix(in srgb,var(--fg) 22%,transparent);color:var(--fg)}
+.batch__h{font-size:1rem}
+.batch__row.is-today .batch__day{box-shadow:inset 2px 0 0 var(--accent)}
+.batch__close{color:var(--dim);opacity:.3}
+.batch__close:hover{opacity:.8}
+.batch__close.is-on{background:var(--accent);color:var(--ink);opacity:1}
+
+/* ── 24. Sincronia ─────────────────────────────────────────── */
+.syncchip{
+  display:flex;align-items:center;gap:.45rem;height:38px;padding:0 .85rem;
+  border:1px solid var(--line);border-radius:999px;color:var(--dim);
+  transition:border-color .3s var(--ease),color .3s var(--ease);
+}
+.syncchip:hover{border-color:var(--fg);color:var(--fg)}
+.syncchip__dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
+.syncchip[data-state="ok"] .syncchip__dot{background:#3ecf8e}
+.syncchip[data-state="pending"] .syncchip__dot{background:var(--accent)}
+.syncchip[data-state="error"] .syncchip__dot{background:#e5484d}
+.syncchip[data-state="syncing"] .syncchip__dot{background:var(--accent);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.syncchip__t{color:inherit}
+@media (max-width:560px){.syncchip__t{display:none}.syncchip{padding:0;width:38px;justify-content:center}}
+.syncstat{display:flex;align-items:flex-start;gap:.7rem;border:1px solid var(--line);border-radius:12px;padding:.9rem 1.1rem;background:var(--surface)}
+.syncstat__dot{width:9px;height:9px;border-radius:50%;background:var(--dim);margin-top:.45rem;flex:none}
+.syncstat__dot[data-state="ok"]{background:#3ecf8e}
+.syncstat__dot[data-state="pending"]{background:var(--accent)}
+.syncstat__dot[data-state="error"]{background:#e5484d}
+.minisel{border:1px solid var(--line);border-radius:999px;padding:.42rem .8rem;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--fg);background:transparent}
+.toast__act{
+  margin-left:.7rem;padding-left:.7rem;border-left:1px solid color-mix(in srgb,var(--bg) 35%,transparent);
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:inherit;
+  text-decoration:underline;text-underline-offset:3px;
+}
+.toast{display:flex;align-items:center}
+.toast.has-act{pointer-events:auto}
+
+/* ── 25. Movimento reduzido ────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }

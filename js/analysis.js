@@ -1,8 +1,8 @@
 /* analysis.js — leitura dos dados: sequências, metas, padrões,
    comparações entre categorias e sugestões em texto. Tudo local. */
 
-import { state, hasEntry } from './store.js';
-import { addDays, todayKey, parseKey, lastNDays, WD_LONG, nf } from './utils.js';
+import { state, hasEntry, listCategories, listTodos } from './store.js';
+import { addDays, todayKey, parseKey, lastNDays, weekOfKey, WD_LONG, nf } from './utils.js';
 
 /* ── Base ──────────────────────────────────────────────────── */
 
@@ -24,11 +24,9 @@ export const isReduce = cat => cat.goal?.mode === 'max';
 /** Dias registrados no período. */
 export const loggedDays = days => days.filter(hasEntry).length;
 
-/** Semana corrente (domingo → sábado) que contém `key`. */
+/** Semana corrente que contém `key`, respeitando o início de semana escolhido. */
 export function weekOf(key = todayKey()) {
-  const d = parseKey(key);
-  const start = addDays(key, -d.getDay());
-  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  return weekOfKey(key, state.settings?.weekStart ?? 1);
 }
 
 export function sum(cat, days) { return days.reduce((a, k) => a + num(cat, k), 0); }
@@ -150,7 +148,7 @@ const fmtVal = (cat, v) => {
  * Cada item: { kind, title, text } — `text` aceita <b> para destaque.
  */
 export function suggestions(limit = 7) {
-  const cats = state.categories.filter(c => !c.archived && c.type !== 'text');
+  const cats = listCategories().filter(c => !c.archived && c.type !== 'text');
   const d30 = lastNDays(30), d14 = lastNDays(14), prev14 = lastNDays(14, addDays(todayKey(), -14));
   const logged30 = loggedDays(d30);
   const out = [];
@@ -236,7 +234,7 @@ export function suggestions(limit = 7) {
   }
 
   /* 7. afazeres esquecidos */
-  const velhas = state.todos.filter(t => !t.done && Date.now() - t.createdAt > 12 * 864e5);
+  const velhas = listTodos().filter(t => !t.done && Date.now() - t.createdAt > 12 * 864e5);
   if (velhas.length) {
     out.push({ kind: 'lista', title: 'Lista de afazeres', weight: 5,
       text: `<b>${velhas.length} tarefa(s)</b> abertas há mais de 12 dias. Se não vai fazer, apagar também é decidir.` });

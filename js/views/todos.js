@@ -9,7 +9,7 @@ import { check } from './today.js';
 export function render(ctx) {
   const view = el('div.view');
   const tab = ctx.todoTab || 'abertas';
-  const todos = store.state.todos;
+  const todos = store.listTodos();
   const abertas = todos.filter(t => !t.done);
   const feitas = todos.filter(t => t.done);
 
@@ -57,7 +57,14 @@ export function render(ctx) {
         title: 'Limpar concluídas?',
         text: `${feitas.length} tarefa(s) concluídas serão apagadas.`,
         ok: 'Limpar', danger: true,
-        onOk: () => { store.clearDoneTodos(); toast('lista limpa'); ctx.rerender(); },
+        onOk: () => {
+        const apagadas = store.clearDoneTodos();
+        toast(`${apagadas.length} apagada(s)`, {
+          action: 'desfazer',
+          onAction: () => { apagadas.forEach(t => store.restoreTodo(t)); ctx.rerender(); },
+        });
+        ctx.rerender();
+      },
       }),
       text: 'limpar feitas',
     }));
@@ -86,7 +93,7 @@ export function render(ctx) {
       const next = !t.done;
       store.updateTodo(t.id, { done: next });
       row.classList.toggle('is-done', next);
-      if (next) toast('feito');
+      if (next) toast('feito', { action: 'desfazer', onAction: () => { store.updateTodo(t.id, { done: false }); ctx.rerender(); } });
       if (tab !== 'todas') {
         row.classList.add('is-leaving');
         setTimeout(() => ctx.rerender(), 320);
@@ -114,7 +121,14 @@ export function render(ctx) {
     const del = el('button.todo__x', { type: 'button', 'aria-label': 'Apagar', html: xSvg });
     del.addEventListener('click', () => {
       row.classList.add('is-leaving');
-      setTimeout(() => { store.removeTodo(t.id); ctx.rerender(); }, 300);
+      setTimeout(() => {
+        const apagada = store.removeTodo(t.id);
+        ctx.rerender();
+        toast('tarefa apagada', {
+          action: 'desfazer',
+          onAction: () => { store.restoreTodo(apagada); ctx.rerender(); },
+        });
+      }, 300);
     });
 
     row.append(box, txt, el('div.todo__act', {}, [star, del]));

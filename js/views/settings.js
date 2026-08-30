@@ -1,12 +1,14 @@
-/* views/settings.js — paleta, categorias editáveis, preferências,
-   senha e backup. Tudo o que muda a forma do caderno mora aqui. */
+/* views/settings.js — sincronia com o repositório, paleta, categorias
+   editáveis, preferências, senha e backup. Tudo o que muda a forma do
+   caderno mora aqui. */
 
-import { el, $ } from '../utils.js';
+import { el } from '../utils.js';
 import * as store from '../store.js';
 import { TYPES } from '../store.js';
 import * as vault from '../vault.js';
+import * as sync from '../sync.js';
 import { PALETTES, applyPalette } from '../palettes.js';
-import { toast, openSheet, closeSheet, confirmSheet, stagger } from '../ui.js';
+import { toast, openSheet, confirmSheet, stagger } from '../ui.js';
 
 export function render(ctx) {
   const view = el('div.view');
@@ -19,19 +21,19 @@ export function render(ctx) {
     ]),
   ]));
 
+  view.append(section('SINCRONIA · BANCO DE DADOS', syncBox(ctx)));
+
   /* ── Paleta ── */
-  const pals = el('div.palettes', {}, PALETTES.map(p => {
-    const btn = el('button.pal' + (s.palette === p.id ? '.is-on' : ''), {
-      type: 'button',
+  view.append(section('PALETA', el('div.palettes', {}, PALETTES.map(p =>
+    el('button.pal' + (s.palette === p.id ? '.is-on' : ''), {
+      type: 'button', 'data-id': p.id,
       onclick: () => {
-        s.palette = p.id;
+        store.setSetting('palette', p.id);
         applyPalette(p.id);
         vault.writeMeta({ palette: p.id });
-        store.emit('settings');
         view.querySelectorAll('.pal').forEach(b => b.classList.toggle('is-on', b.dataset.id === p.id));
         toast(`paleta ${p.name.toLowerCase()}`);
       },
-      'data-id': p.id,
     }, [
       el('div.pal__sw', {}, [
         el('i', { style: { background: p.vars.bg } }),
@@ -39,146 +41,208 @@ export function render(ctx) {
         el('i', { style: { background: p.vars.accent } }),
       ]),
       el('span.pal__n', { text: p.name }),
-    ]);
-    return btn;
-  }));
-  view.append(section('PALETA', pals));
+    ])))));
 
   /* ── Categorias ── */
   const cats = el('div.cats');
-  store.state.categories.forEach((c, i) => cats.append(catRow(c, i, ctx)));
-  const catsBox = el('div', {}, [
+  store.listCategories().forEach((c, i) => cats.append(catRow(c, i, ctx)));
+  view.append(section('CATEGORIAS', el('div', {}, [
     cats,
     el('div.wrap', { style: { marginTop: '.8rem' } }, [
-      el('button.btn.btn--sm.btn--solid', {
-        type: 'button', onclick: () => editCategory(null, ctx),
-      }, [el('span', { text: '+ nova categoria' })]),
+      el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: () => editCategory(null, ctx) },
+        [el('span', { text: '+ nova categoria' })]),
       el('button.btn.btn--sm', {
-        type: 'button', onclick: () => confirmSheet({
+        type: 'button',
+        onclick: () => confirmSheet({
           title: 'Restaurar categorias padrão?',
-          text: 'As categorias atuais são substituídas. Os dias já registrados continuam salvos, mas ficam órfãos das categorias removidas.',
+          text: 'As categorias atuais saem de cena (os dias já registrados continuam salvos) e as nove originais voltam.',
           ok: 'Restaurar', danger: true,
-          onOk: () => { store.state.categories = store.DEFAULT_CATEGORIES(); store.emit('categories'); ctx.rerender(); toast('categorias padrão'); },
+          onOk: () => { store.resetCategories(); ctx.rerender(); toast('categorias padrão'); },
         }),
       }, [el('span', { text: 'restaurar padrão' })]),
     ]),
-  ]);
-  view.append(section('CATEGORIAS', catsBox));
+  ])));
 
   /* ── Preferências ── */
-  const prefs = el('div', {}, [
+  view.append(section('PREFERÊNCIAS', el('div', {}, [
+    selectRow('A semana começa', 'Vale pro calendário e pras metas semanais.', [
+      ['1', 'segunda'], ['0', 'domingo'],
+    ], String(s.weekStart ?? 1), v => { store.setSetting('weekStart', Number(v)); ctx.rerender(); }),
     switchRow('Movimento', 'Animações de entrada, transições e contadores.', s.motion, v => {
-      s.motion = v;
+      store.setSetting('motion', v);
       document.documentElement.dataset.motion = v ? 'on' : 'off';
-      store.emit('settings');
     }),
     switchRow('Mostrar sequências', 'O contador de dias seguidos em cada categoria.', s.showStreaks, v => {
-      s.showStreaks = v; store.emit('settings'); ctx.rerender();
+      store.setSetting('showStreaks', v); ctx.rerender();
     }),
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Trancar sozinho' }),
-        el('p.row__d', { text: 'Depois de um tempo sem uso, o caderno pede a senha de novo.' }),
-      ]),
-      (() => {
-        const sel = el('select', { style: { width: 'auto', borderBottom: '1px solid var(--line)', padding: '.4rem 0' } }, [
-          el('option', { value: '0', text: 'nunca' }),
-          el('option', { value: '5', text: '5 min' }),
-          el('option', { value: '15', text: '15 min' }),
-          el('option', { value: '60', text: '1 hora' }),
-        ]);
-        sel.value = String(s.autolock ?? 15);
-        sel.addEventListener('change', () => { s.autolock = Number(sel.value); store.emit('settings'); toast('trava automática atualizada'); });
-        return sel;
-      })(),
-    ]),
-  ]);
-  view.append(section('PREFERÊNCIAS', prefs));
+    selectRow('Trancar sozinho', 'Depois de um tempo sem uso, o caderno pede a senha de novo.', [
+      ['0', 'nunca'], ['5', '5 min'], ['15', '15 min'], ['60', '1 hora'],
+    ], String(s.autolock ?? 15), v => { store.setSetting('autolock', Number(v)); toast('trava automática atualizada'); }),
+  ])));
 
   /* ── Senha ── */
   const meta = vault.readMeta();
-  const seg = el('div', {}, [
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Trocar a senha' }),
-        el('p.row__d', { text: 'Os dados são recifrados na hora. Sem recuperação: se esquecer, acabou.' }),
-      ]),
-      el('button.btn.btn--sm', { type: 'button', onclick: () => changePass(ctx) }, [el('span', { text: 'trocar' })]),
-    ]),
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Dica da senha' }),
-        el('p.row__d', { text: meta.hint ? `Atual: "${meta.hint}"` : 'Aparece na tela de entrada. Não escreva a senha aqui.' }),
-      ]),
-      el('button.btn.btn--sm', { type: 'button', onclick: () => editHint(ctx) }, [el('span', { text: 'editar' })]),
-    ]),
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Trancar agora' }),
-        el('p.row__d', { text: 'Fecha a sessão e volta para a tela de senha.' }),
-      ]),
-      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.lock() }, [el('span', { text: 'trancar' })]),
-    ]),
-  ]);
-  view.append(section('SENHA E PRIVACIDADE', seg));
+  view.append(section('SENHA E PRIVACIDADE', el('div', {}, [
+    row('Trocar a senha', 'Os dados são recifrados na hora. Sem recuperação: se esquecer, acabou.',
+      el('button.btn.btn--sm', { type: 'button', onclick: () => changePass(ctx) }, [el('span', { text: 'trocar' })])),
+    row('Dica da senha', meta.hint ? `Atual: "${meta.hint}"` : 'Aparece na tela de entrada. Não escreva a senha aqui.',
+      el('button.btn.btn--sm', { type: 'button', onclick: () => editHint(ctx) }, [el('span', { text: 'editar' })])),
+    row('Trancar agora', 'Fecha a sessão e volta para a tela de senha.',
+      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.lock() }, [el('span', { text: 'trancar' })])),
+  ])));
 
   /* ── Dados ── */
-  const dados = el('div', {}, [
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Backup cifrado' }),
-        el('p.row__d', { text: 'Arquivo .caderno — só abre com esta senha. É o backup recomendado.' }),
-      ]),
-      el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: exportVault }, [el('span', { text: 'baixar' })]),
-    ]),
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Exportar JSON' }),
-        el('p.row__d', { text: 'Legível, sem senha. Bom pra levar os dados pra outro lugar — guarde com cuidado.' }),
-      ]),
-      el('button.btn.btn--sm', { type: 'button', onclick: exportJSON }, [el('span', { text: 'baixar' })]),
-    ]),
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Importar' }),
-        el('p.row__d', { text: 'Aceita .json e .caderno. Substitui o que está aqui.' }),
-      ]),
-      el('button.btn.btn--sm', { type: 'button', onclick: () => importFile(ctx) }, [el('span', { text: 'escolher arquivo' })]),
-    ]),
-    el('div.row', {}, [
-      el('div.row__l', {}, [
-        el('p.row__t', { text: 'Apagar tudo' }),
-        el('p.row__d', { text: 'Remove o cofre deste aparelho. Não dá pra desfazer.' }),
-      ]),
+  view.append(section('BACKUP E DADOS', el('div', {}, [
+    row('Backup cifrado', 'Arquivo .caderno — só abre com esta senha. É o backup recomendado.',
+      el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: exportVault }, [el('span', { text: 'baixar' })])),
+    row('Exportar JSON', 'Legível, sem senha. Bom pra levar os dados pra outro lugar — guarde com cuidado.',
+      el('button.btn.btn--sm', { type: 'button', onclick: exportJSON }, [el('span', { text: 'baixar' })])),
+    row('Importar', 'Aceita .json e .caderno. Substitui o que está aqui.',
+      el('button.btn.btn--sm', { type: 'button', onclick: () => importFile(ctx) }, [el('span', { text: 'escolher arquivo' })])),
+    row('Apagar tudo', 'Remove o cofre deste aparelho. Não dá pra desfazer.',
       el('button.btn.btn--sm.btn--danger', {
         type: 'button',
         onclick: () => confirmSheet({
           title: 'Apagar o caderno inteiro?',
-          text: 'Todos os dias, categorias e afazeres deste aparelho serão perdidos. Faça um backup antes.',
+          text: 'Todos os dias, categorias e afazeres deste aparelho serão perdidos. Se a sincronia estiver ligada, o arquivo do repositório continua lá.',
           ok: 'Apagar tudo', danger: true,
           onOk: () => { vault.destroy(); location.reload(); },
         }),
-      }, [el('span', { text: 'apagar' })]),
-    ]),
-  ]);
-  view.append(section('DADOS', dados));
+      }, [el('span', { text: 'apagar' })])),
+  ])));
 
   view.append(el('p.micro', {
     style: { marginTop: '2rem', lineHeight: '1.9' },
-    html: 'CADERNO · dados só neste navegador, cifrados com AES-GCM<br>' +
-          `última gravação: ${meta.savedAt ? new Date(meta.savedAt).toLocaleString('pt-BR') : '—'}<br>` +
-          `dias registrados: ${Object.keys(store.state.days).length}`,
+    html: 'CADERNO · cifrado com AES-GCM neste navegador<br>' +
+          `última gravação local: ${meta.savedAt ? new Date(meta.savedAt).toLocaleString('pt-BR') : '—'}<br>` +
+          `dias registrados: ${Object.keys(store.state.days).filter(k => store.hasEntry(k)).length} · revisão ${store.state.rev || 0}`,
   }));
 
   stagger(view, '.section');
   return view;
 }
 
+/* ── Sincronia ─────────────────────────────────────────────── */
+function syncBox(ctx) {
+  const c = sync.cfg();
+  const box = el('div');
+
+  if (!sync.configured()) {
+    box.append(el('div.alert.alert--warn', {}, [
+      el('span.micro', { text: 'SÓ NESTE NAVEGADOR' }),
+      el('span', { html: 'Hoje os dados existem <b>só aqui</b>. Limpar os dados do site apaga tudo. Ligue a gravação no repositório — o arquivo vai cifrado, então pode ser um repo público.' }),
+    ]));
+  } else {
+    const st = sync.getStatus();
+    box.append(el('div.syncstat', {}, [
+      el('span.syncstat__dot', { 'data-state': st.state }),
+      el('div', {}, [
+        el('p.row__t', { text: `${c.owner}/${c.repo} · ${c.path}` }),
+        el('p.row__d', {
+          text: c.lastSync
+            ? `última sincronia: ${new Date(c.lastSync).toLocaleString('pt-BR')}`
+            : 'ainda não sincronizado',
+        }),
+        c.lastError ? el('p.row__d', { style: { color: 'var(--accent)' }, text: c.lastError }) : null,
+      ]),
+    ]));
+  }
+
+  box.append(el('div.wrap', { style: { marginTop: '.9rem' } }, [
+    el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: () => syncSheet(ctx) },
+      [el('span', { text: sync.configured() ? 'configurar' : 'ligar sincronia' })]),
+    sync.configured() ? el('button.btn.btn--sm', {
+      type: 'button',
+      onclick: async e => {
+        const b = e.currentTarget; b.disabled = true;
+        try { await sync.syncNow(); toast('sincronizado'); ctx.rerender(); }
+        catch (err) { toast(err.message, { ms: 5000 }); ctx.rerender(); }
+        finally { b.disabled = false; }
+      },
+    }, [el('span', { text: 'sincronizar agora' })]) : null,
+    sync.configured() ? el('button.btn.btn--sm', {
+      type: 'button',
+      onclick: async () => {
+        try {
+          const r = await sync.pullAndMerge();
+          toast(r.merged ? 'dados do repositório trazidos' : 'nada novo lá');
+          ctx.rerender();
+        } catch (err) { toast(err.message, { ms: 5000 }); }
+      },
+    }, [el('span', { text: 'puxar do repositório' })]) : null,
+    sync.configured() ? el('button.btn.btn--sm.btn--ghost', {
+      type: 'button',
+      onclick: () => confirmSheet({
+        title: 'Desligar a sincronia?',
+        text: 'O arquivo no repositório continua onde está; este aparelho só para de gravar nele.',
+        ok: 'Desligar', danger: true,
+        onOk: () => { store.setSync({ enabled: false }); ctx.rerender(); toast('sincronia desligada'); },
+      }),
+    }, [el('span', { text: 'desligar' })]) : null,
+  ]));
+
+  return box;
+}
+
+function syncSheet(ctx) {
+  const c = sync.cfg();
+  openSheet('Gravar no repositório', close => {
+    const owner = field('USUÁRIO OU ORGANIZAÇÃO', el('input', { type: 'text', value: c.owner || '', placeholder: 'seu-usuario', spellcheck: 'false' }));
+    const repo = field('REPOSITÓRIO', el('input', { type: 'text', value: c.repo || 'caderno', placeholder: 'caderno', spellcheck: 'false' }));
+    const branch = field('BRANCH', el('input', { type: 'text', value: c.branch || 'main', placeholder: 'main', spellcheck: 'false' }));
+    const path = field('CAMINHO DO ARQUIVO', el('input', { type: 'text', value: c.path || 'dados/caderno.enc.json', spellcheck: 'false' }));
+    const token = field('TOKEN (FINE-GRAINED, CONTENTS: READ AND WRITE)',
+      el('input', { type: 'password', value: c.token || '', placeholder: 'github_pat_…', spellcheck: 'false', autocomplete: 'off' }));
+    const msg = el('p.micro', { style: { minHeight: '16px', lineHeight: '1.7' } });
+    const val = f => f.querySelector('input').value.trim();
+
+    const testar = async () => {
+      msg.textContent = 'TESTANDO…';
+      const r = await sync.check({ owner: val(owner), repo: val(repo), token: val(token) });
+      msg.style.color = r.ok ? '' : 'var(--accent)';
+      msg.textContent = r.msg.toUpperCase();
+      return r.ok;
+    };
+
+    return [
+      el('p.muted', {
+        style: { fontSize: '.88rem', lineHeight: '1.6' },
+        html: 'O caderno grava um arquivo cifrado no seu repositório a cada mudança e o lê de volta ao destrancar — é o banco de dados dele, e serve pra usar o app em mais de um aparelho.<br><br>' +
+              'Crie um token em <b>github.com/settings/personal-access-tokens</b> → <i>Fine-grained</i> → só este repositório → <b>Contents: Read and write</b>. ' +
+              'O token fica cifrado junto com os seus dados; se perder o aparelho, revogue ele no GitHub.',
+      }),
+      owner, repo, branch, path, token, msg,
+      el('div.sheet__actions', {}, [
+        el('button.btn', { type: 'button', onclick: testar }, [el('span', { text: 'testar' })]),
+        el('button.btn.btn--solid', {
+          type: 'button',
+          onclick: async () => {
+            if (!(await testar())) return;
+            store.setSync({
+              enabled: true, owner: val(owner), repo: val(repo),
+              branch: val(branch) || 'main', path: val(path) || 'dados/caderno.enc.json',
+              token: val(token), lastError: '',
+            });
+            close();
+            ctx.rerender();
+            try {
+              const r = await sync.pullAndMerge();
+              if (r.merged) toast('caderno do repositório trazido');
+              await sync.syncNow();
+              toast('sincronia ligada');
+            } catch (err) { toast(err.message, { ms: 5000 }); }
+            ctx.rerender();
+          },
+        }, [el('span', { text: 'salvar e sincronizar' })]),
+      ]),
+    ];
+  });
+}
+
 /* ── Linha de categoria ────────────────────────────────────── */
 function catRow(c, i, ctx) {
-  const total = store.state.categories.length;
   const move = to => { store.moveCategory(c.id, to); ctx.rerender(); };
-  return el('div.cat' + (c.archived ? '' : ''), { style: c.archived ? { opacity: '.5' } : {} }, [
+  return el('div.cat', { style: c.archived ? { opacity: '.5' } : {} }, [
     el('span.cat__i', { text: c.emoji || '•' }),
     el('span.cat__n', { text: c.label + (c.archived ? ' (arquivada)' : '') }),
     el('span.cat__t', { text: TYPES[c.type]?.label || c.type }),
@@ -191,9 +255,8 @@ function catRow(c, i, ctx) {
 /* ── Editor de categoria ───────────────────────────────────── */
 function editCategory(cat, ctx) {
   const isNew = !cat;
-  const draft = cat ? { ...cat, goal: cat.goal ? { ...cat.goal } : null } : {
-    emoji: '✳️', label: '', type: 'toggle', unit: '', goal: null,
-  };
+  const draft = cat ? { ...cat, goal: cat.goal ? { ...cat.goal } : null }
+                    : { emoji: '✳️', label: '', type: 'toggle', unit: '', goal: null };
 
   openSheet(isNew ? 'Nova categoria' : 'Editar categoria', close => {
     const emoji = field('ÍCONE (EMOJI)', el('input', { type: 'text', value: draft.emoji, maxlength: 4 }));
@@ -217,10 +280,9 @@ function editCategory(cat, ctx) {
     const goalBox = el('div.wrap', { style: { alignItems: 'center' } }, [goalMode, goalVal, goalPeriod]);
     goalBox.style.opacity = goalOn.checked ? '1' : '.4';
     goalOn.addEventListener('change', () => { goalBox.style.opacity = goalOn.checked ? '1' : '.4'; });
-
     type.addEventListener('change', () => { typeHint.textContent = TYPES[type.value].hint; });
 
-    const nodes = [
+    return [
       el('div.wrap', { style: { gap: '1rem' } }, [
         el('div', { style: { width: '90px' } }, [emoji]),
         el('div', { style: { flex: '1', minWidth: '160px' } }, [label]),
@@ -242,15 +304,26 @@ function editCategory(cat, ctx) {
             close();
             confirmSheet({
               title: `Apagar "${cat.label}"?`,
-              text: 'A categoria e os valores dela em todos os dias serão removidos. Se quiser só tirar do check-in, use "arquivar".',
+              text: 'Ela some das telas e dos outros aparelhos. Se quiser só tirar do check-in sem perder o histórico, use "arquivar".',
               ok: 'Apagar', danger: true,
-              onOk: () => { store.removeCategory(cat.id); ctx.rerender(); toast('categoria apagada'); },
+              onOk: () => {
+                const snap = store.removeCategory(cat.id);
+                ctx.rerender();
+                toast('categoria apagada', {
+                  action: 'desfazer',
+                  onAction: () => { store.restoreCategory(snap); ctx.rerender(); },
+                });
+              },
             });
           },
         }, [el('span', { text: 'apagar' })]),
         !isNew && el('button.btn', {
           type: 'button',
-          onclick: () => { store.updateCategory(cat.id, { archived: !cat.archived }); close(); ctx.rerender(); toast(cat.archived ? 'reativada' : 'arquivada'); },
+          onclick: () => {
+            store.updateCategory(cat.id, { archived: !cat.archived });
+            close(); ctx.rerender();
+            toast(cat.archived ? 'reativada' : 'arquivada');
+          },
         }, [el('span', { text: cat.archived ? 'reativar' : 'arquivar' })]),
         el('button.btn.btn--solid', {
           type: 'button',
@@ -270,7 +343,6 @@ function editCategory(cat, ctx) {
         }, [el('span', { text: isNew ? 'criar' : 'salvar' })]),
       ].filter(Boolean)),
     ];
-    return nodes;
   });
 }
 
@@ -281,23 +353,28 @@ function changePass(ctx) {
     const nova = field('NOVA SENHA', el('input', { type: 'password', autocomplete: 'new-password', minlength: 4 }));
     const conf = field('CONFIRME', el('input', { type: 'password', autocomplete: 'new-password' }));
     const err = el('p.lock__error.micro');
-    return [atual, nova, conf, err, el('div.sheet__actions', {}, [
-      el('button.btn', { type: 'button', onclick: close }, [el('span', { text: 'cancelar' })]),
-      el('button.btn.btn--solid', {
-        type: 'button',
-        onclick: async () => {
-          const a = atual.querySelector('input').value;
-          const n = nova.querySelector('input').value;
-          const c = conf.querySelector('input').value;
-          if (n.length < 4) return void (err.textContent = 'A nova senha precisa de ao menos 4 caracteres.');
-          if (n !== c) return void (err.textContent = 'A confirmação não bate.');
-          try { await vault.unlock(a); }
-          catch { return void (err.textContent = 'Senha atual incorreta.'); }
-          await store.setPassword(n, vault.readMeta().hint);
-          close(); toast('senha trocada');
-        },
-      }, [el('span', { text: 'trocar' })]),
-    ])];
+    return [
+      el('p.muted', { style: { fontSize: '.88rem' }, text: 'Se a sincronia estiver ligada, mande sincronizar depois: o arquivo do repositório passa a usar a senha nova.' }),
+      atual, nova, conf, err,
+      el('div.sheet__actions', {}, [
+        el('button.btn', { type: 'button', onclick: close }, [el('span', { text: 'cancelar' })]),
+        el('button.btn.btn--solid', {
+          type: 'button',
+          onclick: async () => {
+            const a = atual.querySelector('input').value;
+            const n = nova.querySelector('input').value;
+            const c = conf.querySelector('input').value;
+            if (n.length < 4) return void (err.textContent = 'A nova senha precisa de ao menos 4 caracteres.');
+            if (n !== c) return void (err.textContent = 'A confirmação não bate.');
+            try { await vault.unlock(a); }
+            catch { return void (err.textContent = 'Senha atual incorreta.'); }
+            await store.setPassword(n, vault.readMeta().hint);
+            close(); toast('senha trocada');
+            if (sync.configured()) sync.syncNow().catch(() => {});
+          },
+        }, [el('span', { text: 'trocar' })]),
+      ]),
+    ];
   });
 }
 
@@ -327,14 +404,8 @@ function download(name, text, type = 'application/json') {
 }
 const stamp = () => new Date().toISOString().slice(0, 10);
 
-function exportVault() {
-  download(`caderno-${stamp()}.caderno`, vault.exportEncrypted());
-  toast('backup cifrado baixado');
-}
-function exportJSON() {
-  download(`caderno-${stamp()}.json`, store.exportJSON());
-  toast('json baixado');
-}
+function exportVault() { download(`caderno-${stamp()}.caderno`, vault.exportEncrypted()); toast('backup cifrado baixado'); }
+function exportJSON() { download(`caderno-${stamp()}.json`, store.exportJSON()); toast('json baixado'); }
 
 function importFile(ctx) {
   const input = el('input', { type: 'file', accept: '.json,.caderno,application/json' });
@@ -359,9 +430,7 @@ function importFile(ctx) {
           onOk: () => { store.importJSON(text); ctx.rerender(); toast('dados importados'); },
         });
       }
-    } catch {
-      toast('arquivo inválido');
-    }
+    } catch { toast('arquivo inválido'); }
   });
   input.click();
 }
@@ -370,6 +439,12 @@ function importFile(ctx) {
 function field(label, input) {
   return el('label.field', {}, [el('span.micro', { text: label }), input]);
 }
+function row(title, desc, control) {
+  return el('div.row', {}, [
+    el('div.row__l', {}, [el('p.row__t', { text: title }), el('p.row__d', { text: desc })]),
+    control,
+  ]);
+}
 function switchRow(title, desc, value, onChange) {
   const sw = el('button.switch', { type: 'button', role: 'switch', 'aria-checked': String(!!value), 'aria-label': title });
   sw.addEventListener('click', () => {
@@ -377,10 +452,13 @@ function switchRow(title, desc, value, onChange) {
     sw.setAttribute('aria-checked', String(next));
     onChange(next);
   });
-  return el('div.row', {}, [
-    el('div.row__l', {}, [el('p.row__t', { text: title }), el('p.row__d', { text: desc })]),
-    sw,
-  ]);
+  return row(title, desc, sw);
+}
+function selectRow(title, desc, options, value, onChange) {
+  const sel = el('select.minisel', {}, options.map(([v, label]) =>
+    el('option', { value: v, text: label, selected: v === value ? true : null })));
+  sel.addEventListener('change', () => onChange(sel.value));
+  return row(title, desc, sel);
 }
 const section = (title, body) => el('div.section', {}, [
   el('div.section__h', {}, [el('p.micro', { text: title })]),

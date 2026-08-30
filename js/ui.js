@@ -9,13 +9,25 @@ export const motionOn = () =>
 
 /* ── Toast ─────────────────────────────────────────────────── */
 let toastT;
-export function toast(msg) {
+/**
+ * toast('salvo')
+ * toast('tarefa apagada', { action: 'desfazer', onAction: () => ... })
+ */
+export function toast(msg, { action, onAction, ms } = {}) {
   const t = $('#toast');
   if (!t) return;
-  t.textContent = msg;
+  t.replaceChildren(el('span', { text: msg }));
+  t.classList.toggle('has-act', !!(action && onAction));
+  if (action && onAction) {
+    t.append(el('button.toast__act', {
+      type: 'button',
+      onclick: () => { t.classList.remove('is-on'); onAction(); },
+      text: action,
+    }));
+  }
   t.classList.add('is-on');
   clearTimeout(toastT);
-  toastT = setTimeout(() => t.classList.remove('is-on'), 1900);
+  toastT = setTimeout(() => t.classList.remove('is-on'), ms || (action ? 6000 : 1900));
 }
 
 /* ── Sheet (modal de baixo) ────────────────────────────────── */

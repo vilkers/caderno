@@ -9,6 +9,13 @@ const ITER      = 310000;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
+/* A senha viva da sessão. Só existe em memória, some ao trancar.
+   É o que permite abrir um arquivo cifrado com OUTRO sal — o do
+   repositório, escrito por outro aparelho. */
+let live = null;
+export const hasLivePassword = () => !!live;
+export const forget = () => { live = null; };
+
 const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const unb64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
 
@@ -42,6 +49,7 @@ export const hasVault = () => !!localStorage.getItem(VAULT_KEY);
 export async function create(password, data) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const key = await deriveKey(password, salt);
+  live = password;
   const session = { key, salt, iters: ITER };
   await write(session, data);
   writeMeta({ created: Date.now() });
@@ -63,21 +71,53 @@ export async function unlock(password) {
   } catch {
     throw new Error('senha');
   }
+  live = password;
   return { session: { key, salt, iters }, data: json };
 }
 
-/** Grava o estado cifrado. */
+/** Grava o estado cifrado. Guarda a versão anterior como rede de segurança. */
 export async function write(session, data) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv }, session.key, enc.encode(JSON.stringify(data))
   );
+  const previous = localStorage.getItem(VAULT_KEY);
+  if (previous) { try { localStorage.setItem(VAULT_KEY + '.bak', previous); } catch {} }
   localStorage.setItem(VAULT_KEY, JSON.stringify({
     v: 1, kdf: 'PBKDF2-SHA256', iters: session.iters,
     salt: b64(session.salt), iv: b64(iv), ct: b64(ct),
     savedAt: Date.now(),
   }));
   writeMeta({ savedAt: Date.now() });
+}
+
+/* ── Cifra avulsa (para o arquivo do repositório) ─────────── */
+
+/** Cifra um documento com a chave da sessão. Não grava nada. */
+export async function seal(session, data) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv }, session.key, enc.encode(JSON.stringify(data))
+  );
+  return {
+    app: 'caderno', format: 'caderno-vault-1', v: 1, kdf: 'PBKDF2-SHA256',
+    iters: session.iters, salt: b64(session.salt), iv: b64(iv), ct: b64(ct),
+    savedAt: Date.now(),
+  };
+}
+
+/** Abre um blob cifrado com QUALQUER sal, usando a senha viva da sessão. */
+export async function open(blob) {
+  if (!live) throw new Error('trancado');
+  const key = await deriveKey(live, unb64(blob.salt), blob.iters || ITER);
+  try {
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: unb64(blob.iv) }, key, unb64(blob.ct)
+    );
+    return JSON.parse(dec.decode(plain));
+  } catch {
+    throw new Error('senha');
+  }
 }
 
 /** Regrava tudo com uma senha nova (novo sal). */

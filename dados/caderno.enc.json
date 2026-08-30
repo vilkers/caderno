@@ -1,0 +1,6 @@
+{
+  "app": "caderno",
+  "format": "caderno-vault-1",
+  "empty": true,
+  "note": "Arquivo de dados do Caderno. O app grava aqui o cofre cifrado (AES-GCM) a cada mudança, pela API do GitHub. Enquanto estiver com \"empty\": true, nada foi sincronizado ainda. Não edite à mão."
+}

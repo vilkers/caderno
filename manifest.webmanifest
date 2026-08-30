@@ -10,7 +10,37 @@
   "theme_color": "#0c0c0c",
   "lang": "pt-BR",
   "icons": [
-    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "./assets/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Check-in de hoje",
+      "short_name": "Hoje",
+      "url": "./?v=hoje",
+      "description": "Abrir direto o formulário do dia"
+    },
+    {
+      "name": "Lista de afazeres",
+      "short_name": "Lista",
+      "url": "./?v=lista",
+      "description": "Abrir a lista de tarefas"
+    },
+    {
+      "name": "Preencher a semana",
+      "short_name": "Semana",
+      "url": "./?v=semana",
+      "description": "Grade de preenchimento em lote"
+    }
   ]
 }

@@ -3,6 +3,7 @@
 import { $, $$, el, todayKey, addDays, longDay, humanDay } from './utils.js';
 import * as store from './store.js';
 import * as vault from './vault.js';
+import * as sync from './sync.js';
 import { PALETTES, applyPalette } from './palettes.js';
 import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn } from './ui.js';
 
@@ -24,6 +25,8 @@ const ctx = {
   range: 30,
   todoTab: 'abertas',
   monthFilter: null,
+  monthMode: 'mes',
+  weekAnchor: null,
   go(v) { if (VIEWS[v]) { ctx.view = v; paint(); } },
   setDay(k) { ctx.day = k; if (ctx.view === 'hoje') paint(); },
   rerender() { paint(); },
@@ -116,18 +119,37 @@ function enterApp() {
   $('#app').hidden = false;
   ctx.day = todayKey();
   ctx.view = 'hoje';
+  aplicarAtalhoDaURL();
   paint();
   armAutolock();
+  paintSync(sync.getStatus());
+
+  if (sync.configured()) {
+    sync.pullAndMerge()
+      .then(r => { if (r.merged) { paint(); toast('dados do repositório trazidos'); } })
+      .then(() => sync.syncNow({ silent: true }))
+      .catch(err => toast(err.message, { ms: 5000 }));
+  }
 }
 
 function doLock() {
   store.flush();
+  if (sync.configured()) sync.syncNow({ silent: true }).catch(() => {});
   store.lockVault();
   closeSheet();
   $('#app').hidden = true;
   $('#main').replaceChildren();
   setupLock();
   toast('trancado');
+}
+
+/** Atalhos do app instalado: ./?v=hoje | lista | semana | insights */
+function aplicarAtalhoDaURL() {
+  const v = new URLSearchParams(location.search).get('v');
+  if (!v) return;
+  if (v === 'semana') { ctx.view = 'mes'; ctx.monthMode = 'semana'; }
+  else if (VIEWS[v]) ctx.view = v;
+  history.replaceState(null, '', location.pathname);
 }
 
 /* ── Trava automática ──────────────────────────────────────── */
@@ -170,14 +192,41 @@ function wire() {
       if (e.key.toLowerCase() === 't') ctx.setDay(todayKey());
     }
     if (e.key.toLowerCase() === 'l') doLock();
+    if (e.key.toLowerCase() === 'f' && ctx.view === 'hoje') {
+      const aberto = !store.getDay(ctx.day)?.closed;
+      store.closeDay(ctx.day, aberto);
+      toast(aberto ? 'dia fechado' : 'dia reaberto');
+      paint();
+    }
   });
 
   window.addEventListener('pagehide', () => store.flush());
+
+  $('#syncBtn').addEventListener('click', async () => {
+    if (!sync.configured()) { ctx.go('ajustes'); return; }
+    try { await sync.syncNow(); toast('sincronizado'); }
+    catch (err) { toast(err.message, { ms: 5000 }); }
+  });
+  sync.onStatus(paintSync);
+  sync.start();
   store.subscribe(reason => {
     if (reason === 'settings' || reason === 'categories') {
       document.documentElement.dataset.motion = store.state.settings.motion ? 'on' : 'off';
     }
   });
+}
+
+const SYNC_TXT = {
+  off: 'sem sync', syncing: 'sincronizando', ok: 'sincronizado',
+  pending: 'pendente', error: 'erro',
+};
+function paintSync(st) {
+  const btn = $('#syncBtn');
+  if (!btn) return;
+  btn.hidden = !store.isUnlocked();
+  btn.dataset.state = st.state;
+  btn.querySelector('.syncchip__t').textContent = SYNC_TXT[st.state] || st.state;
+  btn.title = st.msg || '';
 }
 
 function paletteSheet() {
