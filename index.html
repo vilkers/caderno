@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR" data-palette="noir" data-motion="on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caderno</title>
+<meta name="description" content="Caderno — agenda pessoal de rotina, hábitos e afazeres.">
+<meta name="theme-color" content="#0c0c0c">
+<meta name="color-scheme" content="dark light">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./assets/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preload" href="./assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./assets/fonts/jetbrainsmono-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./css/fonts.css">
+<link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+
+<!-- ── Boot / splash ─────────────────────────────────────────── -->
+<div id="boot" class="boot">
+  <div class="boot__type"><span>C</span><span>A</span><span>D</span><span>E</span><span>R</span><span>N</span><span>O</span></div>
+</div>
+
+<!-- ── Tela de senha ─────────────────────────────────────────── -->
+<section id="lock" class="lock" hidden>
+  <div class="lock__grid" aria-hidden="true"></div>
+  <div class="lock__inner">
+    <p class="micro lock__eyebrow" data-scramble>ACESSO RESTRITO</p>
+    <h1 class="display lock__title">CADERNO</h1>
+    <p class="lock__sub" id="lockSub">Diário de rotina. Tudo fica cifrado neste aparelho.</p>
+
+    <form id="lockForm" class="lock__form" autocomplete="off">
+      <label class="field">
+        <span class="micro">SENHA</span>
+        <input id="lockPass" type="password" inputmode="text" autocomplete="current-password"
+               placeholder="••••••••" required minlength="4" spellcheck="false">
+      </label>
+      <label class="field" id="lockConfirmField" hidden>
+        <span class="micro">CONFIRME A SENHA</span>
+        <input id="lockPass2" type="password" autocomplete="new-password" placeholder="••••••••" minlength="4" spellcheck="false">
+      </label>
+      <p class="lock__error micro" id="lockError" role="alert" aria-live="polite"></p>
+      <button class="btn btn--big" id="lockBtn" type="submit"><span>ENTRAR</span></button>
+    </form>
+
+    <p class="lock__foot micro">
+      <span id="lockHint"></span>
+    </p>
+  </div>
+  <div class="ticker" aria-hidden="true"><div class="ticker__track" id="lockTicker"></div></div>
+</section>
+
+<!-- ── App ───────────────────────────────────────────────────── -->
+<div id="app" class="app" hidden>
+  <header class="topbar">
+    <button class="topbar__brand" id="brandBtn" title="Ir para hoje">
+      <span class="display">CADERNO</span>
+      <span class="micro topbar__date" id="topDate"></span>
+    </button>
+    <div class="topbar__right">
+      <button class="iconbtn" id="paletteBtn" title="Paleta de cores" aria-label="Paleta de cores">
+        <span class="swatchdot"></span>
+      </button>
+      <button class="iconbtn" id="lockNowBtn" title="Trancar agora" aria-label="Trancar">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="nav" id="nav" aria-label="Navegação principal">
+    <button class="nav__item is-active" data-view="hoje"><span class="nav__k">01</span><span class="nav__l">Hoje</span></button>
+    <button class="nav__item" data-view="mes"><span class="nav__k">02</span><span class="nav__l">Mês</span></button>
+    <button class="nav__item" data-view="lista"><span class="nav__k">03</span><span class="nav__l">Lista</span></button>
+    <button class="nav__item" data-view="insights"><span class="nav__k">04</span><span class="nav__l">Insights</span></button>
+    <button class="nav__item" data-view="ajustes"><span class="nav__k">05</span><span class="nav__l">Ajustes</span></button>
+  </nav>
+
+  <main id="main" class="main" tabindex="-1"></main>
+
+  <div class="toast" id="toast" aria-live="polite"></div>
+</div>
+
+<!-- ── Sheet (modal) genérico ────────────────────────────────── -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__scrim" data-close></div>
+  <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet__head">
+      <h2 class="sheet__title" id="sheetTitle"></h2>
+      <button class="iconbtn" data-close aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet__body" id="sheetBody"></div>
+  </div>
+</div>
+
+<noscript><p style="padding:2rem;font-family:system-ui">O Caderno precisa de JavaScript para funcionar.</p></noscript>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

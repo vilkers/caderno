@@ -1,0 +1,16 @@
+{
+  "name": "Caderno",
+  "short_name": "Caderno",
+  "description": "Agenda pessoal de rotina, hábitos e afazeres. Local e cifrado.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0c0c",
+  "theme_color": "#0c0c0c",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./assets/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
