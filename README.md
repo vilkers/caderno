@@ -12,19 +12,32 @@ analytics ou requisição a terceiros — nem as fontes, que são servidas daqui
 
 ---
 
-## Publicar
+## No ar
 
-O repositório já vem com o workflow `.github/workflows/pages.yml`.
+**https://vilkers.github.io/caderno/**
 
-1. Suba este código para a branch `main`.
-2. No GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. O primeiro deploy roda sozinho no push. A URL sai como
-   `https://<seu-usuario>.github.io/caderno/`.
+O Pages serve a branch `gh-pages`, e o workflow
+`.github/workflows/pages.yml` espelha `main` nela a cada push — então
+publicar é só dar push na `main`. Não há build: é HTML, CSS e módulos ES
+puros.
 
-Não há build: é HTML, CSS e módulos ES puros. Dá pra rodar local com qualquer
-servidor estático (`python3 -m http.server`, `npx http-server`, etc.).
-Abrir o `index.html` direto pelo `file://` **não funciona** — WebCrypto e módulos
-ES exigem `https://` ou `localhost`.
+> Por que `gh-pages` e não "Source: GitHub Actions"? Porque o token do
+> Actions não pode criar o site do Pages pela API
+> (`Resource not accessible by integration`), enquanto uma branch
+> `gh-pages` liga o Pages sozinha. Se um dia você trocar a fonte para
+> GitHub Actions nas configurações, troque o workflow pelo par
+> `upload-pages-artifact` + `deploy-pages`.
+
+Pra rodar local, qualquer servidor estático serve
+(`python3 -m http.server`, `npx http-server`). Abrir o `index.html` direto
+pelo `file://` **não funciona** — WebCrypto e módulos ES exigem `https://`
+ou `localhost`.
+
+### O repositório é público
+
+De propósito, e sem exposição: o arquivo de dados é ciphertext AES-GCM e o
+token de sincronia nunca sai do seu navegador. O que fica visível é o código
+e os nomes das categorias padrão.
 
 ## Instalar no celular
 
