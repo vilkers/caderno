@@ -287,8 +287,10 @@ svg{display:block}
 
 /* chips rápidos */
 .chips{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem}
+.vhead .chips,.view>.chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:.2rem}
+.vhead .chips::-webkit-scrollbar,.view>.chips::-webkit-scrollbar{display:none}
 .chip{
-  padding:.42rem .8rem;border:1px solid var(--line);border-radius:999px;
+  padding:.42rem .8rem;border:1px solid var(--line);border-radius:999px;white-space:nowrap;flex:none;
   font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--dim);
   transition:all .25s var(--ease);
 }
@@ -360,7 +362,8 @@ svg{display:block}
 /* ── 12. Lista de afazeres ─────────────────────────────────── */
 .todoadd{display:flex;gap:.6rem;align-items:center;border:1px solid var(--line);border-radius:12px;padding:.35rem .35rem .35rem 1rem;margin-bottom:1rem;background:var(--surface)}
 .todoadd input{flex:1;padding:.75rem 0;font-size:1rem}
-.tabs{display:flex;gap:.4rem;margin-bottom:1rem}
+.tabs{display:flex;gap:.4rem;margin-bottom:1rem;overflow-x:auto;padding-bottom:.2rem;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
 .todos{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .todo{
   display:flex;align-items:center;gap:.9rem;background:var(--bg);padding:.85rem 1rem;
@@ -383,6 +386,7 @@ svg{display:block}
 .todo.is-done .todo__txt::after{transform:none}
 .todo__act{display:flex;gap:.2rem;opacity:0;transition:opacity .25s var(--ease)}
 .todo:hover .todo__act,.todo:focus-within .todo__act{opacity:1}
+@media (hover:none){.todo__act{opacity:1}}
 .todo__x{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--dim)}
 .todo__x:hover{background:var(--surface-2);color:var(--fg)}
 .todo.is-leaving{animation:leave .32s var(--ease) forwards}
