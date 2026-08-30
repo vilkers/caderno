@@ -25,6 +25,20 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 4 — o Caderno 2.0
+
+- **Versão pixel em `/retro/`, em paralelo com a clássica.** Mesma origem,
+  mesmo cofre: as duas leem os mesmos dados cifrados. Trocar de pele não
+  migra nada, e a sincronia é a mesma.
+- **Arte original.** Sites de asset estão bloqueados aqui, e sprite de jogo
+  alheio é propriedade de quem fez — então desenhei os sprites em matriz de
+  caracteres e renderizei em SVG. Vantagem lateral: cada peça herda a paleta
+  do mundo escolhido e escala sem borrar.
+- **Som sem arquivo.** Osciladores quadrados no WebAudio dão o bipe da época
+  pesando zero byte, com interruptor no HUD.
+- **A rotina vira fase**: bloco por categoria, moeda ao acertar, bandeira
+  para fechar o dia, mapa de sete fases na semana, placar com MUNDO n-1.
+
 ## Rodada 3
 
 - **Escalas com régua escrita.** Faixa configurável (0–10, 1–5…) e um texto de

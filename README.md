@@ -93,6 +93,24 @@ Faça um backup em Ajustes → Dados.
 
 ---
 
+## Duas peles, um cofre
+
+- **Clássico** — https://vilkers.github.io/caderno/
+- **Caderno 2.0 (pixel)** — https://vilkers.github.io/caderno/retro/
+
+As duas versões rodam na mesma origem, então leem e escrevem **o mesmo cofre
+cifrado**: mesma senha, mesmos dias, mesmas categorias, mesma sincronia. Dá
+para preencher a semana no clássico e conferir os troféus na 2.0 sem migrar
+nada. O núcleo (`js/store.js`, `vault`, `sync`, `analysis`, `badges`) é
+compartilhado; `retro/` só troca a interface.
+
+Na 2.0 a rotina vira fase: cada categoria é um bloco que você bate (sim/não
+resolve num toque e cospe moeda; contagem, horas, escala e texto abrem a
+caixa de diálogo), a bandeira fecha o dia, a semana é um mapa de sete fases,
+e o placar mostra pontos, MUNDO n-1 e a vitrine de troféus. Cinco mundos
+(paletas), bipes sintetizados em WebAudio com interruptor no HUD, e sprites
+originais desenhados em matriz de caracteres — nada de arte de terceiros.
+
 ## Como funciona
 
 ### Hoje (check-in)
@@ -221,6 +239,10 @@ js/palettes.js          as 8 paletas
 js/utils.js             datas, DOM, formatação
 js/views/*.js           as cinco telas
 sw.js                   cache offline do casco
+retro/                  o Caderno 2.0 — casco, pele e telas em pixel
+retro/js/sprites.js     a arte, em matrizes de caracteres viradas em SVG
+retro/js/sfx.js         os bipes, sintetizados em WebAudio
+tools/test-sprites.mjs  confere se todo sprite fecha retangular
 dados/caderno.enc.json  o banco de dados cifrado (escrito pelo app)
 tools/test-merge.mjs    teste da junção — node tools/test-merge.mjs
 ```
