@@ -1,7 +1,7 @@
 /* sw.js — cache do casco do app para uso offline.
    Os dados nunca passam por aqui: ficam cifrados no localStorage. */
 
-const CACHE = 'caderno-v3';
+const CACHE = 'caderno-v4';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css', './css/fonts.css',

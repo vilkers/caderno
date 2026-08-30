@@ -1,0 +1,15 @@
+{
+  "name": "Caderno 2.0",
+  "short_name": "Caderno 2.0",
+  "description": "A rotina virou fase. Mesmos dados do Caderno, com cara de cartucho.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#5c94fc",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "./assets/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

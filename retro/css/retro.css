@@ -1,0 +1,402 @@
+/* ══════════════════════════════════════════════════════════════
+   CADERNO 2.0 — pele pixelizada
+   Regras da casa: nada de canto arredondado, nada de sombra macia,
+   tudo em múltiplos de 4px, e todo movimento em steps().
+   ══════════════════════════════════════════════════════════════ */
+
+@font-face{
+  font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;
+  src:url('../assets/fonts/pressstart2p-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;
+  src:url('../assets/fonts/pressstart2p-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face{
+  font-family:'Silkscreen';font-style:normal;font-weight:400;font-display:swap;
+  src:url('../assets/fonts/silkscreen-latin.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Silkscreen';font-style:normal;font-weight:700;font-display:swap;
+  src:url('../assets/fonts/silkscreen-latin-700.woff2') format('woff2');
+}
+
+/* ── Mundos (paletas) ──────────────────────────────────────── */
+:root{
+  --ceu:#5c94fc; --ceu2:#96d0ff;
+  --chao:#c84c0c; --chao2:#e45c10;
+  --tinta:#fcfcfc; --tinta2:#c8c8c8;
+  --preto:#000000; --painel:#1a1a2e; --painel2:#2c2c48; --linha:rgba(252,252,252,.24);
+  --ouro:#fac000; --verde:#00a844; --verdeTxt:#4cff9c; --vermelho:#d82800; --azul:#3cbcfc;
+  --px:4px;
+  --hud:64px; --dpad:56px;
+  --passos:steps(4,end);
+}
+[data-mundo="subterraneo"]{ --ceu:#000000; --ceu2:#0d0d2b; --chao:#0058f8; --chao2:#3cbcfc; --painel:#000814; }
+[data-mundo="castelo"]{ --ceu:#1a0000; --ceu2:#3c0d0d; --chao:#6b6b6b; --chao2:#9c9c9c; --painel:#200a0a; --ouro:#ff8800; }
+[data-mundo="noite"]{ --ceu:#0d0d3b; --ceu2:#241a5c; --chao:#3c2c6c; --chao2:#5c4c9c; --painel:#12122e; }
+[data-mundo="agua"]{ --ceu:#0058f8; --ceu2:#3cbcfc; --chao:#00887c; --chao2:#00a844; --painel:#002850; }
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100svh;
+  background:var(--ceu);
+  color:var(--tinta);
+  font-family:'Silkscreen','Courier New',monospace;
+  font-size:16px;line-height:1.5;
+  image-rendering:pixelated;
+  -webkit-font-smoothing:none;
+  overflow-x:hidden;
+  transition:background .3s steps(3);
+}
+img,svg{display:block;image-rendering:pixelated}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:0}
+input,textarea,select{background:none;border:0;outline:0}
+h1,h2,h3,p{margin:0}
+ul{margin:0;padding:0;list-style:none}
+[hidden]{display:none!important}
+:focus-visible{outline:var(--px) solid var(--ouro);outline-offset:var(--px)}
+::selection{background:var(--ouro);color:#000}
+
+/* tipos */
+.t8{font-family:'Press Start 2P',monospace;font-size:8px;line-height:1.6;letter-spacing:.04em;text-transform:uppercase}
+.t10{font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.7;text-transform:uppercase}
+.t12{font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.7;text-transform:uppercase}
+.t16{font-family:'Press Start 2P',monospace;font-size:clamp(14px,4.5vw,22px);line-height:1.6;text-transform:uppercase}
+.num{font-family:'Press Start 2P',monospace;font-variant-numeric:tabular-nums}
+.sombra{text-shadow:var(--px) var(--px) 0 var(--preto)}
+
+/* moldura pixelada: quatro braços em box-shadow, sem canto redondo */
+.borda{
+  box-shadow:
+    0 calc(var(--px)*-1) 0 var(--preto), 0 var(--px) 0 var(--preto),
+    calc(var(--px)*-1) 0 0 var(--preto), var(--px) 0 0 var(--preto);
+}
+.painel{
+  background:var(--painel);
+  padding:calc(var(--px)*4);
+  box-shadow:
+    0 calc(var(--px)*-1) 0 var(--preto), 0 var(--px) 0 var(--preto),
+    calc(var(--px)*-1) 0 0 var(--preto), var(--px) 0 0 var(--preto),
+    0 0 0 var(--px) var(--tinta) inset;
+}
+
+/* ── Abertura ──────────────────────────────────────────────── */
+.boot{position:fixed;inset:0;z-index:100;background:#000;display:grid;place-items:center;text-align:center}
+.boot__box{display:grid;gap:calc(var(--px)*3);justify-items:center}
+.boot__logo{
+  font-family:'Press Start 2P',monospace;font-size:clamp(20px,7vw,40px);
+  color:var(--tinta);text-shadow:var(--px) var(--px) 0 var(--vermelho);
+  animation:entra .4s steps(4) both;
+}
+.boot__v{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--ouro)}
+.boot__start{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--tinta2);margin-top:calc(var(--px)*4)}
+@keyframes entra{from{transform:translateY(-24px);opacity:0}}
+.blink{animation:blink 1s steps(2,end) infinite}
+@keyframes blink{50%{opacity:0}}
+.boot.sai{animation:some .3s steps(3) forwards}
+@keyframes some{to{opacity:0;visibility:hidden}}
+
+/* ── Céu e chão ────────────────────────────────────────────── */
+.ceu{
+  position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,var(--ceu) 0%,var(--ceu) 62%,var(--ceu2) 100%);
+}
+.chao{
+  height:calc(var(--px)*6);
+  background:repeating-linear-gradient(90deg,var(--chao) 0 calc(var(--px)*4),var(--chao2) calc(var(--px)*4) calc(var(--px)*8));
+  box-shadow:0 calc(var(--px)*-1) 0 var(--preto) inset;
+}
+
+/* ── Senha ─────────────────────────────────────────────────── */
+.lock{min-height:100svh;display:grid;place-items:center;padding:calc(var(--px)*4)}
+.lock__box{width:min(420px,100%);display:grid;gap:calc(var(--px)*3);justify-items:center;text-align:center}
+.lock__cad{display:grid;place-items:center}
+.lock__sub{font-size:14px;color:var(--tinta2)}
+.lock__dica{color:var(--ouro);min-height:14px}
+.lock__classico{color:var(--tinta2);font-size:12px;text-decoration:none;border-bottom:2px solid var(--tinta2)}
+.lock__classico:hover{color:var(--ouro);border-color:var(--ouro)}
+.campo{display:grid;gap:calc(var(--px)*2);width:100%;text-align:left}
+.campo input{
+  width:100%;padding:calc(var(--px)*3);background:#000;color:var(--tinta);
+  font-family:'Press Start 2P',monospace;font-size:12px;letter-spacing:.1em;
+  box-shadow:0 0 0 var(--px) var(--tinta) inset;
+}
+.campo input:focus{box-shadow:0 0 0 var(--px) var(--ouro) inset}
+.erro{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--vermelho);min-height:12px;text-transform:uppercase}
+#lockForm{display:grid;gap:calc(var(--px)*3);width:100%}
+
+/* ── Botões ────────────────────────────────────────────────── */
+.btn{
+  display:inline-block;padding:calc(var(--px)*3) calc(var(--px)*4);
+  font-family:'Press Start 2P',monospace;font-size:10px;text-transform:uppercase;
+  background:var(--painel2);color:var(--tinta);
+  box-shadow:
+    0 calc(var(--px)*-1) 0 var(--preto), 0 var(--px) 0 var(--preto),
+    calc(var(--px)*-1) 0 0 var(--preto), var(--px) 0 0 var(--preto),
+    0 0 0 var(--px) rgba(255,255,255,.25) inset;
+  transition:transform .06s steps(2),background .1s steps(2);
+}
+.btn:hover{background:var(--painel2);color:var(--ouro)}
+.btn:active{transform:translateY(var(--px))}
+.btn--a{background:var(--vermelho);color:#fff}
+.btn--a:hover{background:var(--ouro);color:#000}
+.btn--v{background:var(--verde);color:#000}
+.btn--peq{padding:calc(var(--px)*2) calc(var(--px)*3);font-size:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── HUD ───────────────────────────────────────────────────── */
+.app{min-height:100svh;padding-bottom:calc(var(--dpad) + var(--px)*6)}
+.hud{
+  position:sticky;top:0;z-index:40;height:var(--hud);
+  display:flex;align-items:center;gap:calc(var(--px)*3);
+  padding:0 calc(var(--px)*3);
+  background:#000;border-bottom:var(--px) solid var(--tinta);
+  overflow-x:auto;scrollbar-width:none;
+}
+.hud::-webkit-scrollbar{display:none}
+.hud__c{display:grid;gap:2px;flex:none}
+.hud__c .t8{color:var(--tinta2)}
+.hud__v{font-size:12px;color:var(--tinta)}
+.hud__moeda{display:block;height:16px}
+.hud__btn{
+  flex:none;width:32px;height:32px;display:grid;place-items:center;margin-left:auto;
+  font-family:'Press Start 2P',monospace;font-size:10px;color:var(--tinta);
+  background:var(--painel2);box-shadow:0 0 0 2px var(--tinta) inset;
+}
+.hud__btn + .hud__btn{margin-left:0}
+.hud__btn:hover{color:var(--ouro)}
+.hud__btn.is-off{opacity:.45}
+
+/* ── D-pad (navegação) ─────────────────────────────────────── */
+.dpad{
+  position:fixed;bottom:0;left:0;right:0;z-index:45;height:var(--dpad);
+  display:grid;grid-auto-flow:column;grid-auto-columns:1fr;
+  background:#000;border-top:var(--px) solid var(--tinta);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.dpad__b{
+  font-family:'Press Start 2P',monospace;font-size:8px;color:var(--tinta2);
+  display:grid;place-items:center;text-transform:uppercase;
+  border-right:2px solid #222;
+  transition:background .1s steps(2),color .1s steps(2);
+}
+.dpad__b:last-child{border-right:0}
+.dpad__b:hover{color:var(--tinta)}
+.dpad__b.is-active{background:var(--vermelho);color:#fff}
+
+/* ── Área de jogo ──────────────────────────────────────────── */
+.main{padding:calc(var(--px)*4) calc(var(--px)*3);max-width:900px;margin-inline:auto}
+.tela{animation:tela .25s steps(4) both}
+@keyframes tela{from{opacity:0;transform:translateY(calc(var(--px)*3))}}
+.titulo{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--px)*3);flex-wrap:wrap;margin-bottom:calc(var(--px)*4)}
+.titulo h2{color:var(--tinta)}
+.linha{display:flex;align-items:center;gap:calc(var(--px)*2);flex-wrap:wrap}
+
+/* ── Blocos de categoria (a fase) ──────────────────────────── */
+.fase{display:grid;gap:calc(var(--px)*3)}
+.bloco{
+  display:flex;align-items:center;gap:calc(var(--px)*3);width:100%;text-align:left;
+  padding:calc(var(--px)*2);background:rgba(0,0,0,.35);
+  box-shadow:0 0 0 2px var(--linha) inset;
+  transition:background .1s steps(2);
+}
+.bloco:hover{background:rgba(0,0,0,.5)}
+.bloco__spr{flex:none;position:relative;width:48px;height:48px;display:grid;place-items:center}
+.bloco.bateu .bloco__spr{animation:bate .22s steps(3)}
+@keyframes bate{40%{transform:translateY(calc(var(--px)*-3))}}
+.bloco__txt{flex:1;min-width:0;display:grid;gap:2px}
+.bloco__nome{font-size:15px;font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bloco__meta{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--tinta2)}
+.bloco__meta.ok{color:var(--verdeTxt)}
+.bloco__val{
+  flex:none;min-width:56px;text-align:center;
+  font-family:'Press Start 2P',monospace;font-size:12px;color:var(--ouro);
+}
+.bloco__val small{display:block;font-size:8px;color:var(--tinta2);margin-top:2px}
+.moeda-sobe{
+  position:absolute;left:50%;top:0;translate:-50% 0;pointer-events:none;
+  animation:moedaSobe .6s steps(6) forwards;
+}
+@keyframes moedaSobe{to{transform:translateY(-44px);opacity:0}}
+
+/* ── Barra de progresso da fase ────────────────────────────── */
+.barra{height:calc(var(--px)*4);background:#000;box-shadow:0 0 0 2px var(--tinta) inset;margin:calc(var(--px)*2) 0}
+.barra i{display:block;height:100%;width:0;background:var(--ouro);transition:width .4s steps(8)}
+
+/* ── Bandeira / fim de fase ────────────────────────────────── */
+.bandeira{
+  display:flex;align-items:center;gap:calc(var(--px)*3);width:100%;
+  padding:calc(var(--px)*3);background:rgba(0,0,0,.35);
+  box-shadow:0 0 0 2px var(--linha) inset;
+}
+.bandeira.hasteou{animation:hasteia .5s steps(5)}
+@keyframes hasteia{50%{transform:translateY(calc(var(--px)*-2))}}
+
+/* ── Faixa de dias ─────────────────────────────────────────── */
+.dias{display:flex;gap:var(--px);overflow-x:auto;scrollbar-width:none;padding-bottom:var(--px);margin-bottom:calc(var(--px)*3)}
+.dias::-webkit-scrollbar{display:none}
+.dia{
+  flex:none;width:48px;padding:calc(var(--px)*2) 0;display:grid;justify-items:center;gap:2px;
+  background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--linha) inset;
+  font-family:'Press Start 2P',monospace;
+}
+.dia__s{font-size:7px;color:var(--tinta2)}
+.dia__n{font-size:12px}
+.dia__p{width:6px;height:6px;background:transparent}
+.dia.tem .dia__p{background:var(--tinta2)}
+.dia.fechou .dia__p{background:var(--ouro)}
+.dia.hoje{box-shadow:0 0 0 2px var(--ouro) inset}
+.dia.sel{background:var(--vermelho)}
+
+/* ── Mapa do mundo ─────────────────────────────────────────── */
+.mapa{
+  position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--px)*3);
+  padding:calc(var(--px)*4) calc(var(--px)*2);margin-bottom:calc(var(--px)*4);
+  background:rgba(0,0,0,.25);box-shadow:0 0 0 2px var(--linha) inset;
+}
+.no{
+  display:grid;justify-items:center;gap:calc(var(--px));padding:calc(var(--px)*2) 0;
+  background:rgba(0,0,0,.3);box-shadow:0 0 0 2px var(--linha) inset;
+}
+.no.hoje{box-shadow:0 0 0 2px var(--ouro) inset}
+.no.futuro{opacity:.4}
+.no__d{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--tinta2)}
+.no__n{font-family:'Press Start 2P',monospace;font-size:12px}
+
+/* ── Grade da semana (vertical, igual à clássica) ──────────── */
+.grade{display:grid;gap:calc(var(--px)*2)}
+.grade__l{padding:calc(var(--px)*2);background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--linha) inset}
+.grade__c{display:flex;align-items:center;gap:calc(var(--px)*2);margin-bottom:calc(var(--px)*2);min-width:0}
+.grade__nome{flex:1;min-width:0;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grade__meta{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--tinta2)}
+.grade__cels{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--px)}
+.cel{
+  height:40px;display:grid;place-items:center;background:#000;
+  box-shadow:0 0 0 2px #333 inset;
+  font-family:'Press Start 2P',monospace;font-size:9px;color:var(--tinta);
+  transition:background .08s steps(2);
+}
+.cel:hover:not(:disabled){box-shadow:0 0 0 2px var(--tinta) inset}
+.cel:disabled{opacity:.25}
+.cel.on{background:var(--ouro);color:#000;box-shadow:0 0 0 2px var(--preto) inset}
+.cel.on.reduz{background:var(--painel2);color:var(--tinta)}
+.cel.on.zero{background:#000;color:var(--tinta2);box-shadow:0 0 0 2px #444 inset}
+
+/* ── Missões ───────────────────────────────────────────────── */
+.missoes{display:grid;gap:calc(var(--px)*2)}
+.missao{
+  display:flex;align-items:center;gap:calc(var(--px)*3);
+  padding:calc(var(--px)*3);background:rgba(0,0,0,.35);
+  box-shadow:0 0 0 2px var(--linha) inset;
+}
+.missao__cx{flex:none;width:24px;height:24px;background:#000;box-shadow:0 0 0 2px var(--tinta) inset;display:grid;place-items:center}
+.missao.feita .missao__cx{background:var(--ouro);box-shadow:0 0 0 2px var(--preto) inset}
+.missao__t{flex:1;min-width:0;font-size:15px;word-break:break-word}
+.missao.feita .missao__t{color:var(--tinta2);text-decoration:line-through}
+.missao__x{flex:none;font-family:'Press Start 2P',monospace;font-size:10px;color:var(--tinta2);padding:calc(var(--px))}
+.missao__x:hover{color:var(--vermelho)}
+.addmissao{display:flex;gap:calc(var(--px)*2);margin-bottom:calc(var(--px)*3)}
+.addmissao input{
+  flex:1;min-width:0;padding:calc(var(--px)*3);background:#000;color:var(--tinta);
+  font-size:15px;box-shadow:0 0 0 2px var(--tinta) inset;
+}
+
+/* ── Placar ────────────────────────────────────────────────── */
+.placar{display:grid;gap:calc(var(--px)*2);margin-bottom:calc(var(--px)*4)}
+.placar__l{display:flex;justify-content:space-between;align-items:baseline;gap:calc(var(--px)*3);
+  font-family:'Press Start 2P',monospace;font-size:10px;
+  padding:calc(var(--px)*2);background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--linha) inset}
+.placar__l b{color:var(--ouro);font-weight:400}
+.mundo{
+  display:grid;gap:calc(var(--px)*2);padding:calc(var(--px)*3);margin-bottom:calc(var(--px)*4);
+  background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--linha) inset;
+}
+.mundo__n{font-family:'Press Start 2P',monospace;font-size:clamp(13px,4vw,18px);color:var(--ouro)}
+.mundo__l{font-size:14px;color:var(--tinta2)}
+.trofeus{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:calc(var(--px)*2)}
+.trofeu{
+  display:grid;justify-items:center;gap:var(--px);padding:calc(var(--px)*3) var(--px);
+  background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--linha) inset;
+  text-align:center;
+}
+.trofeu.travado{opacity:.6;filter:grayscale(1);background:rgba(0,0,0,.55)}
+.trofeu__n{font-family:'Press Start 2P',monospace;font-size:8px;line-height:1.5}
+.trofeu__h{font-size:12px;color:var(--tinta2)}
+
+/* ── Opções ────────────────────────────────────────────────── */
+.opcs{display:grid;gap:calc(var(--px)*2)}
+.opc{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--px)*3);
+  padding:calc(var(--px)*3);background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--linha) inset}
+.opc__t{font-size:14px;font-weight:700}
+.opc__d{font-size:12px;color:var(--tinta2);margin-top:2px}
+.mundos{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:calc(var(--px)*2)}
+.mundoBtn{padding:calc(var(--px)*2);background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--linha) inset;
+  font-family:'Press Start 2P',monospace;font-size:8px;display:grid;gap:var(--px);justify-items:center}
+.mundoBtn.on{box-shadow:0 0 0 2px var(--ouro) inset;color:var(--ouro)}
+.mundoBtn i{display:block;width:100%;height:20px}
+
+/* ── Modal ─────────────────────────────────────────────────── */
+.modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:calc(var(--px)*3)}
+.modal__fundo{position:absolute;inset:0;background:rgba(0,0,0,.8)}
+.modal__cx{position:relative;width:min(460px,100%);max-height:86svh;overflow:auto;display:grid;gap:calc(var(--px)*3);
+  animation:entraM .2s steps(3)}
+@keyframes entraM{from{transform:scale(.9)}}
+.modal__topo{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--px)*2)}
+.modal__acoes{display:flex;gap:calc(var(--px)*2);flex-wrap:wrap}
+.modal__acoes .btn{flex:1}
+
+/* ── Aviso (toast) ─────────────────────────────────────────── */
+.aviso{
+  position:fixed;left:50%;bottom:calc(var(--dpad) + var(--px)*3);z-index:70;
+  transform:translate(-50%,150%);opacity:0;pointer-events:none;
+  background:#000;color:var(--tinta);padding:calc(var(--px)*2) calc(var(--px)*3);
+  box-shadow:0 0 0 2px var(--tinta) inset;
+  font-family:'Press Start 2P',monospace;font-size:8px;text-transform:uppercase;white-space:nowrap;
+  transition:transform .2s steps(4),opacity .2s steps(2);
+}
+.aviso.on{transform:translate(-50%,0);opacity:1}
+.aviso.tem-acao{pointer-events:auto;display:flex;align-items:center;gap:calc(var(--px)*2)}
+.aviso__b{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--ouro);text-transform:uppercase;
+  border-left:2px solid #444;padding-left:calc(var(--px)*2)}
+body.tem-modal .aviso{bottom:auto;top:calc(var(--hud) + var(--px)*3);transform:translate(-50%,-150%)}
+body.tem-modal .aviso.on{transform:translate(-50%,0)}
+
+/* ── Escala / medidor no modal ─────────────────────────────── */
+.medidor{display:flex;gap:2px;flex-wrap:wrap}
+.medidor button{
+  flex:1;min-width:26px;height:36px;background:#000;box-shadow:0 0 0 2px #333 inset;
+  font-family:'Press Start 2P',monospace;font-size:9px;color:var(--tinta);
+}
+.medidor button.on{background:var(--ouro);color:#000;box-shadow:0 0 0 2px var(--preto) inset}
+.ref{font-size:14px;color:var(--ouro);min-height:1.4em;margin-top:calc(var(--px)*2)}
+.contador{display:flex;align-items:center;gap:calc(var(--px)*3);justify-content:center}
+.contador__v{font-family:'Press Start 2P',monospace;font-size:20px;min-width:3ch;text-align:center}
+.contador .btn{font-size:14px;padding:calc(var(--px)*2) calc(var(--px)*4)}
+.vazio{padding:calc(var(--px)*6);text-align:center;color:var(--tinta2);background:rgba(0,0,0,.3);box-shadow:0 0 0 2px var(--linha) inset}
+
+/* ── Herói andando ─────────────────────────────────────────── */
+.heroi{display:flex;align-items:flex-end;gap:calc(var(--px)*2);margin-top:calc(var(--px)*4)}
+.heroi__anda{animation:anda 2.4s steps(12) infinite alternate}
+@keyframes anda{to{transform:translateX(60%)}}
+.spr{display:inline-block;line-height:0}
+
+/* ── Telas maiores ─────────────────────────────────────────── */
+@media (min-width:720px){
+  :root{--hud:72px}
+  .hud__v{font-size:14px}
+  .dpad__b{font-size:10px}
+  .grade__cels .cel{height:44px;font-size:10px}
+}
+
+/* ── Movimento reduzido ────────────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+[data-motion="off"] *,[data-motion="off"] *::before,[data-motion="off"] *::after{
+  animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;
+}

@@ -23,6 +23,11 @@ export function render(ctx) {
 
   view.append(section('SINCRONIA · BANCO DE DADOS', syncBox(ctx)));
 
+  view.append(section('VERSÃO 2.0', el('div', {}, [
+    row('Caderno 2.0 — pixel', 'A mesma rotina em forma de fase: blocos, moedas, mundos e troféus. Mesmos dados, mesma senha.',
+      el('a.btn.btn--sm.btn--solid', { href: './retro/' }, [el('span', { text: 'jogar' })])),
+  ])));
+
   /* ── Paleta ── */
   view.append(section('PALETA', el('div.palettes', {}, PALETTES.map(p =>
     el('button.pal' + (s.palette === p.id ? '.is-on' : ''), {

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR" data-mundo="dia" data-motion="on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caderno 2.0</title>
+<meta name="description" content="Caderno 2.0 — a rotina virou fase. Mesmos dados, outra pele.">
+<meta name="theme-color" content="#5c94fc">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./assets/icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./assets/icone.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preload" href="./assets/fonts/pressstart2p-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./assets/fonts/silkscreen-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./css/retro.css">
+</head>
+<body>
+
+<!-- ── Tela de abertura ──────────────────────────────────────── -->
+<div id="boot" class="boot">
+  <div class="boot__box">
+    <h1 class="boot__logo">CADERNO</h1>
+    <p class="boot__v">2.0</p>
+    <p class="boot__hero" id="bootHeroi"></p>
+    <p class="boot__start blink">PRESSIONE START</p>
+  </div>
+</div>
+
+<!-- ── Senha ─────────────────────────────────────────────────── -->
+<section id="lock" class="lock" hidden>
+  <div class="ceu" aria-hidden="true"></div>
+  <div class="painel lock__box">
+    <div class="lock__cad" id="lockCad"></div>
+    <h2 class="t8">SENHA</h2>
+    <p class="lock__sub" id="lockSub">Tudo cifrado neste aparelho.</p>
+    <form id="lockForm" autocomplete="off">
+      <label class="campo">
+        <span class="t8">DIGITE</span>
+        <input id="lockPass" type="password" autocomplete="current-password" placeholder="••••••" required minlength="4" spellcheck="false">
+      </label>
+      <label class="campo" id="lockConfirmField" hidden>
+        <span class="t8">CONFIRME</span>
+        <input id="lockPass2" type="password" autocomplete="new-password" placeholder="••••••" minlength="4" spellcheck="false">
+      </label>
+      <p class="erro" id="lockError" role="alert" aria-live="polite"></p>
+      <button class="btn btn--a" id="lockBtn" type="submit">START</button>
+    </form>
+    <p class="lock__dica t8" id="lockHint"></p>
+    <a class="lock__classico" href="../">← versão clássica</a>
+  </div>
+</section>
+
+<!-- ── Jogo ──────────────────────────────────────────────────── -->
+<div id="app" class="app" hidden>
+  <header class="hud">
+    <div class="hud__c">
+      <span class="t8">CADERNO</span>
+      <span class="hud__v num" id="hudXp">000000</span>
+    </div>
+    <div class="hud__c">
+      <span class="hud__moeda" id="hudMoedaIcone"></span>
+      <span class="hud__v num" id="hudMoedas">×00</span>
+    </div>
+    <div class="hud__c">
+      <span class="t8">MUNDO</span>
+      <span class="hud__v num" id="hudMundo">1-1</span>
+    </div>
+    <div class="hud__c">
+      <span class="t8">SEQ</span>
+      <span class="hud__v num" id="hudSeq">00</span>
+    </div>
+    <button class="hud__btn" id="somBtn" title="Som" aria-label="Som">♪</button>
+    <button class="hud__btn" id="trancarBtn" title="Trancar" aria-label="Trancar">▣</button>
+  </header>
+
+  <main id="main" class="main" tabindex="-1"></main>
+
+  <nav class="dpad" id="nav" aria-label="Navegação">
+    <button class="dpad__b is-active" data-view="fase">HOJE</button>
+    <button class="dpad__b" data-view="mapa">MAPA</button>
+    <button class="dpad__b" data-view="missoes">MISSÕES</button>
+    <button class="dpad__b" data-view="placar">PLACAR</button>
+    <button class="dpad__b" data-view="opcoes">OPÇÕES</button>
+  </nav>
+
+  <div class="aviso" id="aviso" aria-live="polite"></div>
+</div>
+
+<!-- ── Caixa de diálogo ──────────────────────────────────────── -->
+<div class="modal" id="modal" hidden>
+  <div class="modal__fundo" data-close></div>
+  <div class="painel modal__cx" role="dialog" aria-modal="true" aria-labelledby="modalT">
+    <div class="modal__topo">
+      <h2 class="t8" id="modalT"></h2>
+      <button class="hud__btn" data-close aria-label="Fechar">✕</button>
+    </div>
+    <div id="modalCorpo"></div>
+  </div>
+</div>
+
+<noscript><p style="padding:2rem;font-family:monospace">O Caderno 2.0 precisa de JavaScript.</p></noscript>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
