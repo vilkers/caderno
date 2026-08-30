@@ -125,11 +125,13 @@ que leva direto pra grade da semana. Setas ← → ou deslizar também trocam o 
 `t` volta pra hoje e `f` fecha o dia.
 
 ### Calendário — Semana e Mês
-**Semana** é a grade de preenchimento em lote: sete dias nas linhas, categorias
-nas colunas. Um toque na célula alterna o valor (sim/não, ou 0→1→2→3 nas
-contagens, 1→5 nas escalas); horas e texto abrem o controle cheio; a última
-coluna fecha o dia; e tocar no dia abre o check-in completo. É por aqui que se
-recupera uma semana inteira em menos de um minuto.
+**Semana** é a grade de preenchimento em lote: os sete dias em colunas fixas no
+topo, uma faixa por categoria descendo a tela. Um toque na célula alterna o
+valor (sim/não, ou 0→1→2→3 nas contagens, 1→5 nas escalas); horas, texto e
+escala longa abrem o controle cheio; a última faixa fecha o dia; e tocar no dia
+lá em cima abre o check-in completo. Rola só na vertical, e a troca de semana é
+por botão — nada de gesto lateral. É por aqui que se recupera uma semana
+inteira em menos de um minuto.
 
 **Mês** é a grade do mês com um ponto por categoria feita em cada dia (bolinha
 = hábito que você quer manter, quadradinho = hábito que você quer reduzir).

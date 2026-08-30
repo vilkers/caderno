@@ -612,40 +612,54 @@ button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
 .seg__b.is-on{background:var(--accent);color:var(--ink)}
 
 /* ── 23. Grade da semana (preenchimento em lote) ───────────── */
-.batchwrap{position:relative}
-.batchwrap::after{
-  content:"";position:absolute;top:0;right:0;bottom:0;width:44px;pointer-events:none;
-  background:linear-gradient(90deg,transparent,var(--bg));border-radius:0 12px 12px 0;
+/* Sete dias em colunas, categorias em linhas: a página rola só pra baixo.
+   Nada de arrastar pro lado — trocar de semana é botão. */
+.wgrid__head{
+  position:sticky;top:var(--topbar);z-index:20;
+  display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
+  padding:.5rem calc(.6rem + 1px);margin-bottom:.5rem;
+  background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
 }
-@media (min-width:900px){.batchwrap::after{display:none}}
-.batch__scroll{overflow-x:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
-.batch{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:max-content;width:100%}
-.batch__row{display:grid;grid-template-columns:74px repeat(var(--cols,9),minmax(56px,1fr)) 56px;gap:1px;background:var(--line)}
-.batch__row--head .batch__cell,.batch__row--head .batch__day{background:var(--surface);height:38px}
-.batch__day{
-  position:sticky;left:0;z-index:2;background:var(--bg);
-  display:flex;align-items:center;gap:.4rem;padding:0 .6rem;height:52px;
-  border-right:1px solid var(--line);
+.wgrid__day{
+  display:grid;justify-items:center;gap:.1rem;padding:.35rem 0;border-radius:9px;
+  border:1px solid transparent;transition:background .25s var(--ease),border-color .25s var(--ease);
 }
-.batch__row:not(.batch__row--head) .batch__day:hover{background:var(--surface)}
-.batch__wd{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
-.batch__n{font-size:.95rem;font-weight:600}
-.batch__dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.wgrid__day:hover{background:var(--surface-2)}
+.wgrid__day.is-today{border-color:var(--accent)}
+.wgrid__day.is-future{opacity:.4}
+.wgrid__wd{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+.wgrid__n{font-size:.95rem;font-weight:650;line-height:1}
+.wgrid__dot{width:5px;height:5px;border-radius:50%;background:transparent}
+.wgrid__dot.is-filled{background:var(--dim)}
+.wgrid__dot.is-closed{background:var(--accent)}
+
+.wgrid{display:grid;gap:.5rem}
+.wgrid__row{border:1px solid var(--line);border-radius:12px;padding:.6rem;background:var(--surface)}
+.wgrid__row--close{background:transparent;border-style:dashed}
+.wgrid__cat{display:flex;align-items:center;gap:.5rem;margin-bottom:.45rem;min-width:0}
+.wgrid__emoji{font-size:1rem;flex:none}
+.wgrid__label{flex:1;min-width:0;font-weight:650;letter-spacing:-.01em;font-size:.92rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wgrid__goal{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--dim);flex:none}
+.wgrid__cells{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+
 .batch__cell{
-  background:var(--bg);height:52px;display:grid;place-items:center;
+  background:var(--bg);height:44px;border-radius:8px;border:1px solid var(--line);
+  display:grid;place-items:center;
   font-family:var(--font-mono);font-size:12px;color:var(--fg);
-  transition:background .25s var(--ease),color .25s var(--ease);
+  transition:background .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease),transform .15s var(--ease);
 }
-.batch__cell:hover:not(:disabled){background:var(--surface-2)}
-.batch__cell:disabled{opacity:.3;cursor:not-allowed}
-.batch__cell.is-on{background:var(--accent);color:var(--ink);font-weight:600}
-.batch__cell.is-on.is-reduce{background:color-mix(in srgb,var(--fg) 22%,transparent);color:var(--fg)}
-.batch__cell.is-on.is-zero{background:transparent;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
-.batch__h{font-size:1rem}
-.batch__row.is-today .batch__day{box-shadow:inset 2px 0 0 var(--accent)}
-.batch__close{color:var(--dim);opacity:.3}
-.batch__close:hover{opacity:.8}
-.batch__close.is-on{background:var(--accent);color:var(--ink);opacity:1}
+.batch__cell:hover:not(:disabled){border-color:var(--fg)}
+.batch__cell:active:not(:disabled){transform:scale(.94)}
+.batch__cell:disabled{opacity:.25;cursor:not-allowed}
+.batch__cell.is-on{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:600}
+.batch__cell.is-on.is-reduce{background:color-mix(in srgb,var(--fg) 22%,transparent);border-color:transparent;color:var(--fg)}
+.batch__cell.is-on.is-zero{background:transparent;border-color:var(--line);color:var(--dim);font-weight:400}
+.batch__close{color:var(--dim);opacity:.5}
+.batch__close:hover{opacity:1}
+.batch__close.is-on{background:var(--accent);border-color:var(--accent);color:var(--ink);opacity:1}
 
 /* ── 24. Sincronia ─────────────────────────────────────────── */
 .syncchip{

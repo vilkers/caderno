@@ -10,7 +10,7 @@ import {
   weekLabels, weekOfKey, humanDay, longDay,
 } from '../utils.js';
 import * as store from '../store.js';
-import { num, did, isReduce, loggedDays } from '../analysis.js';
+import { num, did, isReduce, loggedDays, goalProgress } from '../analysis.js';
 import { stagger, onSwipe, openSheet, toast } from '../ui.js';
 import { iconBtn, control, fmtH } from './today.js';
 
@@ -49,13 +49,14 @@ function renderWeek(view, ctx) {
 
   view.querySelector('#calTitle').textContent = rotuloSemana(dias);
 
+  /* navegação só por botão: nada de gesto lateral brigando com a rolagem */
   view.append(el('div.wrap', { style: { justifyContent: 'space-between', marginBottom: '1rem' } }, [
     el('div.daynav', {}, [
       iconBtn('M15 6l-6 6 6 6', () => { ctx.weekAnchor = addDays(anchor, -7); ctx.rerender(); }, 'Semana anterior'),
-      el('span.daynav__label', { text: dias[0] > addDays(hoje, -7) ? 'esta semana' : 'semana' }),
+      el('span.daynav__label', { text: dias[0] <= hoje && hoje <= dias[6] ? 'esta semana' : 'semana' }),
       iconBtn('M9 6l6 6-6 6', () => { ctx.weekAnchor = addDays(anchor, 7); ctx.rerender(); }, 'Próxima semana'),
     ]),
-    dias.some(d => d !== hoje)
+    !(dias[0] <= hoje && hoje <= dias[6])
       ? el('button.chip', { onclick: () => { ctx.weekAnchor = hoje; ctx.rerender(); }, text: 'semana atual' })
       : null,
   ]));
@@ -65,52 +66,68 @@ function renderWeek(view, ctx) {
     return;
   }
 
-  /* cabeçalho de colunas */
-  const table = el('div.batch', { style: { '--cols': String(cats.length) } });
-  const head = el('div.batch__row.batch__row--head');
-  head.append(el('div.batch__day', {}, [el('span.micro', { text: 'DIA' })]));
-  cats.forEach(c => head.append(el('div.batch__cell', {}, [
-    el('span.batch__h', { title: c.label, text: c.emoji || '•' }),
-  ])));
-  head.append(el('div.batch__cell', {}, [el('span.micro', { text: 'FIM' })]));
-  table.append(head);
-
+  /* cabeçalho dos sete dias, grudado no topo enquanto a lista rola */
+  const cabecalho = el('div.wgrid__head');
   for (const k of dias) {
     const d = parseKey(k);
-    const futuro = k > hoje;
-    const rec = store.getDay(k);
-    const row = el('div.batch__row' + (futuro ? '.is-future' : '') + (k === hoje ? '.is-today' : ''));
-
-    row.append(el('button.batch__day', {
+    cabecalho.append(el('button.wgrid__day' + (k === hoje ? '.is-today' : '') + (k > hoje ? '.is-future' : ''), {
       type: 'button', title: `Abrir ${longDay(k)}`,
       onclick: () => { ctx.setDay(k); ctx.go('hoje'); },
     }, [
-      el('span.batch__wd', { text: WD[d.getDay()] }),
-      el('span.batch__n.num', { text: String(d.getDate()) }),
-      store.hasEntry(k) ? el('span.batch__dot') : null,
+      el('span.wgrid__wd', { text: WD[d.getDay()] }),
+      el('span.wgrid__n.num', { text: String(d.getDate()) }),
+      el('span.wgrid__dot' + (store.getDay(k)?.closed ? '.is-closed' : store.hasEntry(k) ? '.is-filled' : '')),
     ]));
+  }
+  view.append(cabecalho);
 
-    for (const cat of cats) {
-      row.append(batchCell(cat, k, futuro, ctx));
-    }
+  /* uma faixa por categoria — a página rola pra baixo, nunca pro lado */
+  const lista = el('div.wgrid');
+  for (const cat of cats) {
+    const gp = goalProgress(cat, dias[6]);
+    const faixa = el('div.wgrid__row');
+    faixa.append(el('div.wgrid__cat', {}, [
+      el('span.wgrid__emoji', { text: cat.emoji || '•' }),
+      el('span.wgrid__label', { text: cat.label }),
+      gp ? el('span.wgrid__goal', {
+        style: { color: gp.ok ? 'var(--accent)' : '' },
+        text: `${nf(gp.done, gp.done % 1 ? 1 : 0)}/${gp.value}`,
+      }) : null,
+    ]));
+    const cels = el('div.wgrid__cells');
+    for (const k of dias) cels.append(batchCell(cat, k, k > hoje, ctx));
+    faixa.append(cels);
+    lista.append(faixa);
+  }
 
-    const fechar = el('button.batch__cell.batch__close' + (rec?.closed ? '.is-on' : ''), {
+  /* fechar o dia, na mesma malha de sete colunas */
+  const fechar = el('div.wgrid__row.wgrid__row--close');
+  fechar.append(el('div.wgrid__cat', {}, [
+    el('span.wgrid__emoji', { text: '✓' }),
+    el('span.wgrid__label', { text: 'Fechar o dia' }),
+  ]));
+  const celsF = el('div.wgrid__cells');
+  for (const k of dias) {
+    const futuro = k > hoje;
+    celsF.append(el('button.batch__cell.batch__close' + (store.getDay(k)?.closed ? '.is-on' : ''), {
       type: 'button', 'aria-label': `Fechar ${humanDay(k)}`, title: 'Marcar o dia como respondido',
       disabled: futuro || null,
       onclick: e => {
         const next = !store.getDay(k)?.closed;
         store.closeDay(k, next);
         e.currentTarget.classList.toggle('is-on', next);
+        cabecalho.querySelectorAll('.wgrid__dot')[dias.indexOf(k)]
+          ?.classList.toggle('is-closed', next);
       },
-    }, ['✓']);
-    row.append(fechar);
-    table.append(row);
+    }, ['✓']));
   }
+  fechar.append(celsF);
+  lista.append(fechar);
+  view.append(lista);
 
-  view.append(el('div.batchwrap', {}, [el('div.batch__scroll', {}, [table])]));
   view.append(el('p.micro', {
     style: { marginTop: '.9rem', lineHeight: '1.8' },
-    html: 'UM TOQUE NA CÉLULA ALTERNA O VALOR · HORAS E TEXTO ABREM O CONTROLE<br>TOQUE NO DIA PARA O CHECK-IN COMPLETO',
+    html: 'UM TOQUE NA CÉLULA ALTERNA O VALOR · HORAS, TEXTO E ESCALA LONGA ABREM O CONTROLE<br>TOQUE NO DIA LÁ EM CIMA PARA O CHECK-IN COMPLETO',
   }));
 
   /* resumo */
@@ -122,11 +139,7 @@ function renderWeek(view, ctx) {
       `${c.label.toLowerCase()} na semana`)),
   ]));
 
-  stagger(view, '.batch__row', 8);
-  onSwipe(view, {
-    left: () => { ctx.weekAnchor = addDays(anchor, 7); ctx.rerender(); },
-    right: () => { ctx.weekAnchor = addDays(anchor, -7); ctx.rerender(); },
-  });
+  stagger(view, '.wgrid__row', 12);
 }
 
 /** Uma célula da grade: toque alterna; horas e texto abrem o controle cheio. */
