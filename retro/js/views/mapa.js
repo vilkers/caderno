@@ -4,8 +4,8 @@
 import { el, todayKey, addDays, parseKey, weekOfKey, longDay, humanDay, WD, nf, MONTHS } from '../../../js/utils.js';
 import * as store from '../../../js/store.js';
 import { goalProgress, isReduce, did, num } from '../../../js/analysis.js';
-import * as sfx from '../sfx.js';
-import { sprite } from '../sprites.js';
+import * as sfx from '../../../temas/pixel/sfx.js';
+import { sprite } from '../../../temas/pixel/sprites.js';
 import { aviso } from '../ui.js';
 import { abrirControle } from './fase.js';
 

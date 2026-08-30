@@ -1,7 +1,7 @@
 /* analysis.js — leitura dos dados: sequências, metas, padrões,
    comparações entre categorias e sugestões em texto. Tudo local. */
 
-import { state, hasEntry, listCategories, listTodos } from './store.js';
+import { state, hasEntry, listCategories, listTodos, cadencia, respondida } from './store.js';
 import { addDays, todayKey, parseKey, lastNDays, weekOfKey, WD_LONG, nf } from './utils.js';
 
 /* ── Base ──────────────────────────────────────────────────── */
@@ -91,6 +91,55 @@ export function goalProgress(cat, key = todayKey()) {
   const ok = mode === 'min' ? done >= value : done <= value;
   return { mode, value, period, done, left, ok, pct: value ? Math.min(1, done / value) : 0 };
 }
+
+/* ── Status do dia ─────────────────────────────────────────── */
+
+/**
+ * O que o dia cobra, o que já foi e o que falta.
+ * Só as categorias de cadência diária entram na conta de "obrigatórias" —
+ * as da semana são cobradas pela meta, e as livres não cobram nada.
+ */
+export function dayStatus(key = todayKey()) {
+  const ativas = listCategories().filter(c => !c.archived);
+  const obrigatorias = ativas.filter(c => cadencia(c) === 'diaria');
+  const feitas = obrigatorias.filter(c => respondida(c, key));
+  const faltando = obrigatorias.filter(c => !respondida(c, key));
+  const extras = ativas.filter(c => cadencia(c) !== 'diaria' && respondida(c, key));
+  return {
+    obrigatorias, feitas, faltando, extras,
+    total: obrigatorias.length,
+    ok: obrigatorias.length > 0 && faltando.length === 0,
+    vazio: obrigatorias.length === 0,
+    pct: obrigatorias.length ? feitas.length / obrigatorias.length : 1,
+    fechado: !!state.days[key]?.closed,
+  };
+}
+
+/**
+ * O que falta para cada meta semanal, com quantos dias ainda restam.
+ * `situacao`: batida · no ritmo · apertado · estourou
+ */
+export function weekGoals(key = todayKey()) {
+  const hoje = todayKey();
+  const semana = weekOf(key);
+  const restam = semana.filter(k => k >= hoje && k <= semana[6]).length;
+  return listCategories()
+    .filter(c => !c.archived && c.goal?.period === 'week')
+    .map(cat => {
+      const gp = goalProgress(cat, key);
+      const falta = Math.max(0, gp.value - gp.done);
+      const sobra = gp.done - gp.value;
+      let situacao;
+      if (gp.mode === 'min') {
+        situacao = gp.ok ? 'batida' : (falta > restam ? 'apertado' : 'no ritmo');
+      } else {
+        situacao = gp.done > gp.value ? 'estourou' : (gp.done > gp.value * 0.8 ? 'apertado' : 'no ritmo');
+      }
+      return { cat, ...gp, falta, sobra, restam, situacao };
+    })
+    .sort((a, b) => ordem(a.situacao) - ordem(b.situacao));
+}
+const ordem = s => ({ estourou: 0, apertado: 1, 'no ritmo': 2, batida: 3 }[s] ?? 9);
 
 /* ── Padrões ───────────────────────────────────────────────── */
 

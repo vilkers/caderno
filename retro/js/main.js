@@ -11,8 +11,8 @@ import * as badges from '../../js/badges.js';
 import { logStreak } from '../../js/analysis.js';
 import { el, debounce } from '../../js/utils.js';
 
-import * as sfx from './sfx.js';
-import { sprite, animado } from './sprites.js';
+import * as sfx from '../../temas/pixel/sfx.js';
+import { sprite, animado } from '../../temas/pixel/sprites.js';
 import { $, $$, aviso, caixa, fecha } from './ui.js';
 import { MUNDOS } from './views/opcoes.js';
 

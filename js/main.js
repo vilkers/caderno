@@ -6,18 +6,20 @@ import * as vault from './vault.js';
 import * as sync from './sync.js';
 import * as badges from './badges.js';
 import { PALETTES, applyPalette } from './palettes.js';
-import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn } from './ui.js';
+import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn, revelarAoRolar, observarTopo } from './ui.js';
+import { icon } from './icons.js';
 import { el, debounce } from './utils.js';
 
 import * as viewToday from './views/today.js';
 import * as viewMonth from './views/month.js';
 import * as viewTodos from './views/todos.js';
 import * as viewInsights from './views/insights.js';
+import * as viewMetas from './views/metas.js';
 import * as viewSettings from './views/settings.js';
 
 const VIEWS = {
   hoje: viewToday, mes: viewMonth, lista: viewTodos,
-  insights: viewInsights, ajustes: viewSettings,
+  insights: viewInsights, metas: viewMetas, ajustes: viewSettings,
 };
 
 /* ── Contexto compartilhado entre as telas ─────────────────── */
@@ -38,15 +40,16 @@ const ctx = {
 /* ── Pintura ───────────────────────────────────────────────── */
 function paint() {
   const main = $('#main');
+  ctx.softRefresh = null;              // cada tela instala o seu, se quiser
   const node = VIEWS[ctx.view].render(ctx);
   main.replaceChildren(node);
   main.scrollTop = 0;
+  revelarAoRolar(main);
   $$('.nav__item').forEach(b => b.classList.toggle('is-active', b.dataset.view === ctx.view));
   const wide = window.matchMedia('(min-width:700px)').matches;
   $('#topDate').textContent = ctx.view === 'hoje'
     ? (wide ? longDay(ctx.day) : humanDay(ctx.day))
     : humanDay(todayKey());
-  window.scrollTo({ top: 0, behavior: motionOn() ? 'smooth' : 'auto' });
 }
 
 /* ── Tela de senha ─────────────────────────────────────────── */
@@ -177,7 +180,11 @@ function armAutolock() {
 
 /* ── Ligações de interface ─────────────────────────────────── */
 function wire() {
-  $$('.nav__item').forEach(b => b.addEventListener('click', () => ctx.go(b.dataset.view)));
+  $$('.nav__item').forEach(b => {
+    b.prepend(icon(b.dataset.icon || 'hoje'));
+    b.addEventListener('click', () => ctx.go(b.dataset.view));
+  });
+  observarTopo();
   $('#brandBtn').addEventListener('click', () => { ctx.day = todayKey(); ctx.go('hoje'); });
   $('#lockNowBtn').addEventListener('click', doLock);
   $('#paletteBtn').addEventListener('click', paletteSheet);
@@ -186,7 +193,7 @@ function wire() {
     if ($('#app').hidden) return;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'insights', 5: 'ajustes' };
+    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'insights', 5: 'metas', 6: 'ajustes' };
     if (keys[e.key]) { ctx.go(keys[e.key]); return; }
     if (ctx.view === 'hoje') {
       if (e.key === 'ArrowLeft') ctx.setDay(addDays(ctx.day, -1));
@@ -217,6 +224,8 @@ function wire() {
     if (reason === 'settings' || reason === 'categories') {
       document.documentElement.dataset.motion = store.state.settings.motion ? 'on' : 'off';
     }
+    // dados trocados por fora (junção da sincronia, outra aba): repinta
+    if (reason === 'replace' && !$('#app').hidden) paint();
   });
 }
 

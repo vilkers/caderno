@@ -113,6 +113,30 @@ originais desenhados em matriz de caracteres — nada de arte de terceiros.
 
 ## Como funciona
 
+### Status do dia — a resposta pra "tá tudo em ordem?"
+No topo do check-in, um painel diz em uma frase: **Tudo em ordem** ou
+**Falta marcar 2 de 4**, com um botão por categoria em falta (toca e ele te
+leva até o cartão, piscando). Logo abaixo, **para fechar a semana**: quanto
+falta em cada meta semanal e em quantos dias. Os dois se atualizam na hora
+em que você marca, sem trocar de tela.
+
+O que entra nessa conta é a **cadência** de cada categoria:
+
+| cadência | o que significa | exemplos |
+|---|---|---|
+| **Todo dia** | entra na conta do dia; falta se não for marcada | remédio, sono, trabalho |
+| **Na semana** | cobrada pela meta da semana, não por dia | academia, louça, lixo |
+| **Quando rolar** | registra quando acontece e não cobra nada | bebida, humor |
+
+Sem isso o progresso mentia: marcar 4 de 9 num dia em que só 3 coisas eram
+obrigatórias parecia fracasso, e não era.
+
+### Metas (uma tela só)
+Ajustar nove metas entrando em nove categorias é trabalho demais para uma
+decisão que se toma junta. Em **Metas** está tudo lado a lado — cadência,
+mínimo ou máximo, valor e período —, com o progresso da semana e o estado
+(*no ritmo*, *apertado*, *estourou*, *batida*) ao lado de cada uma.
+
 ### Hoje (check-in)
 Um cartão por categoria, cada um com o controle certo pro tipo de dado:
 
@@ -184,7 +208,7 @@ desligado, trava automática, troca de senha e backup.
 
 ## Atalhos (teclado)
 
-`1`–`5` trocam de tela · `←` `→` mudam o dia · `t` volta pra hoje ·
+`1`–`6` trocam de tela · `←` `→` mudam o dia · `t` volta pra hoje ·
 `f` fecha/reabre o dia · `l` tranca.
 
 Ações destrutivas (apagar tarefa, apagar categoria, limpar concluídas,
@@ -237,7 +261,10 @@ js/badges.js            XP, níveis e conquistas
 js/ui.js                toast, sheet, scramble, contadores, stagger
 js/palettes.js          as 8 paletas
 js/utils.js             datas, DOM, formatação
-js/views/*.js           as cinco telas
+js/views/*.js           as seis telas
+js/icons.js             o traço da interface (24×24, sem preenchimento)
+temas/                  peles guardadas para enxertar no app (ver temas/README.md)
+dados/backups/          cópias congeladas do cofre
 sw.js                   cache offline do casco
 retro/                  o Caderno 2.0 — casco, pele e telas em pixel
 retro/js/sprites.js     a arte, em matrizes de caracteres viradas em SVG

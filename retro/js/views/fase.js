@@ -9,8 +9,8 @@ import { el, humanDay, longDay, todayKey, addDays, parseKey, clamp, nf, WD } fro
 import * as store from '../../../js/store.js';
 import { currentStreak, goalProgress, isReduce } from '../../../js/analysis.js';
 import { summary as placar } from '../../../js/badges.js';
-import * as sfx from '../sfx.js';
-import { sprite, animado } from '../sprites.js';
+import * as sfx from '../../../temas/pixel/sfx.js';
+import { sprite, animado } from '../../../temas/pixel/sprites.js';
 import { caixa, aviso } from '../ui.js';
 
 const FAIXA = 8;   // dias na régua do topo

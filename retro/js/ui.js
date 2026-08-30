@@ -2,7 +2,7 @@
    Mesma ideia do clássico, com cara de menu de jogo. */
 
 import { el } from '../../js/utils.js';
-import * as sfx from './sfx.js';
+import * as sfx from '../../temas/pixel/sfx.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];

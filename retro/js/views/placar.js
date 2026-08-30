@@ -5,9 +5,9 @@ import { el, lastNDays, nf } from '../../../js/utils.js';
 import * as store from '../../../js/store.js';
 import { summary, LEVELS } from '../../../js/badges.js';
 import { loggedDays, logStreak, currentStreak, bestStreak, meanLogged, did, isReduce, suggestions } from '../../../js/analysis.js';
-import { sprite } from '../sprites.js';
+import { sprite } from '../../../temas/pixel/sprites.js';
 import { caixa } from '../ui.js';
-import * as sfx from '../sfx.js';
+import * as sfx from '../../../temas/pixel/sfx.js';
 
 export function render(ctx) {
   const tela = el('div.tela');

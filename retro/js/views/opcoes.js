@@ -7,7 +7,7 @@ import * as store from '../../../js/store.js';
 import { TYPES } from '../../../js/store.js';
 import * as vault from '../../../js/vault.js';
 import * as sync from '../../../js/sync.js';
-import * as sfx from '../sfx.js';
+import * as sfx from '../../../temas/pixel/sfx.js';
 import { caixa, confirma, aviso } from '../ui.js';
 
 export const MUNDOS = [

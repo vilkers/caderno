@@ -2,7 +2,7 @@
    inteiro e é o erro mais fácil de cometer escrevendo pixel art à mão.
    Rode com: node tools/test-sprites.mjs */
 
-import { SPRITES } from '../retro/js/sprites.js';
+import { SPRITES } from '../temas/pixel/sprites.js';
 
 let falhas = 0;
 for (const [nome, m] of Object.entries(SPRITES)) {

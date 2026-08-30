@@ -1,43 +1,12 @@
 /* ══════════════════════════════════════════════════════════════
-   CADERNO 2.0 — pele pixelizada
+   CADERNO 2.0 — as telas da pele pixelizada.
+   O vocabulário (paletas, fontes, medidas) vive em temas/pixel/tokens.css,
+   para poder ser aplicado a outras partes do app sem trazer estas classes.
    Regras da casa: nada de canto arredondado, nada de sombra macia,
    tudo em múltiplos de 4px, e todo movimento em steps().
    ══════════════════════════════════════════════════════════════ */
 
-@font-face{
-  font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;
-  src:url('../assets/fonts/pressstart2p-latin.woff2') format('woff2');
-  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
-}
-@font-face{
-  font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;
-  src:url('../assets/fonts/pressstart2p-latin-ext.woff2') format('woff2');
-  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2C60-2C7F,U+A720-A7FF;
-}
-@font-face{
-  font-family:'Silkscreen';font-style:normal;font-weight:400;font-display:swap;
-  src:url('../assets/fonts/silkscreen-latin.woff2') format('woff2');
-}
-@font-face{
-  font-family:'Silkscreen';font-style:normal;font-weight:700;font-display:swap;
-  src:url('../assets/fonts/silkscreen-latin-700.woff2') format('woff2');
-}
-
-/* ── Mundos (paletas) ──────────────────────────────────────── */
-:root{
-  --ceu:#5c94fc; --ceu2:#96d0ff;
-  --chao:#c84c0c; --chao2:#e45c10;
-  --tinta:#fcfcfc; --tinta2:#c8c8c8;
-  --preto:#000000; --painel:#1a1a2e; --painel2:#2c2c48; --linha:rgba(252,252,252,.24);
-  --ouro:#fac000; --verde:#00a844; --verdeTxt:#4cff9c; --vermelho:#d82800; --azul:#3cbcfc;
-  --px:4px;
-  --hud:64px; --dpad:56px;
-  --passos:steps(4,end);
-}
-[data-mundo="subterraneo"]{ --ceu:#000000; --ceu2:#0d0d2b; --chao:#0058f8; --chao2:#3cbcfc; --painel:#000814; }
-[data-mundo="castelo"]{ --ceu:#1a0000; --ceu2:#3c0d0d; --chao:#6b6b6b; --chao2:#9c9c9c; --painel:#200a0a; --ouro:#ff8800; }
-[data-mundo="noite"]{ --ceu:#0d0d3b; --ceu2:#241a5c; --chao:#3c2c6c; --chao2:#5c4c9c; --painel:#12122e; }
-[data-mundo="agua"]{ --ceu:#0058f8; --ceu2:#3cbcfc; --chao:#00887c; --chao2:#00a844; --painel:#002850; }
+@import url('../../temas/pixel/tokens.css');
 
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -150,11 +119,12 @@ ul{margin:0;padding:0;list-style:none}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 
 /* ── HUD ───────────────────────────────────────────────────── */
-.app{min-height:100svh;padding-bottom:calc(var(--dpad) + var(--px)*6)}
+.app{min-height:100svh;padding-bottom:calc(var(--dpad) + var(--sab) + var(--px)*6)}
 .hud{
-  position:sticky;top:0;z-index:40;height:var(--hud);
+  position:sticky;top:0;z-index:40;
+  height:calc(var(--hud) + var(--sat));
   display:flex;align-items:center;gap:calc(var(--px)*3);
-  padding:0 calc(var(--px)*3);
+  padding:var(--sat) max(calc(var(--px)*3),var(--sar)) 0 max(calc(var(--px)*3),var(--sal));
   background:#000;border-bottom:var(--px) solid var(--tinta);
   overflow-x:auto;scrollbar-width:none;
 }
@@ -174,10 +144,11 @@ ul{margin:0;padding:0;list-style:none}
 
 /* ── D-pad (navegação) ─────────────────────────────────────── */
 .dpad{
-  position:fixed;bottom:0;left:0;right:0;z-index:45;height:var(--dpad);
+  position:fixed;bottom:0;left:0;right:0;z-index:45;
+  height:calc(var(--dpad) + var(--sab));
   display:grid;grid-auto-flow:column;grid-auto-columns:1fr;
   background:#000;border-top:var(--px) solid var(--tinta);
-  padding-bottom:env(safe-area-inset-bottom);
+  padding-bottom:var(--sab);
 }
 .dpad__b{
   font-family:'Press Start 2P',monospace;font-size:8px;color:var(--tinta2);
@@ -190,7 +161,7 @@ ul{margin:0;padding:0;list-style:none}
 .dpad__b.is-active{background:var(--vermelho);color:#fff}
 
 /* ── Área de jogo ──────────────────────────────────────────── */
-.main{padding:calc(var(--px)*4) calc(var(--px)*3);max-width:900px;margin-inline:auto}
+.main{padding:calc(var(--px)*4) max(calc(var(--px)*3),var(--sar)) calc(var(--px)*4) max(calc(var(--px)*3),var(--sal));max-width:900px;margin-inline:auto}
 .tela{animation:tela .25s steps(4) both}
 @keyframes tela{from{opacity:0;transform:translateY(calc(var(--px)*3))}}
 .titulo{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--px)*3);flex-wrap:wrap;margin-bottom:calc(var(--px)*4)}
@@ -352,7 +323,7 @@ ul{margin:0;padding:0;list-style:none}
 
 /* ── Aviso (toast) ─────────────────────────────────────────── */
 .aviso{
-  position:fixed;left:50%;bottom:calc(var(--dpad) + var(--px)*3);z-index:70;
+  position:fixed;left:50%;bottom:calc(var(--dpad) + var(--sab) + var(--px)*3);z-index:70;
   transform:translate(-50%,150%);opacity:0;pointer-events:none;
   background:#000;color:var(--tinta);padding:calc(var(--px)*2) calc(var(--px)*3);
   box-shadow:0 0 0 2px var(--tinta) inset;

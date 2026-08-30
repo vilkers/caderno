@@ -2,8 +2,8 @@
 
 import { el } from '../../../js/utils.js';
 import * as store from '../../../js/store.js';
-import * as sfx from '../sfx.js';
-import { sprite } from '../sprites.js';
+import * as sfx from '../../../temas/pixel/sfx.js';
+import { sprite } from '../../../temas/pixel/sprites.js';
 import { aviso, confirma } from '../ui.js';
 
 export function render(ctx) {

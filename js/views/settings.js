@@ -4,7 +4,7 @@
 
 import { el } from '../utils.js';
 import * as store from '../store.js';
-import { TYPES } from '../store.js';
+import { TYPES, CADENCIAS } from '../store.js';
 import * as vault from '../vault.js';
 import * as sync from '../sync.js';
 import { PALETTES, applyPalette } from '../palettes.js';
@@ -51,6 +51,11 @@ export function render(ctx) {
   /* ── Categorias ── */
   const cats = el('div.cats');
   store.listCategories().forEach((c, i) => cats.append(catRow(c, i, ctx)));
+  view.append(section('METAS E COBRANÇA', el('div', {}, [
+    row('Painel de metas', 'Cadência e meta de todas as categorias numa tela só, com o progresso da semana ao lado.',
+      el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: () => ctx.go('metas') }, [el('span', { text: 'abrir' })])),
+  ])));
+
   view.append(section('CATEGORIAS', el('div', {}, [
     cats,
     el('div.wrap', { style: { marginTop: '.8rem' } }, [
@@ -271,6 +276,11 @@ function editCategory(cat, ctx) {
       el('option', { value: k, text: v.label, selected: draft.type === k ? true : null })));
     const typeHint = el('p.micro', { text: TYPES[draft.type].hint });
     const unit = field('UNIDADE (OPCIONAL)', el('input', { type: 'text', value: draft.unit || '', placeholder: 'doses, km, h…' }));
+    const cadSel = el('select', {}, Object.entries(CADENCIAS).map(([k, v]) =>
+      el('option', { value: k, text: v.label, selected: store.cadencia(draft) === k ? true : null })));
+    const cadHint = el('p.micro', { text: CADENCIAS[store.cadencia(draft)].hint });
+    cadSel.addEventListener('change', () => { cadHint.textContent = CADENCIAS[cadSel.value].hint; });
+    const cadence = field('O DIA COBRA?', el('div', {}, [cadSel, cadHint]));
 
     /* ── faixa e referências escritas de cada nível ── */
     const minIn = el('input', { type: 'number', min: '0', max: '9', value: String(draft.min ?? 1), style: { width: '64px' } });
@@ -341,6 +351,7 @@ function editCategory(cat, ctx) {
         el('div', { style: { flex: '1', minWidth: '160px' } }, [label]),
       ]),
       field('TIPO DE RESPOSTA', el('div', {}, [type, typeHint])),
+      cadence,
       faixa,
       unit,
       refsBox,
@@ -388,6 +399,7 @@ function editCategory(cat, ctx) {
               emoji: emoji.querySelector('input').value.trim() || '•',
               label: label.querySelector('input').value.trim() || 'Sem nome',
               type: type.value,
+              cadence: cadSel.value,
               unit: unit.querySelector('input').value.trim(),
               min: type.value === 'scale' ? Math.max(0, Number(minIn.value) || 0) : undefined,
               max: type.value === 'scale' ? Math.max(1, Number(maxIn.value) || 5) : (cat?.max ?? undefined),

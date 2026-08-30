@@ -126,6 +126,63 @@ export function stagger(root, sel = '.rv', max = 18, step = null) {
   });
 }
 
+/* ── Movimento na rolagem ──────────────────────────────────── */
+let esperando = [];
+let varrendo = false;
+let redeT;
+
+/** Solta quem já está na área visível (ou já passou por ela). */
+function varrer() {
+  varrendo = false;
+  if (!esperando.length) return;
+  const dobra = window.innerHeight;
+  esperando = esperando.filter(n => {
+    const t = n.getBoundingClientRect().top;
+    if (t > dobra * 0.94) return true;      // ainda lá embaixo
+    n.classList.add('vis');
+    return false;
+  });
+}
+const pedirVarredura = () => {
+  if (varrendo) return;
+  varrendo = true;
+  requestAnimationFrame(varrer);
+};
+window.addEventListener('scroll', pedirVarredura, { passive: true });
+window.addEventListener('resize', pedirVarredura, { passive: true });
+
+/**
+ * Cartões que nascem abaixo da dobra entram quando você chega neles, em vez
+ * de todos animarem de uma vez no carregamento (o que ninguém vê).
+ * A varredura por rolagem cobre o pulo rápido, em que o observador de
+ * interseção simplesmente não dispara.
+ */
+export function revelarAoRolar(raiz) {
+  const alvos = [...raiz.querySelectorAll('.entry, .meta, .badge, .tip, .todo, .wgrid__row, .stat, .cat, .trofeu')];
+  esperando = [];
+  if (!motionOn()) {
+    alvos.forEach(n => n.classList.add('vis'));
+    return;
+  }
+  const dobra = window.innerHeight;
+  alvos.forEach(n => {
+    if (n.getBoundingClientRect().top < dobra * 0.94) { n.classList.add('vis'); return; }
+    n.classList.add('rolar');
+    esperando.push(n);
+  });
+
+  // rede de segurança: conteúdo invisível é a pior falha possível.
+  clearTimeout(redeT);
+  redeT = setTimeout(() => { esperando.forEach(n => n.classList.add('vis')); esperando = []; }, 4000);
+}
+
+/** A barra de cima ganha fio quando a página sai do topo. */
+export function observarTopo() {
+  const marca = () => document.body.classList.toggle('rolou', window.scrollY > 8);
+  marca();
+  window.addEventListener('scroll', marca, { passive: true });
+}
+
 /* ── Swipe horizontal (troca de dia no celular) ────────────── */
 export function onSwipe(node, { left, right, threshold = 70 } = {}) {
   let x0 = null, y0 = null;

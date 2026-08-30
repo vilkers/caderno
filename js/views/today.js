@@ -6,7 +6,7 @@
 
 import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, WD } from '../utils.js';
 import * as store from '../store.js';
-import { currentStreak, goalProgress, isReduce } from '../analysis.js';
+import { currentStreak, goalProgress, isReduce, dayStatus, weekGoals } from '../analysis.js';
 import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
 import { summary as badgeSummary } from '../badges.js';
 
@@ -58,43 +58,120 @@ export function render(ctx) {
     }));
   }
 
-  /* ── resumo + fechar o dia ── */
-  const answered = cats.filter(c => rec.v[c.id] !== undefined && rec.v[c.id] !== false).length;
-  const bar = el('div.progress__bar');
-  view.append(el('div.summary', {}, [
-    el('div', {}, [
-      el('p.micro', { text: 'PREENCHIDO' }),
-      el('p', { class: 'num', style: { fontSize: '1.3rem', marginTop: '.2rem' }, text: `${answered}/${cats.length}` }),
-    ]),
-    el('div.progress', {}, [bar]),
-    el('div.wrap', {}, [
-      answered < cats.length && !isFuture
-        ? el('button.btn.btn--sm', { type: 'button', onclick: () => repetirDiaAnterior(day, ctx) },
-            [el('span', { text: 'repetir ontem' })])
-        : null,
-      el('button.btn' + (rec.closed ? '.btn--solid' : ''), {
-        type: 'button',
-        onclick: () => {
-          store.closeDay(day, !rec.closed);
-          toast(rec.closed ? 'dia reaberto' : 'dia fechado');
-          ctx.rerender();
-        },
-      }, [el('span', { text: rec.closed ? 'DIA FECHADO ✓' : 'FECHAR O DIA' })]),
-    ]),
-  ]));
-  requestAnimationFrame(() => { bar.style.width = `${cats.length ? (answered / cats.length) * 100 : 0}%`; });
+  /* ── status do dia: o que falta, e nada além disso ── */
+  const painel = el('div.status');
+  const semana = el('div.semana');
 
+  /** Repintado a cada marcação — é o retorno imediato de "tá em ordem?". */
+  const pintaStatus = () => {
+    const st = dayStatus(day);
+    const fechadoAgora = !!store.getDay(day)?.closed;
+    painel.classList.toggle('is-ok', st.ok || st.vazio);
+    painel.replaceChildren();
+
+    const bar = el('div.progress__bar');
+    painel.append(el('div.status__topo', {}, [
+      el('div', {}, [
+        el('p.micro', { text: fechadoAgora ? 'DIA FECHADO' : 'STATUS DO DIA' }),
+        el('p.status__t', {
+          text: st.vazio ? 'Nada obrigatório hoje'
+            : st.ok ? 'Tudo em ordem'
+            : `Falta marcar ${st.faltando.length} de ${st.total}`,
+        }),
+      ]),
+      el('div.wrap', {}, [
+        !st.ok && !isFuture && st.faltando.length
+          ? el('button.btn.btn--sm', { type: 'button', onclick: () => repetirDiaAnterior(day, ctx) },
+              [el('span', { text: 'repetir ontem' })])
+          : null,
+        el('button.btn' + (fechadoAgora ? '.btn--solid' : ''), {
+          type: 'button',
+          onclick: () => {
+            store.closeDay(day, !fechadoAgora);
+            toast(fechadoAgora ? 'dia reaberto' : 'dia fechado');
+            pintaStatus();
+          },
+        }, [el('span', { text: fechadoAgora ? 'FECHADO ✓' : 'FECHAR O DIA' })]),
+      ]),
+    ]));
+
+    if (!st.vazio) {
+      painel.append(el('div.progress', {}, [bar]));
+      requestAnimationFrame(() => { bar.style.width = `${Math.round(st.pct * 100)}%`; });
+    }
+
+    if (st.faltando.length) {
+      painel.append(el('div.status__faltas', {}, st.faltando.map(c =>
+        el('button.falta', {
+          type: 'button',
+          onclick: () => {
+            const alvo = entries.querySelector(`[data-cat="${c.id}"]`);
+            alvo?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            alvo?.classList.remove('pisca'); void alvo?.offsetWidth; alvo?.classList.add('pisca');
+          },
+          text: `${c.emoji || '•'} ${c.label}`,
+        }))));
+    }
+
+    const sub = [];
+    if (!st.vazio) sub.push(`${st.feitas.length}/${st.total} obrigatórias`);
+    if (st.extras.length) sub.push(`${st.extras.length} extra(s) marcada(s)`);
+    if (sub.length) painel.append(el('p.micro.status__sub', { text: sub.join(' · ').toUpperCase() }));
+
+    // o fio de aviso dos cartões acompanha
+    entries.querySelectorAll('[data-cat]').forEach(card => {
+      const c = store.catById(card.dataset.cat);
+      card.classList.toggle('falta-hoje', !!c && store.cadencia(c) === 'diaria' && !store.respondida(c, day));
+    });
+  };
+
+  /** O que ainda falta para fechar as metas da semana. */
+  const pintaSemana = () => {
+    const metas = weekGoals(day).filter(m => m.situacao !== 'batida');
+    semana.replaceChildren();
+    semana.hidden = !metas.length;
+    if (!metas.length) return;
+    semana.append(el('div.section__h', {}, [
+      el('p.micro', { text: 'PARA FECHAR A SEMANA' }),
+      el('button.micro.semana__link', { type: 'button', onclick: () => ctx.go('metas'), text: 'ajustar metas' }),
+    ]));
+    semana.append(el('div.semana__l', {}, metas.slice(0, 4).map(m => {
+      const preenche = el('i');
+      const linha = el('div.mini', { 'data-sit': m.situacao }, [
+        el('div.mini__t', {}, [
+          el('span.mini__n', { text: `${m.cat.emoji || '•'} ${m.cat.label}` }),
+          el('span.mini__v', {
+            text: m.mode === 'min'
+              ? `faltam ${nf(m.falta, m.falta % 1 ? 1 : 0)} em ${m.restam}d`
+              : (m.situacao === 'estourou'
+                  ? `${nf(m.done, m.done % 1 ? 1 : 0)} — teto ${nf(m.value)}`
+                  : `${nf(m.done, m.done % 1 ? 1 : 0)}/${nf(m.value)} no teto`),
+          }),
+        ]),
+        el('div.mini__b', {}, [preenche]),
+      ]);
+      requestAnimationFrame(() => { preenche.style.width = `${Math.round(Math.min(1, m.pct) * 100)}%`; });
+      return linha;
+    })));
+  };
+
+  /* a régua do "menos fudido", sempre à mão */
   const b = badgeSummary();
   const xpBar = el('i');
-  view.append(el('button.levelline', {
+  const linhaNivel = el('button.levelline', {
     type: 'button', onclick: () => ctx.go('insights'), title: 'Ver conquistas',
   }, [
     el('span.micro', { text: `NÍVEL ${b.level.i + 1}` }),
     el('span.levelline__n', { text: b.level.name }),
     el('span.levelline__bar', {}, [xpBar]),
     el('span.micro', { text: `${b.ganhas}/${b.total} ✦` }),
-  ]));
+  ]);
   requestAnimationFrame(() => { xpBar.style.width = `${Math.round(b.level.pct * 100)}%`; });
+
+  view.append(painel, semana, linhaNivel);
+
+  /* toda marcação atualiza o status e as metas sem repintar a tela inteira */
+  ctx.softRefresh = () => { pintaStatus(); pintaSemana(); };
 
   /* ── categorias ── */
   const entries = el('div.entries');
@@ -147,6 +224,8 @@ export function render(ctx) {
     ]));
   }
 
+  pintaStatus();
+  pintaSemana();
   stagger(entries, ':scope > .entry');
   onSwipe(view, { left: () => ctx.setDay(addDays(day, 1)), right: () => ctx.setDay(addDays(day, -1)) });
   return view;
@@ -227,9 +306,10 @@ function repetirDiaAnterior(day, ctx) {
 /* ── Cartão de uma categoria ───────────────────────────────── */
 function entryCard(cat, day, ctx) {
   const val = store.getVal(day, cat.id);
-  const card = el('div.entry' + (cat.type === 'text' ? '.entry--wide' : ''));
+  const card = el('div.entry' + (cat.type === 'text' ? '.entry--wide' : ''), { 'data-cat': cat.id });
   const on = cat.type === 'toggle' ? !!val : Number(val) > 0;
   if (on) card.classList.add('is-on');
+  if (store.cadencia(cat) === 'diaria' && !store.respondida(cat, day)) card.classList.add('falta-hoje');
 
   const meta = el('div.entry__meta');
   if (store.state.settings.showStreaks) {

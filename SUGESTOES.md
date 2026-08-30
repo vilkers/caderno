@@ -25,6 +25,28 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 5 — o dia passa a saber o que cobra
+
+- **Cadência por categoria** (todo dia · na semana · quando rolar). O
+  progresso do dia só conta o que era obrigatório hoje; o resto aparece como
+  extra. Era o furo mais sério que restava: a barra media a coisa errada.
+- **Painel de status**: "tudo em ordem" ou "falta marcar X de Y", com botão
+  para cada pendência, e o que falta para fechar cada meta da semana. Tudo se
+  atualiza na hora da marcação, sem repintar a tela.
+- **Tela de Metas**: cadência e meta de todas as categorias juntas, com
+  progresso e diagnóstico (*no ritmo*, *apertado*, *estourou*).
+- **iPhone**: o topo passou a respeitar a ilha dinâmica e a base a barra de
+  gestos (variáveis `--sat`/`--sab`, que o teste consegue simular). Barra
+  inferior refeita: ícones de traço, alvo de 48px, pílula no item ativo.
+- **Movimento na rolagem**: os cartões entram quando você chega neles, com
+  varredura por rolagem (o observador de interseção não dispara em pulo
+  rápido) e rede de segurança de 4s — conteúdo invisível é a pior falha
+  possível.
+- **Tema pixel guardado** em `temas/pixel/`, separado das telas da 2.0, com
+  o passo a passo de enxerto no app principal.
+- Correção: a tela não se repintava quando os dados mudavam por fora
+  (junção da sincronia, outra aba).
+
 ## Rodada 4 — o Caderno 2.0
 
 - **Versão pixel em `/retro/`, em paralelo com a clássica.** Mesma origem,
@@ -75,23 +97,26 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
    com o app instalado na tela de início. É o que mais aumenta constância —
    nenhuma melhoria de tela compete com um empurrão na hora certa. Agora que
    existe XP, o lembrete pode dizer o que você perde se não fechar o dia.
-2. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
+2. **Lembrete que sabe o que falta.** Agora que existe o status do dia, a
+   notificação das 21h pode dizer *"faltam remédio e sono"* em vez de um
+   genérico "fecha o dia?".
+3. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
    ("domingo de sofá honesto", "semana sem álcool no mês do aniversário").
    Surpresa vale mais que lista visível — mas não abuse, senão vira ruído.
-3. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
+4. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
    posição. Com uma cor por categoria (matiz derivado do acento, pra não
    brigar com as paletas), o mês fica legível de relance.
-4. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
+5. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
    ontem × humor hoje" costuma ser bem mais revelador.
-5. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
+6. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
    fui?"), escondido atrás de um toque, sem poluir o check-in.
-6. **Arrastar pra reordenar categorias.** Hoje são setas — funcionam em
+7. **Arrastar pra reordenar categorias.** Hoje são setas — funcionam em
    qualquer aparelho, mas arrastar é o gesto que a pessoa tenta primeiro.
-7. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
+8. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
    ("bebi 2 às 19h e 1 às 23h"), ao custo de complicar o modelo.
-8. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
-9. **Exportar CSV** pra abrir em planilha, além do JSON.
-10. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
+9. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
+10. **Exportar CSV** pra abrir em planilha, além do JSON.
+11. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.
 

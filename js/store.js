@@ -10,6 +10,22 @@ import { mergeDocs } from './merge.js';
 
 export const VERSION = 2;
 
+/* Com que frequência a categoria é cobrada. É o que separa "faltou" de
+   "não era pra hoje" — sem isso o progresso do dia mente. */
+export const CADENCIAS = {
+  diaria:  { label: 'Todo dia',   hint: 'Entra na conta do dia. Falta se não for marcada (remédio, sono).' },
+  semanal: { label: 'Na semana',  hint: 'Cobrada pela meta da semana, não por dia (academia, louça).' },
+  livre:   { label: 'Quando rolar', hint: 'Registra quando acontece e não cobra nada (bebida, humor).' },
+};
+
+/** Cadência de uma categoria, deduzida da meta quando não foi escolhida. */
+export function cadencia(cat) {
+  if (cat?.cadence && CADENCIAS[cat.cadence]) return cat.cadence;
+  if (cat?.goal?.period === 'day') return 'diaria';
+  if (cat?.goal?.mode === 'min' && cat?.goal?.period === 'week') return 'semanal';
+  return 'livre';
+}
+
 export const TYPES = {
   toggle: { label: 'Sim / não',    hint: 'Um toque: fiz ou não fiz.' },
   count:  { label: 'Contagem',     hint: 'Quantas vezes / quantas unidades.' },
@@ -21,23 +37,23 @@ export const TYPES = {
 const now = () => Date.now();
 
 export const DEFAULT_CATEGORIES = () => ([
-  { emoji: '🏋️', label: 'Academia',  type: 'toggle', goal: { mode: 'min', value: 4, period: 'week' } },
-  { emoji: '💼', label: 'Trabalho',  type: 'hours',  unit: 'h', max: 16, goal: { mode: 'min', value: 6, period: 'day' } },
+  { emoji: '🏋️', label: 'Academia', type: 'toggle', cadence: 'semanal', goal: { mode: 'min', value: 4, period: 'week' } },
+  { emoji: '💼', label: 'Trabalho', type: 'hours', unit: 'h', max: 16, cadence: 'diaria', goal: { mode: 'min', value: 6, period: 'day' } },
   { emoji: '🍺', label: 'Bebida', type: 'scale', min: 0, max: 10,
     levels: {
       0: 'seco', 1: 'uma no almoço', 2: 'duas, social', 3: 'happy hour comportado',
       4: 'já tô alegre', 5: 'bebedeira média', 6: 'passei do ponto', 7: 'mó porre',
       8: 'apagando', 9: 'filme queimado', 10: 'ressaca de dois dias',
     },
-    goal: { mode: 'max', value: 12, period: 'week' } },
-  { emoji: '🌿', label: 'Maconha', type: 'count', unit: 'vezes',
+    cadence: 'livre', goal: { mode: 'max', value: 12, period: 'week' } },
+  { emoji: '🌿', label: 'Maconha', type: 'count', unit: 'vezes', cadence: 'livre',
     levels: { 1: 'um de leve', 2: 'dose dupla', 3: 'chapei', 4: 'dia perdido' },
     goal: { mode: 'max', value: 4, period: 'week' } },
-  { emoji: '🐾', label: 'Passeio com o Estojo', type: 'count', unit: 'passeios', goal: { mode: 'min', value: 7, period: 'week' } },
-  { emoji: '🍽️', label: 'Louça',     type: 'toggle', goal: { mode: 'min', value: 5, period: 'week' } },
-  { emoji: '🗑️', label: 'Lixo',      type: 'toggle', goal: { mode: 'min', value: 3, period: 'week' } },
-  { emoji: '😴', label: 'Sono',      type: 'hours',  unit: 'h', max: 14, goal: { mode: 'min', value: 7, period: 'day' } },
-  { emoji: '🙂', label: 'Humor', type: 'scale', min: 1, max: 5,
+  { emoji: '🐾', label: 'Passeio com o Estojo', type: 'count', unit: 'passeios', cadence: 'diaria', goal: { mode: 'min', value: 7, period: 'week' } },
+  { emoji: '🍽️', label: 'Louça', type: 'toggle', cadence: 'semanal', goal: { mode: 'min', value: 5, period: 'week' } },
+  { emoji: '🗑️', label: 'Lixo', type: 'toggle', cadence: 'semanal', goal: { mode: 'min', value: 3, period: 'week' } },
+  { emoji: '😴', label: 'Sono', type: 'hours', unit: 'h', max: 14, cadence: 'diaria', goal: { mode: 'min', value: 7, period: 'day' } },
+  { emoji: '🙂', label: 'Humor', type: 'scale', min: 1, max: 5, cadence: 'livre',
     levels: { 1: 'no fundo do poço', 2: 'mal', 3: 'normal', 4: 'bem', 5: 'dia ótimo' } },
 ].map((c, i) => ({ id: uid(), order: i, updatedAt: now(), ...c })));
 
@@ -97,7 +113,11 @@ export function migrate(data) {
 
   const categories = (Array.isArray(data.categories) && data.categories.length
     ? data.categories : fresh.categories)
-    .map((c, i) => ({ ...c, id: c.id || uid(), order: c.order ?? i, updatedAt: Number(c.updatedAt) || t }));
+    .map((c, i) => ({
+      ...c, id: c.id || uid(), order: c.order ?? i,
+      cadence: c.cadence || cadencia(c),
+      updatedAt: Number(c.updatedAt) || t,
+    }));
 
   const days = {};
   for (const [k, d] of Object.entries(data.days || {})) {
@@ -287,6 +307,14 @@ export function resetCategories() {
   state.categories.forEach(c => { c.deletedAt = now(); c.updatedAt = now(); });
   DEFAULT_CATEGORIES().forEach(c => state.categories.push(c));
   emit('categories');
+}
+
+/** A categoria foi respondida nesse dia? (zero conta como resposta.) */
+export function respondida(cat, key) {
+  const v = getVal(key, cat.id);
+  if (v === undefined || v === null || v === '') return false;
+  if (cat.type === 'toggle') return v === true;
+  return true;
 }
 
 /** O texto de referência de um valor, quando a categoria tem níveis escritos. */
