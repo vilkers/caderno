@@ -25,6 +25,48 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 10 — o fundo respira, e uma varredura de bugs
+
+- **Bug que impedia cadastrar compromisso.** O campo de nome tinha **0px de
+  largura**: `.field input{width:100%}` tem especificidade maior que a largura
+  que eu tinha dado ao campo do emoji, e o emoji engolia a linha inteira. Dava
+  pra abrir o formulário e não dava pra escrever nele — e, sem nome, o botão
+  "criar" recusava em silêncio. A linha virou grade (`.idrow`), que não depende
+  de quem venceu a cascata.
+
+- **Valor com vírgula sumia.** O campo era `<input type="number">`, e o teclado
+  brasileiro escreve `21,90`. Pra esse input isso é texto inválido: ele devolve
+  string vazia, então o valor virava `null` sem nenhum aviso. Agora é campo de
+  texto com `inputmode="decimal"`, e a leitura entende `21,90`, `1.234,56`,
+  `1234.56` e até `R$ 90`.
+
+- **Alvos de toque.** Varri as nove telas em três larguras medindo cada
+  controle. Botões pequenos de 29–38px viraram 42–44; onde o desenho **tem** de
+  ser pequeno (o check redondo da agenda, a caixa da tarefa, a estrela, o
+  interruptor, o punho de arrastar), a área de toque cresce por baixo, num
+  pseudo-elemento invisível de 44px — o desenho continua delicado e o dedo
+  acerta. Conferido por toque, não por CSS: o teste clica 5px fora da borda e
+  exige que a ação aconteça.
+
+- **Fundo vivo.** Três manchas da paleta presas à tela: no topo manda a de
+  cima, e conforme você rola ela sobe e cede lugar à de baixo, com uma terceira
+  crescendo devagar no meio. Trocar de paleta troca o fundo junto, com
+  transição. Custa uma variável CSS por quadro (`--r`, de 0 a 1) — todo o resto
+  é `transform` e `opacity`, sem blur e sem filtro. Com o movimento desligado
+  ele fica, parado.
+
+  **O teto de opacidade não foi chutado.** A primeira versão, mais forte,
+  reprovou 13 pares de contraste: o `--dim` de cada paleta estava calibrado pra
+  exatamente 4.5 contra o fundo puro, ou seja, sem folga nenhuma pra qualquer
+  coisa atrás do texto. Então fiz as duas coisas: baixei as manchas pra 9%/7%/3%
+  e **recalculei `--dim` e `--accent-txt` com margem**, agora medidos contra o
+  fundo, o cartão e a mancha mais forte. `tools/test-contraste.mjs` passou a
+  cobrir isso.
+
+- Correção que eu mesmo causei no meio do caminho: pôr `position:relative` em
+  `.nav` pra levantar o conteúdo acima do fundo derrubou a barra de baixo pro
+  meio da página — ela já era `fixed`. Só o `.main` precisava.
+
 ## Rodada 9 — o mês entra no caderno
 
 Até aqui o caderno só sabia de dias. Mas metade do que ocupa a cabeça acontece

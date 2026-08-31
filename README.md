@@ -407,6 +407,17 @@ tools/test-contraste.mjs contraste WCAG de todas as paletas
 
 ## Design
 
+**Fundo vivo.** Três manchas da paleta presas à tela: no topo manda a de cima e,
+conforme a página rola, ela sobe e cede lugar à de baixo. Trocar de paleta troca
+o fundo junto. Custa uma variável CSS por quadro — o resto é `transform` e
+`opacity`. Com o movimento desligado (ou com `prefers-reduced-motion`), ele fica
+parado. A opacidade das manchas é limitada pelo teste de contraste: o texto
+continua legível por cima da mais forte, nas oito paletas.
+
+**Alvo de toque de 44px** em tudo que se toca. Onde o desenho pede um controle
+pequeno — o check da agenda, a caixa da tarefa, a estrela, o interruptor —, a
+área de toque cresce por baixo num pseudo-elemento invisível.
+
 Referência: espécimes de fundição tipográfica — grotesca comprimida em corpo
 grande, micro-labels em mono caixa-alta com tracking aberto, fios de 1px
 desenhando a grade, monocromo com um acento só, e movimento em curva

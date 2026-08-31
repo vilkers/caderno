@@ -176,6 +176,33 @@ export function revelarAoRolar(raiz) {
   redeT = setTimeout(() => { esperando.forEach(n => n.classList.add('vis')); esperando = []; }, 4000);
 }
 
+/**
+ * O fundo acompanha a rolagem: uma variável só (`--r`, de 0 a 1), escrita no
+ * máximo uma vez por quadro. Todo o resto — deslocamento, escala e troca de
+ * dominância entre as manchas — é CSS. Assim o custo não cresce com o
+ * tamanho da página, e desligar o movimento é um `!important` no CSS em vez
+ * de um `if` espalhado pelo JS.
+ */
+export function fundoVivo() {
+  const raiz = document.documentElement;
+  let pedido = false;
+  const medir = () => {
+    pedido = false;
+    const alcance = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    const r = Math.min(1, Math.max(0, window.scrollY / alcance));
+    raiz.style.setProperty('--r', r.toFixed(4));
+  };
+  const pedir = () => {
+    if (pedido) return;
+    pedido = true;
+    requestAnimationFrame(medir);
+  };
+  window.addEventListener('scroll', pedir, { passive: true });
+  window.addEventListener('resize', pedir, { passive: true });
+  medir();
+  return pedir;
+}
+
 /** A barra de cima ganha fio quando a página sai do topo. */
 export function observarTopo() {
   const marca = () => document.body.classList.toggle('rolou', window.scrollY > 8);

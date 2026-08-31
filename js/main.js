@@ -7,7 +7,7 @@ import * as sync from './sync.js';
 import * as badges from './badges.js';
 import * as lembrete from './lembrete.js';
 import { PALETTES, applyPalette } from './palettes.js';
-import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn, revelarAoRolar, observarTopo } from './ui.js';
+import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn, revelarAoRolar, observarTopo, fundoVivo } from './ui.js';
 import { control } from './views/today.js';
 import { dayStatus } from './analysis.js';
 import { icon } from './icons.js';
@@ -59,6 +59,8 @@ const ctx = {
   lock() { doLock(); },
 };
 
+let medirFundo = () => {};
+
 /* ── Pintura ───────────────────────────────────────────────── */
 function paint() {
   const main = $('#main');
@@ -74,6 +76,7 @@ function paint() {
   document.body.classList.toggle('em-secundaria', !PRIMARIAS.includes(ctx.view));
   pintaIdentidade();
 
+  medirFundo();          // a tela nova tem outra altura: o fundo recalcula
   const largo = window.matchMedia('(min-width:700px)').matches;
   $('#topDate').textContent = ctx.view === 'hoje'
     ? (largo ? longDay(ctx.day) : humanDay(ctx.day))
@@ -226,6 +229,7 @@ function wire() {
     });
   });
   observarTopo();
+  medirFundo = fundoVivo();
   $('#identBtn').addEventListener('click', () => ctx.go('perfil'));
   $('#insightsBtn').append(icon('insights', 18));
   $('#insightsBtn').addEventListener('click', () => ctx.go('insights'));

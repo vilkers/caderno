@@ -155,10 +155,10 @@ svg{display:block}
 .btn--ghost:hover{color:var(--ink)}
 .btn--danger::before{background:#e5484d}
 .btn--danger:hover{color:#fff;border-color:#e5484d}
-.btn--sm{padding:.55rem 1rem;font-size:10px}
+.btn--sm{padding:.7rem 1.1rem;font-size:10px;min-height:42px}
 
 .iconbtn{
-  display:grid;place-items:center;width:38px;height:38px;border-radius:50%;
+  display:grid;place-items:center;width:42px;height:42px;border-radius:50%;
   border:1px solid var(--line-2);color:var(--fg);
   transition:background .3s var(--ease),color .3s var(--ease),border-color .3s var(--ease),transform .3s var(--ease);
 }
@@ -364,7 +364,8 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 .vhead .chips,.view>.chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:.2rem}
 .vhead .chips::-webkit-scrollbar,.view>.chips::-webkit-scrollbar{display:none}
 .chip{
-  padding:.42rem .8rem;border:1px solid var(--line-2);border-radius:999px;white-space:nowrap;flex:none;
+  display:inline-flex;align-items:center;min-height:38px;
+  padding:.42rem .9rem;border:1px solid var(--line-2);border-radius:999px;white-space:nowrap;flex:none;
   font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--dim);
   transition:all .25s var(--ease);
 }
@@ -446,7 +447,7 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 
 /* metas da semana, versão curta */
 .semana{margin-bottom:1.2rem}
-.semana__link{background:none;color:var(--dim);text-decoration:underline;text-underline-offset:3px}
+.semana__link{display:inline-flex;align-items:center;min-height:40px;padding:.2rem 0;background:none;color:var(--dim);text-decoration:underline;text-underline-offset:3px}
 .semana__link:hover{color:var(--fg)}
 .semana__l{display:grid;gap:.7rem}
 .mini__t{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin-bottom:.3rem}
@@ -542,7 +543,7 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 
 /* pega do arrasto */
 .todo__pega,.cat__pega{
-  flex:none;display:grid;place-items:center;width:28px;height:34px;color:var(--dim);
+  flex:none;display:grid;place-items:center;width:34px;height:44px;color:var(--dim);
   border-radius:8px;cursor:grab;touch-action:none;
   transition:color .2s var(--ease),background .2s var(--ease);
 }
@@ -562,10 +563,15 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 .arrastando-lista{cursor:grabbing}
 .todo:hover{background:var(--surface)}
 .todo__box{
-  flex:none;width:22px;height:22px;border-radius:6px;border:1px solid var(--line-2);
+  position:relative;flex:none;width:24px;height:24px;border-radius:7px;border:1px solid var(--line-2);
   display:grid;place-items:center;color:transparent;
   transition:all .3s var(--ease);
 }
+/* mesma ideia do check da agenda: o desenho é pequeno, o alvo não */
+.todo__box::after,.star::after,.todo__x::after{
+  content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%);
+}
+.todo__box::after{left:-10px;right:-10px}
 .todo__box:hover{border-color:var(--fg)}
 .todo.is-done .todo__box{background:var(--accent);border-color:var(--accent);color:var(--ink)}
 .todo__txt{flex:1;min-width:0;font-size:.98rem;letter-spacing:-.01em;position:relative;word-break:break-word}
@@ -578,11 +584,11 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 .todo__act{display:flex;gap:.2rem;opacity:0;transition:opacity .25s var(--ease)}
 .todo:hover .todo__act,.todo:focus-within .todo__act{opacity:1}
 @media (hover:none){.todo__act{opacity:1}}
-.todo__x{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--dim)}
+.todo__x{position:relative;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--dim)}
 .todo__x:hover{background:var(--surface-2);color:var(--fg)}
 .todo.is-leaving{animation:leave .32s var(--ease) forwards}
 @keyframes leave{to{opacity:0;transform:translateX(24px);height:0;padding-block:0}}
-.star{color:var(--dim);width:30px;height:30px;border-radius:8px;display:grid;place-items:center}
+.star{position:relative;color:var(--dim);width:32px;height:32px;border-radius:8px;display:grid;place-items:center}
 .star.is-on{color:var(--accent)}
 
 /* ── 13. Insights ──────────────────────────────────────────── */
@@ -671,6 +677,8 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
   position:relative;width:46px;height:26px;border-radius:999px;border:1px solid var(--line-2);flex:none;
   transition:background .3s var(--ease),border-color .3s var(--ease);
 }
+/* o interruptor tem 26px de altura por desenho; o alvo de toque tem 44 */
+.switch::before{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
 .switch::after{
   content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
   background:var(--dim);transition:transform .35s var(--ease),background .3s var(--ease);
@@ -804,7 +812,8 @@ button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
 /* ── 22. Segmentado (semana | mês) ─────────────────────────── */
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px}
 .seg__b{
-  padding:.45rem 1rem;border-radius:999px;font-family:var(--font-mono);
+  display:inline-flex;align-items:center;min-height:38px;
+  padding:.45rem 1.1rem;border-radius:999px;font-family:var(--font-mono);
   font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
   transition:background .3s var(--ease),color .3s var(--ease);
 }
@@ -1031,6 +1040,54 @@ body.modo-imersivo .main{padding:0;max-width:none}
 .award__n{font-size:1.15rem;font-weight:700;letter-spacing:-.02em}
 .award__d{color:var(--dim);font-size:.9rem;margin-top:.2rem}
 
+/* ── 30. Fundo vivo ────────────────────────────────────────── */
+/* Três manchas da paleta, presas à tela, que andam e trocam de dominância
+   conforme a página rola: no topo manda a mancha de cima, embaixo manda a
+   de baixo. É a única coisa do app que se move sozinha, então tem que ser
+   barata: só `transform` e `opacity` sobre gradiente, sem blur e sem filtro
+   — e o JS escreve uma variável só por quadro (js/ui.js → fundoVivo).
+
+   As cores saem de --accent e --fg, então trocar de paleta troca o fundo
+   junto, com transição. O teto de opacidade é medido em
+   tools/test-contraste.mjs: o texto continua legível em cima da mancha
+   mais forte, em todas as oito paletas. */
+.fundo{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict}
+.fundo__b{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,var(--tom),transparent 68%);
+  transition:background .8s var(--ease),opacity .8s var(--ease);
+  will-change:transform,opacity;
+}
+.fundo__b--1{
+  --tom:color-mix(in srgb,var(--accent) 9%,transparent);
+  width:82vmax;height:82vmax;top:-34vmax;left:-22vmax;
+  transform:translate3d(calc(var(--r,0) * 6vmax),calc(var(--r,0) * -190px),0);
+  opacity:calc(1 - var(--r,0) * .72);
+}
+.fundo__b--2{
+  --tom:color-mix(in srgb,var(--accent) 7%,transparent);
+  width:92vmax;height:92vmax;bottom:-46vmax;right:-26vmax;
+  transform:translate3d(calc(var(--r,0) * -5vmax),calc(var(--r,0) * -300px),0);
+  opacity:calc(.18 + var(--r,0) * .82);
+}
+.fundo__b--3{
+  --tom:color-mix(in srgb,var(--fg) 3%,transparent);
+  width:64vmax;height:64vmax;top:26%;left:24%;
+  transform:translate3d(0,calc(var(--r,0) * -120px),0) scale(calc(1 + var(--r,0) * .18));
+  opacity:.7;
+}
+/* movimento desligado (ou reduzido no sistema): o fundo fica, parado */
+[data-motion="off"] .fundo__b{transform:none!important;opacity:.5!important}
+@media (prefers-reduced-motion:reduce){
+  .fundo__b{transform:none!important;opacity:.5!important}
+}
+/* o conteúdo vive acima do fundo. Só o main precisa: topbar, nav e toast já
+   são posicionados e já têm z-index próprio — declarar position de novo aqui
+   derrubou a barra de baixo pro meio da página. */
+.main{position:relative;z-index:1}
+/* na retrospectiva o fundo dela já manda; este some pra não somar dois brilhos */
+body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
+
 /* ── 28. Gráficos (js/graficos.js) ─────────────────────────── */
 .g-anel__caixa{position:relative;display:grid;place-items:center;flex:none}
 .g-anel{position:absolute;inset:0}
@@ -1106,10 +1163,14 @@ body.modo-imersivo .main{padding:0;max-width:none}
 .agitem.is-feito{opacity:.55}
 .agitem.is-feito .agitem__t{text-decoration:line-through;text-decoration-thickness:1px}
 .agitem__check{
-  flex:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line-2);
-  display:grid;place-items:center;font-size:13px;color:var(--ink);
+  position:relative;flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line-2);
+  display:grid;place-items:center;font-size:14px;color:var(--ink);
   transition:background .25s var(--ease),border-color .25s var(--ease),transform .25s var(--ease);
 }
+/* o alvo de toque passa dos 30px visíveis: dedo não acerta moeda de 30px.
+   Só cresce na vertical dentro da própria linha, então não rouba o toque
+   de ninguém — o vizinho de cima e o de baixo têm 12px de folga. */
+.agitem__check::after{content:"";position:absolute;left:-7px;right:-7px;top:-7px;bottom:-7px}
 .agitem__check[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
 .agitem__check:active{transform:scale(.88)}
 .agitem__l{flex:1;min-width:0;display:grid;gap:.15rem;text-align:left}
@@ -1130,7 +1191,13 @@ body.modo-imersivo .main{padding:0;max-width:none}
 
 .section.is-alvo{outline:2px solid var(--accent);outline-offset:10px;border-radius:4px;transition:outline-color .6s var(--ease)}
 .wrap--nowrap{flex-wrap:nowrap}
-.emojin{width:60px;flex:none;text-align:center}
+/* emoji + nome na mesma linha. Em grade, não em flex: `.field input{width:100%}`
+   tem especificidade maior que qualquer largura que eu desse ao emoji, e ele
+   engolia a linha inteira deixando o nome com 0px — dava pra abrir o formulário
+   e não dava pra escrever nele. */
+.idrow{display:grid;grid-template-columns:66px minmax(0,1fr);gap:.6rem;align-items:end}
+.idrow input{width:100%;min-width:0}
+.idrow input.emojin{text-align:center;font-size:1.1rem}
 
 /* ── 26. Movimento reduzido ────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){

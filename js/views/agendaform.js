@@ -10,6 +10,25 @@ import { openSheet, closeSheet, toast, confirmSheet } from '../ui.js';
 
 const DIAS = Array.from({ length: 31 }, (_, i) => i + 1);
 
+/** "1.234,56", "1234.56", "R$ 90" ou vazio → número ou null. */
+export function lerValor(texto) {
+  const cru = String(texto ?? '').trim();
+  if (!cru) return null;
+  let limpo = cru.replace(/[^\d.,-]/g, '');
+  // com os dois separadores, o último é o decimal; com um só, vírgula é decimal
+  const ultimaVirgula = limpo.lastIndexOf(',');
+  const ultimoPonto = limpo.lastIndexOf('.');
+  if (ultimaVirgula > -1 && ultimoPonto > -1) {
+    limpo = ultimaVirgula > ultimoPonto
+      ? limpo.replace(/\./g, '').replace(',', '.')
+      : limpo.replace(/,/g, '');
+  } else if (ultimaVirgula > -1) {
+    limpo = limpo.replace(',', '.');
+  }
+  const n = Number(limpo);
+  return Number.isFinite(n) ? n : null;
+}
+
 /**
  * Abre o editor. `item` nulo cria um novo.
  * `aoSalvar` é chamada depois de gravar ou apagar, pra tela se repintar.
@@ -33,7 +52,7 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
     nome.addEventListener('input', () => { rascunho.label = nome.value; });
     corpo.push(el('div.field', {}, [
       el('p.micro', { text: 'O QUE É' }),
-      el('div.wrap.wrap--nowrap', {}, [emoji, nome]),
+      el('div.idrow', {}, [emoji, nome]),
     ]));
 
     /* tipo */
@@ -85,12 +104,15 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
     corpo.push(el('div.field', {}, [el('p.micro', { text: 'REPETE?' }), rep]), campoDia);
 
     /* valor */
+    /* Texto, não number: no teclado brasileiro o separador é vírgula, e
+       <input type=number> devolve string vazia pra "21,90" — o valor sumia
+       sem avisar. Aqui a vírgula é aceita e normalizada na hora de ler. */
     const valor = el('input', {
-      type: 'number', step: '0.01', min: '0', inputmode: 'decimal',
+      type: 'text', inputmode: 'decimal', enterkeyhint: 'done',
       value: rascunho.valor ?? '', placeholder: 'opcional', 'aria-label': 'Valor',
     });
     valor.addEventListener('input', () => {
-      rascunho.valor = valor.value === '' ? null : Number(valor.value);
+      rascunho.valor = lerValor(valor.value);
     });
     corpo.push(el('div.field', {}, [
       el('p.micro', { text: 'VALOR (R$)' }),
@@ -136,7 +158,7 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
             repete: rascunho.repete,
             dia: rascunho.repete === 'mensal' ? Number(rascunho.dia) || 1 : null,
             data: rascunho.repete === 'unico' ? (rascunho.data || todayKey()) : null,
-            valor: rascunho.valor === '' || rascunho.valor === null ? null : Number(rascunho.valor),
+            valor: lerValor(valor.value),
             nota: (rascunho.nota || '').trim(),
           };
           if (novo) store.addAgenda(dados);

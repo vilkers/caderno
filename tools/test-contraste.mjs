@@ -39,7 +39,30 @@ const PARES = [
   ['tinta sobre o acento',     p => [p.ink, p.accent], 4.5],
   ['borda de componente',      p => [sobre(p.line2, p.bg), p.bg], 3.0],
   ['divisória',                p => [sobre(p.line, p.bg), p.bg], 1.8],
+
+  /* O fundo vivo (css .fundo__b) clareia o fundo onde as manchas passam.
+     O pior caso é as três empilhadas: accent 9% + accent 7% + fg 3%.
+     O texto tem de continuar legível ali — senão o efeito bonito come a
+     leitura, que é o que o app faz o dia inteiro. */
+  ['texto sobre a mancha',      p => [p.fg, fundoVivo(p)], 4.5],
+  ['secundário sobre a mancha', p => [p.dim, fundoVivo(p)], 4.5],
+  ['acento sobre a mancha',     p => [p.accentTxt, fundoVivo(p)], 4.5],
 ];
+
+/** O fundo com as três manchas do topo empilhadas — o ponto mais claro. */
+function fundoVivo(p) {
+  const camada = (base, cor, alfa) => {
+    const h = x => x.replace('#','');
+    const bc = [0,2,4].map(i => parseInt(h(base).slice(i,i+2),16));
+    const cc = [0,2,4].map(i => parseInt(h(cor).slice(i,i+2),16));
+    return '#' + bc.map((v,i) => Math.round(cc[i]*alfa + v*(1-alfa)).toString(16).padStart(2,'0')).join('');
+  };
+  let out = p.bg;
+  out = camada(out, p.accent, 0.09);
+  out = camada(out, p.accent, 0.07);
+  out = camada(out, p.fg, 0.03);
+  return out;
+}
 
 let reprovados = 0;
 for (const pal of PALETTES) {
