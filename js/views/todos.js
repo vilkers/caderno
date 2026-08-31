@@ -28,12 +28,15 @@ export function render(ctx) {
   const abertas = store.listTodos().filter(t => !t.done).length;
   const mes = monthKey();
   const assinaturas = store.agendaDoMes(mes, { tipos: ['assinatura'] });
-  const entradas = store.agendaDoMes(mes, { fluxo: 'entrada' });
+  const c = store.contasDoMes(mes);
+  const sobra = c.totalEntrada - c.totalSaida;
 
   const resumo = {
     tarefas: abertas ? `${abertas} em aberto` : 'nada em aberto',
-    assinaturas: assinaturas.length ? moeda(assinaturas.reduce((s, a) => s + (Number(a.valor) || 0), 0)) + '/mês' : 'vazio',
-    carteira: entradas.length ? moeda(entradas.reduce((s, a) => s + (Number(a.valor) || 0), 0)) : 'vazio',
+    assinaturas: assinaturas.length ? `${moeda(assinaturas.reduce((s, a) => s + (Number(a.valor) || 0), 0))}/mês` : 'vazio',
+    carteira: (c.totalEntrada || c.totalSaida)
+      ? `${sobra < 0 ? '−' : ''}${moeda(Math.abs(sobra))}`
+      : 'vazio',
   };
 
   view.append(el('div.vhead', {}, [
@@ -74,14 +77,17 @@ function painelAssinaturas(ctx, mes) {
       onclick: () => editarCompromisso(null, () => ctx.rerender(), { tipo: 'assinatura', emoji: '🎧' }),
     }, [el('span', { text: '+ nova assinatura' })]),
     el('button.btn.btn--sm', {
-      type: 'button', onclick: () => sugestoesAgenda(() => ctx.rerender()),
+      type: 'button',
+      onclick: () => sugestoesAgenda(() => ctx.rerender(), {
+        grupos: ['ASSINATURAS'], titulo: 'Assinaturas comuns',
+      }),
     }, [el('span', { text: 'sugestões' })]),
   ]));
 
   if (!itens.length) {
     view.append(el('div.empty', {}, [
       el('b', { text: 'Nenhuma assinatura' }),
-      el('p', { text: 'Spotify, Google, Netflix, iCloud — o que debita sozinho todo mês. Junto dá pra ver quanto some da conta sem você fazer nada.' }),
+      el('p', { text: 'Só o que debita sozinho todo mês: Spotify, Google, Netflix, academia. Junto dá pra ver quanto some da conta sem você fazer nada — e o que dá pra cortar.' }),
     ]));
     return view;
   }
@@ -120,50 +126,73 @@ function painelAssinaturas(ctx, mes) {
 function painelCarteira(ctx, mes) {
   const view = el('div.painel');
   const c = store.contasDoMes(mes);
-  const entradas = c.entradas;
+
+  /* A carteira é o dinheiro do mês nas duas direções: o que entra e o que
+     sai. O que sai vem de todo lado — agenda, assinatura, ou algo lançado
+     aqui mesmo —, porque a pergunta desta tela é "quanto sobra", e ela não
+     sobra diferente dependendo de onde você anotou. */
+  /* Inclui o que ainda está sem valor: é tocando nele que você completa.
+     Nas somas ele não entra — contasDoMes só soma o que tem número. */
+  const entra = c.entradas;
+  const sai = c.saidas;
 
   view.append(el('div.wrap', { style: { marginBottom: '1rem' } }, [
     el('button.btn.btn--sm.btn--solid', {
       type: 'button',
       onclick: () => editarCompromisso(null, () => ctx.rerender(), { tipo: 'renda', emoji: '💰' }),
-    }, [el('span', { text: '+ nova entrada' })]),
+    }, [el('span', { text: '+ a receber' })]),
+    el('button.btn.btn--sm', {
+      type: 'button',
+      onclick: () => editarCompromisso(null, () => ctx.rerender(), { tipo: 'conta', emoji: '💸' }),
+    }, [el('span', { text: '+ a pagar' })]),
     el('p.micro', { text: monthLabel(mes).toUpperCase() }),
   ]));
 
-  if (!entradas.length) {
+  if (!entra.length && !sai.length) {
     view.append(el('div.empty', {}, [
-      el('b', { text: 'Nada previsto pra entrar' }),
-      el('p', { text: 'O pagamento da agência, um freela, o que for. Aqui é só o que você espera receber neste mês — dá pra marcar quando cair.' }),
+      el('b', { text: 'Sem valores neste mês' }),
+      el('p', { text: 'Registre o que você tem pra receber (pagamento, freela) e o que tem pra pagar. Marque quando cair ou quando quitar — o saldo do mês se atualiza sozinho.' }),
     ]));
     return view;
   }
 
+  const sobra = c.totalEntrada - c.totalSaida;
   view.append(el('div.totalzao', {}, [
-    el('p.micro', { text: 'A RECEBER ESTE MÊS' }),
-    el('p.totalzao__n.num', { text: moeda(c.aReceber) }),
-    el('p.micro', { text: `DE ${moeda(c.totalEntrada)} PREVISTOS · ${moeda(c.recebido)} JÁ CAIU` }),
-    barraProgresso(c.totalEntrada ? c.recebido / c.totalEntrada : 0, { atraso: 150 }),
+    el('p.micro', { text: sobra >= 0 ? 'SOBRA PREVISTA NO MÊS' : 'FALTA PRA FECHAR O MÊS' }),
+    el('p.totalzao__n.num' + (sobra < 0 ? '.is-neg' : ''), { text: moeda(Math.abs(sobra)) }),
+    el('p.micro', { text: `${moeda(c.totalEntrada)} A RECEBER · ${moeda(c.totalSaida)} A PAGAR` }),
+    barras([
+      { label: 'entra', valor: c.totalEntrada, texto: moeda(c.totalEntrada), destaque: sobra >= 0 },
+      { label: 'sai', valor: c.totalSaida, texto: moeda(c.totalSaida), destaque: sobra < 0 },
+    ], { atraso: 150 }),
   ]));
 
-  if (c.totalSaida) {
-    const sobra = c.totalEntrada - c.totalSaida;
-    view.append(el('div.confronto', {}, [
-      barras([
-        { label: 'entra', valor: c.totalEntrada, texto: moeda(c.totalEntrada), destaque: sobra >= 0 },
-        { label: 'sai', valor: c.totalSaida, texto: moeda(c.totalSaida), destaque: sobra < 0 },
-      ], { atraso: 200 }),
-      el('p.micro' + (sobra < 0 ? '.is-neg' : ''), {
-        style: { marginTop: '.7rem' },
-        text: sobra >= 0
-          ? `SOBRA PREVISTA ${moeda(sobra)} — CONTANDO TUDO QUE ESTÁ NA AGENDA`
-          : `FALTAM ${moeda(Math.abs(sobra))} PRA FECHAR O MÊS COM O QUE ESTÁ NA AGENDA`,
-      }),
-    ]));
+  if (entra.length) {
+    view.append(bloco('A RECEBER', c.totalEntrada, c.recebido, 'já caiu'));
+    view.append(listaAgenda(entra, mes, ctx, { verbo: 'caiu' }));
   }
-
-  view.append(listaAgenda(entradas, mes, ctx, { verbo: 'caiu' }));
+  if (sai.length) {
+    view.append(bloco('A PAGAR', c.totalSaida, c.pago, 'já pago'));
+    view.append(listaAgenda(sai, mes, ctx, { verbo: 'pagou' }));
+    if (c.assinaturas) {
+      view.append(el('p.micro', {
+        style: { marginTop: '.7rem' },
+        text: `INCLUI ${moeda(c.assinaturas).toUpperCase()} DE ASSINATURA, QUE DEBITA SOZINHA.`,
+      }));
+    }
+  }
   return view;
 }
+
+/* Cabeçalho de bloco com a barra do quanto já foi resolvido. */
+const bloco = (titulo, total, feito, verbo) => el('div.carteirabloco', {}, [
+  el('div.section__h', {}, [el('p.micro', { text: titulo })]),
+  el('div.dinheiro__l', {}, [
+    el('span.micro', { text: moeda(total) }),
+    barraProgresso(total ? feito / total : 0),
+    el('span.micro.dinheiro__f', { text: `${moeda(feito)} ${verbo}` }),
+  ]),
+]);
 
 /* Lista compartilhada pelas duas abas de dinheiro. */
 function listaAgenda(itens, mes, ctx, { verbo }) {

@@ -175,9 +175,13 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
   });
 }
 
-/** A caixa de sugestões — o começo rápido, sem digitar nada. */
-export function sugestoesAgenda(aoAdicionar = () => {}) {
-  openSheet('Começar por aqui', close => {
+/**
+ * A caixa de sugestões — o começo rápido, sem digitar nada.
+ * `grupos` limita o que aparece: em Assinaturas não faz sentido oferecer
+ * aluguel e cartão, que são de outra tela.
+ */
+export function sugestoesAgenda(aoAdicionar = () => {}, { grupos = null, titulo = 'Começar por aqui' } = {}) {
+  openSheet(titulo, close => {
     const existentes = new Set(store.listAgenda().map(a => a.label.toLowerCase()));
     const corpo = [
       el('p', {
@@ -185,8 +189,10 @@ export function sugestoesAgenda(aoAdicionar = () => {}) {
         text: 'Toque pra adicionar. Os dias são exemplo — cada banco e cada contrato tem o seu, então ajuste depois no item.',
       }),
     ];
-    store.AGENDA_PRESETS.forEach(grupo => {
-      corpo.push(el('p.micro', { style: { marginTop: '1rem' }, text: grupo.grupo }));
+    store.AGENDA_PRESETS
+      .filter(g => !grupos || grupos.includes(g.grupo))
+      .forEach(grupo => {
+      if (!grupos || grupos.length > 1) corpo.push(el('p.micro', { style: { marginTop: '1rem' }, text: grupo.grupo }));
       corpo.push(el('div.chips', {}, grupo.itens.map(it => {
         const ja = existentes.has(it.label.toLowerCase());
         return el('button.chip' + (ja ? '.is-on' : ''), {

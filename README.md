@@ -230,14 +230,18 @@ teclado usa ↑ ↓ com o punho focado. A ordem que você deixar é a que fica; 
 estrela virou destaque, não muda mais o lugar. As abertas aparecem também no
 fim do check-in do dia. As categorias em Ajustes se reordenam do mesmo jeito.
 
-**Assinaturas.** Spotify, Google, Netflix, iCloud — o que debita sozinho todo
-mês. Junto, mostra quanto some da conta sem você fazer nada, por mês e por ano,
-com as maiores em barras. Elas não aparecem na lista de afazeres da Agenda
-(não há o que fazer), mas contam no dinheiro do mês.
+**Assinaturas.** Só o que debita sozinho todo mês: Spotify, Google, Netflix,
+academia. A tela existe pra uma pergunta — quanto some da conta sem você fazer
+nada — então mostra o total por mês e por ano, com as maiores em barras. As
+sugestões aqui são só de assinatura; aluguel e cartão são de outra tela. Elas
+não entram na lista de afazeres da Agenda (não há o que fazer), mas contam no
+dinheiro do mês.
 
-**Carteira.** O que você tem pra receber neste mês: o pagamento da agência, um
-freela. Marca quando cai, e compara com tudo que sai — "sobra prevista" ou
-"faltam tanto pra fechar o mês".
+**Carteira.** O dinheiro do mês nas duas direções: **a receber** (pagamento,
+freela) e **a pagar** (o que você deve, mais tudo que já está na agenda e nas
+assinaturas). No topo, a sobra prevista — ou o quanto falta pra fechar o mês.
+Marque quando cair e quando quitar. Item sem valor também aparece: é tocando
+nele que você completa.
 
 Assinaturas e carteira são gestão pessoal e ficam **fora do XP e das metas** de
 propósito: dinheiro não é hábito, e transformar conta em pontuação faria de uma

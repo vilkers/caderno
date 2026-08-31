@@ -98,6 +98,11 @@ export const AGENDA_PRESETS = [
     { emoji: '☁️', label: 'Google', tipo: 'assinatura', dia: 8 },
     { emoji: '🎬', label: 'Netflix', tipo: 'assinatura', dia: 15 },
     { emoji: '📦', label: 'iCloud', tipo: 'assinatura', dia: 2 },
+    { emoji: '🎮', label: 'PlayStation Plus', tipo: 'assinatura', dia: 20 },
+    { emoji: '🎨', label: 'Adobe', tipo: 'assinatura', dia: 12 },
+    { emoji: '🤖', label: 'Claude', tipo: 'assinatura', dia: 1 },
+    { emoji: '📺', label: 'YouTube Premium', tipo: 'assinatura', dia: 18 },
+    { emoji: '🏋️', label: 'Academia', tipo: 'assinatura', dia: 5 },
   ] },
   { grupo: 'ENTRADAS', itens: [
     { emoji: '💰', label: 'Pagamento da agência', tipo: 'renda', dia: 10 },

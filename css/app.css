@@ -1185,6 +1185,8 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
   display:grid;gap:.4rem;margin-bottom:1.2rem}
 .totalzao__n{font-size:clamp(2rem,9vw,3rem);font-weight:800;letter-spacing:-.045em;line-height:1}
 .confronto{border:1px solid var(--line);border-radius:14px;padding:1rem;margin:1rem 0}
+.carteirabloco{margin:1.6rem 0 .6rem;display:grid;gap:.5rem}
+.totalzao__n.is-neg{color:#e5484d}
 
 .hojeagenda{border:1px dashed var(--line-2);border-radius:14px;padding:.9rem;margin-bottom:1.4rem;display:grid;gap:.4rem}
 .hojeagenda__h{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.2rem}
