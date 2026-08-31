@@ -24,7 +24,15 @@ export async function guardarResumo(dados) {
     const db = await abrir();
     await new Promise((ok, falha) => {
       const tx = db.transaction(LOJA, 'readwrite');
-      tx.objectStore(LOJA).put(dados, CHAVE);
+      const loja = tx.objectStore(LOJA);
+      const req = loja.get(CHAVE);
+      req.onsuccess = () => {
+        const velho = req.result;
+        // o worker anota aqui que já avisou hoje; gravar por cima traria o
+        // aviso de volta no mesmo dia
+        const avisadoEm = velho && velho.data === dados.data ? velho.avisadoEm : undefined;
+        loja.put(avisadoEm ? { ...dados, avisadoEm } : dados, CHAVE);
+      };
       tx.oncomplete = ok;
       tx.onerror = () => falha(tx.error);
     });
