@@ -4,7 +4,7 @@
    A faixa de dias no topo existe pro caso mais comum de esquecimento:
    voltar dois, três dias e preencher o que ficou em branco. */
 
-import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, weekKey, WD } from '../utils.js';
+import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, weekKey, monthKey, moeda, WD } from '../utils.js';
 import * as store from '../store.js';
 import { currentStreak, goalProgress, isReduce, dayStatus, weekGoals, semanaPendente } from '../analysis.js';
 import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
@@ -186,6 +186,10 @@ export function render(ctx) {
 
   view.append(painel, semana, linhaNivel);
 
+  /* ── o que o mês cobra hoje ── */
+  const doDia = compromissosDoDia(day, ctx);
+  if (doDia) view.append(doDia);
+
   /* toda marcação atualiza o status e as metas sem repintar a tela inteira */
   ctx.softRefresh = () => { pintaStatus(); pintaSemana(); };
 
@@ -245,6 +249,51 @@ export function render(ctx) {
   stagger(entries, ':scope > .entry');
   onSwipe(view, { left: () => ctx.setDay(addDays(day, 1)), right: () => ctx.setDay(addDays(day, -1)) });
   return view;
+}
+
+/* ── Compromissos do mês que caem hoje ─────────────────────── */
+/* Não entram no status do dia de propósito: pagar o aluguel não é hábito,
+   e misturar as duas coisas faria o progresso da rotina mentir de novo. */
+function compromissosDoDia(day, ctx) {
+  const mes = monthKey(day);
+  // assinatura debita sozinha: ela não tem nada a pedir de você hoje
+  const doMes = store.agendaDoMes(mes).filter(a => a.tipo !== 'assinatura');
+  const doDia = doMes.filter(a => a.data === day);
+  const atrasados = day === todayKey()
+    ? doMes.filter(a => a.data && a.data < day && !store.agendaFeito(a, mes))
+    : [];
+  const itens = [...atrasados, ...doDia];
+  if (!itens.length) return null;
+
+  const caixa = el('div.hojeagenda');
+  caixa.append(el('div.hojeagenda__h', {}, [
+    el('p.micro', { text: atrasados.length ? 'DO MÊS · TEM COISA ATRASADA' : 'DO MÊS, HOJE' }),
+    el('button.chip', { type: 'button', onclick: () => ctx.go('agenda'), text: 'ver o mês' }),
+  ]));
+
+  itens.forEach(item => {
+    const feito = store.agendaFeito(item, mes);
+    const atrasado = item.data < day && !feito;
+    const linha = el('div.agitem.agitem--curto' + (feito ? '.is-feito' : '') + (atrasado ? '.is-atrasado' : ''));
+    linha.append(...[
+      el('button.agitem__check', {
+        type: 'button', 'aria-pressed': String(feito), 'aria-label': `Marcar ${item.label}`,
+        onclick: () => {
+          store.marcarAgenda(item.id, mes, !feito);
+          toast(feito ? 'desmarcado' : 'resolvido ✓');
+          ctx.rerender();
+        },
+      }, [el('span', { text: feito ? '✓' : '' })]),
+      el('span.agitem__t', {}, [
+        el('span.agitem__e', { text: item.emoji || '•' }),
+        el('span', { text: item.label }),
+      ]),
+      atrasado ? el('span.micro.agitem__d', { text: `venceu dia ${item.dia}` }) : null,
+      item.valor ? el('span.agitem__v.num', { text: moeda(item.valor) }) : null,
+    ].filter(Boolean));
+    caixa.append(linha);
+  });
+  return caixa;
 }
 
 /* ── Faixa de dias ─────────────────────────────────────────── */

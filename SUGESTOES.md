@@ -25,6 +25,58 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 9 — o mês entra no caderno
+
+Até aqui o caderno só sabia de dias. Mas metade do que ocupa a cabeça acontece
+uma vez por mês, num dia certo, e não tem nada a ver com hábito.
+
+- **Agenda do mês.** Aluguel, cartões, contas de casa, a NF da agência, eventos
+  que acontecem uma vez só. Cada item tem dia, valor opcional e um toque pra
+  resolver — e **a marcação vale por mês**, então no mês que vem tudo volta em
+  aberto sozinho. Sugestões prontas (Nubank, Itaú, BTG, luz, água, internet,
+  aluguel, NF) pra montar em alguns toques, com os dias como exemplo e um aviso
+  de que cada contrato tem o seu.
+
+  Mora em Ajustes, junto das categorias, porque é a mesma pergunta — *o que
+  este caderno cobra de mim?* A rotina cobra todo dia; a agenda cobra no dia.
+
+  **De propósito, não entra no progresso da rotina.** Pagar o aluguel não é
+  hábito. Somar as duas coisas faria a barra do dia mentir de novo — que foi
+  exatamente o furo que a rodada 5 consertou.
+
+- **Pessoal (a antiga Lista).** A lista de afazeres continua igual e integrada
+  ao app inteiro; ao lado dela entraram duas abas de gestão pessoal:
+  **Assinaturas** (o que debita sozinho — quanto some por mês e por ano, com as
+  maiores em barras) e **Carteira** (o que você tem pra receber, e a sobra
+  prevista contra tudo que sai).
+
+  Essas duas ficam **fora do XP e das metas**. Dinheiro não é hábito, e
+  transformar conta em pontuação faria de uma coisa chata uma coisa chata e
+  barulhenta.
+
+- **O calendário virou gráfico.** As dez bolinhas iguais por dia não eram
+  leitura, eram poeira: diziam "aconteceu alguma coisa" e mais nada. Agora cada
+  dia tem **anel** (quanto do obrigatório fechou), **barra embaixo** (quantas
+  marcações teve, comparado ao mês) e **ponto no canto** (compromisso do mês).
+  Lado a lado, os dias viram um gráfico da sua constância. Tocar num dia abre
+  uma **prévia** — o que marcou, o que faltou, a anotação, os compromissos do
+  dia — em vez de te tirar do calendário no primeiro toque.
+
+- **A retrospectiva ganhou desenho.** Antes era tipografia grande e número
+  subindo, o que é bonito mas repete a mesma forma doze vezes. Agora cada
+  cartão tem o gráfico que a informação pede: malha de dias, anel, corrente de
+  elos, barras, colunas por dia da semana, a escada dos oito níveis, o placar
+  final. Tudo entra depois do texto, como quem completa a frase.
+
+- **`js/graficos.js`**, novo: anel, barras, colunas, malha, trilha, barra de
+  progresso e sparkline — em SVG e CSS, sem biblioteca, com o estado final
+  idêntico quando o movimento está desligado. É usado pela retrospectiva, pelo
+  calendário e pela agenda, então gráfico novo nasce consistente.
+
+- Correção achada em tela: `append(null)` escreve a palavra "null" na página
+  (o `el()` filtra, o `append` direto não) — quatro lugares mostravam `null`
+  onde devia estar o valor.
+
 ## Rodada 8 — lembrete, marcação rápida e ritual da semana
 
 Das seis ideias de app de rotina que levantei, você aprovou três. Estas.
@@ -167,17 +219,17 @@ Das seis ideias de app de rotina que levantei, você aprovou três. Estas.
 2. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
    ("domingo de sofá honesto", "semana sem álcool no mês do aniversário").
    Surpresa vale mais que lista visível — mas não abuse, senão vira ruído.
-3. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
-   posição. Com uma cor por categoria (matiz derivado do acento, pra não
-   brigar com as paletas), o mês fica legível de relance.
-4. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
+3. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
    ontem × humor hoje" costuma ser bem mais revelador.
-5. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
+4. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
    fui?"), escondido atrás de um toque, sem poluir o check-in.
-6. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
+5. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
    ("bebi 2 às 19h e 1 às 23h"), ao custo de complicar o modelo.
-7. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
-8. **Exportar CSV** pra abrir em planilha, além do JSON.
+6. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
+7. **Exportar CSV** pra abrir em planilha, além do JSON.
+8. **Agenda que fecha o mês.** Do jeito que está, o mês vira a página em
+   silêncio. Podia ter o mesmo ritual da semana: quanto você pagou, quanto
+   entrou, o que ficou atrasado — e o mês seguinte já com os valores ajustados.
 9. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.

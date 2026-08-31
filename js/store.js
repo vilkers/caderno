@@ -5,10 +5,10 @@
    aparelho com o do repositório sem perder nem ressuscitar nada. */
 
 import * as vault from './vault.js';
-import { uid, debounce, todayKey } from './utils.js';
+import { uid, debounce, todayKey, monthKey, daysInMonth, keyOf } from './utils.js';
 import { mergeDocs } from './merge.js';
 
-export const VERSION = 2;
+export const VERSION = 3;
 
 /* Com que frequência a categoria é cobrada. É o que separa "faltou" de
    "não era pra hoje" — sem isso o progresso do dia mente. */
@@ -57,6 +57,54 @@ export const DEFAULT_CATEGORIES = () => ([
     levels: { 1: 'no fundo do poço', 2: 'mal', 3: 'normal', 4: 'bem', 5: 'dia ótimo' } },
 ].map((c, i) => ({ id: uid(), order: i, updatedAt: now(), ...c })));
 
+/* ── Agenda do mês ─────────────────────────────────────────────
+   Contas, cartões, aluguel, nota fiscal, assinaturas e o que entra:
+   tudo é o mesmo objeto — um compromisso com um dia do mês. O que muda é
+   `tipo` (onde ele aparece) e `fluxo` (se o dinheiro sai ou entra).
+   Item sem `valor` é só um compromisso: não entra em conta nenhuma. */
+
+export const AGENDA_TIPOS = {
+  conta:      { label: 'Conta de casa', emoji: '🧾', fluxo: 'saida' },
+  cartao:     { label: 'Cartão',        emoji: '💳', fluxo: 'saida' },
+  aluguel:    { label: 'Aluguel',       emoji: '🏠', fluxo: 'saida' },
+  nf:         { label: 'Trabalho',      emoji: '📄', fluxo: 'saida' },
+  assinatura: { label: 'Assinatura',    emoji: '🎧', fluxo: 'saida' },
+  evento:     { label: 'Evento',        emoji: '📌', fluxo: 'saida' },
+  renda:      { label: 'Entrada',       emoji: '💰', fluxo: 'entrada' },
+};
+
+/* Sugestões de partida. Os dias são exemplo — cada banco e cada contrato tem
+   o seu, então a tela diz isso e deixa editar na hora. */
+export const AGENDA_PRESETS = [
+  { grupo: 'CARTÕES', itens: [
+    { emoji: '💜', label: 'Cartão Nubank', tipo: 'cartao', dia: 10 },
+    { emoji: '🧡', label: 'Cartão Itaú', tipo: 'cartao', dia: 7 },
+    { emoji: '🖤', label: 'Cartão BTG', tipo: 'cartao', dia: 15 },
+  ] },
+  { grupo: 'CASA', itens: [
+    { emoji: '🏠', label: 'Aluguel', tipo: 'aluguel', dia: 5 },
+    { emoji: '🏢', label: 'Condomínio', tipo: 'conta', dia: 5 },
+    { emoji: '⚡', label: 'Luz', tipo: 'conta', dia: 12 },
+    { emoji: '💧', label: 'Água', tipo: 'conta', dia: 12 },
+    { emoji: '🌐', label: 'Internet', tipo: 'conta', dia: 20 },
+    { emoji: '🔥', label: 'Gás', tipo: 'conta', dia: 18 },
+  ] },
+  { grupo: 'TRABALHO', itens: [
+    { emoji: '📄', label: 'Emitir a NF da agência', tipo: 'nf', dia: 1 },
+    { emoji: '⏱️', label: 'Fechar as horas do mês', tipo: 'nf', dia: 30 },
+  ] },
+  { grupo: 'ASSINATURAS', itens: [
+    { emoji: '🎧', label: 'Spotify', tipo: 'assinatura', dia: 5 },
+    { emoji: '☁️', label: 'Google', tipo: 'assinatura', dia: 8 },
+    { emoji: '🎬', label: 'Netflix', tipo: 'assinatura', dia: 15 },
+    { emoji: '📦', label: 'iCloud', tipo: 'assinatura', dia: 2 },
+  ] },
+  { grupo: 'ENTRADAS', itens: [
+    { emoji: '💰', label: 'Pagamento da agência', tipo: 'renda', dia: 10 },
+    { emoji: '🧾', label: 'Freela', tipo: 'renda', repete: 'unico' },
+  ] },
+];
+
 export const blankSettings = () => ({
   palette: 'noir', motion: true, autolock: 15, showStreaks: true, weekStart: 1,
   updatedAt: now(),
@@ -78,6 +126,7 @@ export const blankState = () => ({
   categories: DEFAULT_CATEGORIES(),
   days: {},
   todos: [],
+  agenda: [],          // compromissos do mês, assinaturas e entradas
   reviews: {},         // chave da semana → como ela fechou
   badges: {},          // id da conquista → quando caiu
   levelSeen: 0,        // último nível já comemorado
@@ -143,6 +192,17 @@ export function migrate(data) {
       || b.createdAt - a.createdAt)
     .map((x, i) => ({ ...x, order: x.order ?? i }));
 
+  const agenda = (Array.isArray(data.agenda) ? data.agenda : [])
+    .map((a, i) => ({
+      repete: 'mensal', fluxo: 'saida', tipo: 'conta', emoji: '•', label: 'Compromisso',
+      ...a,
+      id: a.id || uid(),
+      order: a.order ?? i,
+      marcas: a.marcas && typeof a.marcas === 'object' ? a.marcas : {},
+      createdAt: Number(a.createdAt) || t,
+      updatedAt: Number(a.updatedAt) || t,
+    }));
+
   const profile = { ...fresh.profile, ...(data.profile || {}) };
   profile.desde = Number(data.profile?.desde) || menorData(days) || t;
   profile.updatedAt = Number(data.profile?.updatedAt) || t;
@@ -152,7 +212,7 @@ export function migrate(data) {
     rev: Number(data.rev) || 0,
     updatedAt: t,
     deviceId: data.deviceId || fresh.deviceId,
-    profile, settings, categories, days, todos,
+    profile, settings, categories, days, todos, agenda,
     reviews: data.reviews && typeof data.reviews === 'object' ? data.reviews : {},
     badges: data.badges && typeof data.badges === 'object' ? data.badges : {},
     levelSeen: Number(data.levelSeen) || 0,
@@ -412,6 +472,130 @@ export function clearDoneTodos() {
   cleared.forEach(t => { t.deletedAt = now(); t.updatedAt = now(); });
   emit('todos');
   return cleared.map(t => ({ ...t, deletedAt: undefined }));
+}
+
+/* ── Agenda do mês ─────────────────────────────────────────── */
+export const listAgenda = () => state.agenda
+  .filter(a => !a.deletedAt)
+  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+export const agendaById = id => state.agenda.find(a => a.id === id && !a.deletedAt);
+
+/** O fluxo do item — herdado do tipo quando não foi escrito. */
+export const fluxoDe = item => item?.fluxo || AGENDA_TIPOS[item?.tipo]?.fluxo || 'saida';
+
+/** Em que dia do mês esse item cai — o 31 vira o último dia de fevereiro. */
+export function diaNoMes(item, mes = monthKey()) {
+  const [y, m] = mes.split('-').map(Number);
+  if (item.repete === 'unico') {
+    return item.data && item.data.startsWith(mes) ? Number(item.data.slice(8, 10)) : null;
+  }
+  const ultimo = daysInMonth(y, m - 1);
+  return Math.min(Math.max(1, Number(item.dia) || 1), ultimo);
+}
+
+/** A data completa em que ele cai naquele mês ('2026-09-10'). */
+export function dataNoMes(item, mes = monthKey()) {
+  const dia = diaNoMes(item, mes);
+  if (!dia) return null;
+  const [y, m] = mes.split('-').map(Number);
+  return keyOf(new Date(y, m - 1, dia));
+}
+
+/** Os compromissos que acontecem naquele mês, já em ordem de dia. */
+export function agendaDoMes(mes = monthKey(), { tipos, fluxo } = {}) {
+  return listAgenda()
+    .filter(a => !a.pausado)
+    .filter(a => (a.repete === 'unico' ? (a.data || '').startsWith(mes) : true))
+    .filter(a => (tipos ? tipos.includes(a.tipo) : true))
+    .filter(a => (fluxo ? fluxoDe(a) === fluxo : true))
+    .map(a => ({ ...a, dia: diaNoMes(a, mes), data: dataNoMes(a, mes) }))
+    .sort((a, b) => (a.dia || 99) - (b.dia || 99) || (a.order ?? 0) - (b.order ?? 0));
+}
+
+/** Feito nesse mês? (pago, emitido, recebido — depende do tipo.) */
+export const agendaFeito = (item, mes = monthKey()) => !!item?.marcas?.[mes]?.feito;
+
+export function marcarAgenda(id, mes, feito = true) {
+  const a = state.agenda.find(x => x.id === id);
+  if (!a) return;
+  if (!a.marcas) a.marcas = {};
+  a.marcas[mes] = { feito: !!feito, em: now() };
+  a.updatedAt = now();
+  emit('agenda');
+}
+
+export function addAgenda(item = {}) {
+  const maior = Math.max(0, ...listAgenda().map(x => x.order ?? 0));
+  const a = {
+    id: uid(), emoji: '•', label: 'Novo compromisso', tipo: 'conta',
+    repete: 'mensal', dia: 1, data: null, valor: null, nota: '',
+    marcas: {}, order: maior + 1, createdAt: now(), updatedAt: now(),
+    ...item,
+  };
+  a.fluxo = a.fluxo || AGENDA_TIPOS[a.tipo]?.fluxo || 'saida';
+  state.agenda.push(a);
+  emit('agenda');
+  return a;
+}
+export function updateAgenda(id, patch) {
+  const a = state.agenda.find(x => x.id === id);
+  if (!a) return;
+  Object.assign(a, patch, { updatedAt: now() });
+  if (patch.tipo && !patch.fluxo) a.fluxo = AGENDA_TIPOS[patch.tipo]?.fluxo || 'saida';
+  emit('agenda');
+}
+export function removeAgenda(id) {
+  const a = state.agenda.find(x => x.id === id);
+  if (!a) return null;
+  const snapshot = { ...a };
+  a.deletedAt = now();
+  a.updatedAt = now();
+  emit('agenda');
+  return snapshot;
+}
+export function restoreAgenda(snapshot) {
+  const a = state.agenda.find(x => x.id === snapshot.id);
+  if (a) { delete a.deletedAt; Object.assign(a, snapshot, { updatedAt: now() }); }
+  else state.agenda.push({ ...snapshot, deletedAt: undefined, updatedAt: now() });
+  emit('agenda');
+}
+export function reorderAgenda(ids) {
+  ids.forEach((id, i) => {
+    const a = state.agenda.find(x => x.id === id);
+    if (a && a.order !== i) { a.order = i; a.updatedAt = now(); }
+  });
+  emit('agenda');
+}
+
+/**
+ * O mês em números. Só entra no cálculo o que tem valor escrito — o resto
+ * é compromisso, não dinheiro.
+ */
+export function contasDoMes(mes = monthKey()) {
+  const itens = agendaDoMes(mes);
+  const soma = (lista, filtro) => lista.filter(filtro).reduce((s, a) => s + (Number(a.valor) || 0), 0);
+  const saidas = itens.filter(a => fluxoDe(a) === 'saida');
+  const entradas = itens.filter(a => fluxoDe(a) === 'entrada');
+  const totalSaida = soma(saidas, () => true);
+  const pago = soma(saidas, a => agendaFeito(a, mes));
+  const totalEntrada = soma(entradas, () => true);
+  const recebido = soma(entradas, a => agendaFeito(a, mes));
+  return {
+    mes, itens,
+    saidas, entradas,
+    assinaturas: soma(saidas, a => a.tipo === 'assinatura'),
+    totalSaida, pago, aPagar: totalSaida - pago,
+    totalEntrada, recebido, aReceber: totalEntrada - recebido,
+    saldo: totalEntrada - totalSaida,
+    pendentes: itens.filter(a => !agendaFeito(a, mes)),
+    feitos: itens.filter(a => agendaFeito(a, mes)),
+  };
+}
+
+/** O que cai num dia específico — usado pelo calendário e pelo check-in. */
+export function agendaDoDia(k = todayKey()) {
+  return agendaDoMes(monthKey(k)).filter(a => a.data === k);
 }
 
 /* ── Revisão da semana ─────────────────────────────────────── */

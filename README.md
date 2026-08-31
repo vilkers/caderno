@@ -175,16 +175,62 @@ lá em cima abre o check-in completo. Rola só na vertical, e a troca de semana 
 por botão — nada de gesto lateral. É por aqui que se recupera uma semana
 inteira em menos de um minuto.
 
-**Mês** é a grade do mês com um ponto por categoria feita em cada dia (bolinha
-= hábito que você quer manter, quadradinho = hábito que você quer reduzir).
-Filtrando por uma categoria, vira mapa de calor com os valores.
+**Mês** deixou de ser um campo de bolinhas iguais. Cada dia carrega três
+informações, cada uma com uma forma própria:
 
-### Lista
-Afazeres soltos: escreva e dê Enter. Toque no quadrado pra concluir, no texto
+- **anel** em volta do número — quanto do que era obrigatório naquele dia foi
+  fechado (é a cobrança do dia, do vazio ao anel inteiro);
+- **barra embaixo** — quantas marcações o dia teve, comparado com o resto do
+  mês: lado a lado, os dias viram um gráfico de barras da sua constância;
+- **ponto no canto** — tinha compromisso do mês caindo ali (conta, cartão, NF);
+  fica apagado quando você já resolveu.
+
+Tocar num dia abre uma **prévia**: o que foi marcado, o que faltou, a anotação,
+os compromissos daquele dia (com um toque pra resolver) e os botões de fechar
+ou abrir o dia — em vez de sair do calendário no primeiro toque. Embaixo, dias
+registrados semana a semana e o anel do mês. Filtrando por uma categoria, tudo
+isso dá lugar ao mapa de calor dela, com a linha do mês.
+
+### Agenda do mês
+O que não é rotina mas volta todo mês num dia certo: aluguel, cartões (Nubank,
+Itaú, BTG…), contas de casa, a NF da agência — e também os eventos que
+acontecem uma vez só. Cada item tem dia do mês, valor opcional e um toque pra
+marcar como resolvido; **a marcação vale por mês**, então em setembro tudo
+volta em aberto sozinho.
+
+A tela mostra o mês inteiro em ordem de dia, quanto já foi resolvido, quanto
+sai e quanto entra, e o que passou do dia. Quem cria e edita é **Ajustes →
+Agenda do mês**, ao lado das categorias da rotina — é a mesma pergunta ("o que
+este caderno cobra de mim?"), só que a rotina cobra todo dia e a agenda cobra
+no dia. Tem sugestões prontas pra montar em alguns toques; os dias vêm de
+exemplo e você ajusta pro seu vencimento.
+
+Os compromissos do dia aparecem no check-in numa faixa própria, e no
+calendário como uma marca no canto do dia. Eles **não entram no progresso da
+rotina** de propósito: pagar o aluguel não é hábito, e misturar as duas coisas
+faria a barra do dia mentir.
+
+### Pessoal — afazeres, assinaturas e carteira
+Três coisas que não são rotina mas ocupam a mesma cabeça:
+
+**Afazeres.** A lista de sempre, integrada ao app inteiro: escreva e dê Enter. Toque no quadrado pra concluir, no texto
 pra editar no lugar, e **arraste pelo punho (⠿) pra ordenar** — quem prefere
 teclado usa ↑ ↓ com o punho focado. A ordem que você deixar é a que fica; a
 estrela virou destaque, não muda mais o lugar. As abertas aparecem também no
 fim do check-in do dia. As categorias em Ajustes se reordenam do mesmo jeito.
+
+**Assinaturas.** Spotify, Google, Netflix, iCloud — o que debita sozinho todo
+mês. Junto, mostra quanto some da conta sem você fazer nada, por mês e por ano,
+com as maiores em barras. Elas não aparecem na lista de afazeres da Agenda
+(não há o que fazer), mas contam no dinheiro do mês.
+
+**Carteira.** O que você tem pra receber neste mês: o pagamento da agência, um
+freela. Marca quando cai, e compara com tudo que sai — "sobra prevista" ou
+"faltam tanto pra fechar o mês".
+
+Assinaturas e carteira são gestão pessoal e ficam **fora do XP e das metas** de
+propósito: dinheiro não é hábito, e transformar conta em pontuação faria de uma
+coisa chata uma coisa chata e barulhenta.
 
 ### Nível e conquistas
 Um contador de XP tirado dos próprios dados — dia registrado, dia fechado,
@@ -206,10 +252,11 @@ calculado no seu navegador, em cima dos seus dados.
 ### Navegação
 Três camadas, para a barra de baixo não virar depósito:
 
-- **Embaixo, a rotina** — Hoje, Mês, Lista, Metas. O que se toca todo dia.
+- **Embaixo, a rotina** — Hoje, Mês, Pessoal, Metas. O que se toca todo dia.
 - **No topo, você e a leitura** — o avatar abre o **Perfil**, e ao lado ficam
   o estado da sincronia, o atalho de **Insights** e o **menu**.
-- **No menu, a configuração** — Perfil, Insights, Metas, Ajustes, Paleta,
+- **No menu, a configuração** — Perfil, Retrospectiva, Insights, Marcação
+  rápida, Revisão da semana, **Agenda do mês**, Metas, Ajustes, Paleta,
   Caderno 2.0 e Trancar, agrupados por assunto.
 
 As telas secundárias trazem **← voltar**, e a navegação usa o histórico do
@@ -247,12 +294,25 @@ dia. O aviso do lembrete e o atalho `?v=rapido` caem direto nela, então dá pra
 guardar isso como atalho na tela de início do celular: um toque, marca, pronto.
 
 ### Retrospectiva
-Uma tela por vez, tipografia grande entrando palavra a palavra e o número
-subindo: dias em que você apareceu, maior sequência, o que mais fez, seu dia
-da semana, horas somadas, dias limpos, tarefas riscadas e onde você está na
-régua. Toque na direita avança, na esquerda volta; setas e deslizar também.
-Cartão sem dado não entra — retrospectiva com zero em tudo é constrangedora.
-Fica em **Perfil → Retrospectiva** ou no menu.
+Uma tela por vez, tipografia grande entrando palavra a palavra, número subindo
+— e agora **um gráfico por cartão**, entrando depois do texto, como quem
+completa a frase:
+
+- a capa é a **malha de todos os dias** do período, um quadradinho cada,
+  acendendo em cascata;
+- "você apareceu" ganha o **anel** da sua taxa de presença;
+- a sequência vira uma **corrente de elos** que acende em fila;
+- "o que você mais fez" vira **barras** comparando as cinco primeiras;
+- o dia da semana vira **colunas**, com o seu dia destacado;
+- dias limpos são outra **malha**, só dos dias registrados;
+- assinaturas viram **barras** por valor, e o mês da agenda vira **anel**;
+- o nível vira a **escada dos oito degraus**, com você em um deles e a barra do
+  quanto falta pro próximo;
+- o fecho traz um **placar** com os quatro números do período.
+
+Toque na direita avança, na esquerda volta; setas e deslizar também. Cartão sem
+dado não entra — retrospectiva com zero em tudo é constrangedora. Fica em
+**Perfil → Retrospectiva** ou no menu.
 
 ### Perfil
 Nome, uma frase sua e foto — reduzida a 192px e guardada **dentro do cofre**,
@@ -262,12 +322,13 @@ nível e conquistas.
 
 ### Ajustes
 Sincronia com o repositório, paleta (8 opções), categorias (criar, editar,
-reordenar, arquivar, apagar), metas, **lembrete do dia**, início da semana,
+reordenar, arquivar, apagar), **agenda do mês**, metas, **lembrete do dia**,
+início da semana,
 movimento ligado/desligado, trava automática, troca de senha e backup.
 
 ## Atalhos (teclado)
 
-`1`–`7` trocam de tela · `←` `→` mudam o dia · `t` volta pra hoje ·
+`1`–`9` e `0` trocam de tela · `←` `→` mudam o dia · `t` volta pra hoje ·
 `f` fecha/reabre o dia · `l` tranca · `Esc` volta.
 
 Ações destrutivas (apagar tarefa, apagar categoria, limpar concluídas,
@@ -336,6 +397,10 @@ js/resumo.js            o cálculo da retrospectiva
 js/lembrete.js          o aviso do fim do dia (permissão, horário, selo)
 js/idb.js               a gaveta em claro que o worker lê (só contagem)
 js/views/revisao.js     o ritual de fechar a semana
+js/graficos.js          anéis, barras, colunas, malhas e trilhas (sem lib)
+js/views/agenda.js      o mês pontual: contas, cartões, NF, eventos
+js/views/agendaform.js  a caixa que cria e edita um compromisso
+tools/test-agenda.mjs   calendário e dinheiro do mês — node tools/test-agenda.mjs
 tools/test-merge.mjs    teste da junção — node tools/test-merge.mjs
 tools/test-contraste.mjs contraste WCAG de todas as paletas
 ```

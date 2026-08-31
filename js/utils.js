@@ -98,3 +98,18 @@ export const lastNDays = (n, end = todayKey()) =>
 
 export const nf = (n, dec = 0) =>
   Number(n).toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+/** Chave do mês: '2026-09'. */
+export const monthKey = (k = todayKey()) => k.slice(0, 7);
+export const monthLabel = (mk) => {
+  const [y, m] = mk.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${y}`;
+};
+export const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+
+/** Dinheiro em real. Sem centavos quando são zero — a tela fica mais limpa. */
+export const moeda = (v, { cents } = {}) => {
+  const n = Number(v) || 0;
+  const dec = cents ?? (Math.abs(n % 1) > 0.001 ? 2 : 0);
+  return `R$ ${nf(n, dec)}`;
+};

@@ -2,7 +2,7 @@
    editáveis, preferências, senha e backup. Tudo o que muda a forma do
    caderno mora aqui. */
 
-import { el } from '../utils.js';
+import { el, moeda } from '../utils.js';
 import * as store from '../store.js';
 import { TYPES, CADENCIAS } from '../store.js';
 import * as vault from '../vault.js';
@@ -11,6 +11,7 @@ import * as lembrete from '../lembrete.js';
 import { PALETTES, applyPalette } from '../palettes.js';
 import { toast, openSheet, confirmSheet, stagger } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
+import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
 
 export function render(ctx) {
   const view = el('div.view');
@@ -82,6 +83,9 @@ export function render(ctx) {
     ]),
   ])));
 
+  /* ── Agenda do mês ── */
+  view.append(section('AGENDA DO MÊS', agendaBox(ctx), 'agenda'));
+
   /* ── Lembrete ── */
   view.append(section('LEMBRETE DO DIA', lembreteBox(ctx)));
 
@@ -141,7 +145,81 @@ export function render(ctx) {
   }));
 
   stagger(view, '.section');
+
+  // chegou aqui pedindo uma seção específica (veio da Agenda, por exemplo)
+  if (ctx.ajustesFoco) {
+    const alvo = ctx.ajustesFoco;
+    ctx.ajustesFoco = null;
+    setTimeout(() => {
+      const sec = view.querySelector(`#sec-${alvo}`);
+      if (!sec) return;
+      sec.classList.add('vis', 'is-alvo');
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => sec.classList.remove('is-alvo'), 2200);
+    }, 120);
+  }
   return view;
+}
+
+/* ── Agenda do mês ─────────────────────────────────────────── */
+/* Fica aqui, junto das categorias, porque é a mesma pergunta: o que este
+   caderno cobra de mim? A rotina cobra todo dia; a agenda cobra no dia. */
+function agendaBox(ctx) {
+  const box = el('div');
+  const itens = store.listAgenda();
+
+  box.append(el('p', {
+    style: { color: 'var(--dim)', fontSize: '.9rem', marginBottom: '1rem', maxWidth: '52ch' },
+    text: 'O que acontece todo mês num dia certo: aluguel, cartões, contas de casa, a nota fiscal da agência — e também as assinaturas e o que entra. Aparece no calendário, no dia, e na tela da Agenda.',
+  }));
+
+  if (itens.length) {
+    const lista = el('div.cats');
+    itens.forEach(a => lista.append(el('div.cat', { 'data-id': a.id }, [
+      el('button.cat__pega', {
+        type: 'button', 'aria-label': `Mover ${a.label}`, title: 'Arraste para ordenar (ou use ↑ ↓)',
+        html: '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">'
+          + [4, 8, 12].map(y => [5, 11].map(x => `<circle cx="${x}" cy="${y}" r="1.4"/>`).join('')).join('')
+          + '</svg>',
+      }),
+      el('span.cat__i', { text: a.emoji || '•' }),
+      el('span.cat__n', { text: a.label }),
+      el('span.cat__t', {
+        text: [
+          a.repete === 'unico' ? (a.data || 'sem data') : `dia ${a.dia}`,
+          store.AGENDA_TIPOS[a.tipo]?.label || a.tipo,
+          a.valor ? moeda(a.valor) : '',
+        ].filter(Boolean).join(' · '),
+      }),
+      el('button.btn.btn--sm', {
+        type: 'button', onclick: () => editarCompromisso(a, () => ctx.rerender()),
+      }, [el('span', { text: 'editar' })]),
+    ])));
+    listaArrastavel(lista, {
+      itemSel: '.cat', pegaSel: '.cat__pega',
+      aoSoltar: ids => { store.reorderAgenda(ids); toast('ordem salva'); },
+    });
+    box.append(lista);
+  } else {
+    box.append(el('div.empty', {}, [
+      el('b', { text: 'Agenda vazia' }),
+      el('p', { text: 'Comece pelas sugestões — dá pra ajustar o dia e o valor de cada uma depois.' }),
+    ]));
+  }
+
+  box.append(el('div.wrap', { style: { marginTop: '.8rem' } }, [
+    el('button.btn.btn--sm.btn--solid', {
+      type: 'button', onclick: () => editarCompromisso(null, () => ctx.rerender()),
+    }, [el('span', { text: '+ novo compromisso' })]),
+    el('button.btn.btn--sm', {
+      type: 'button', onclick: () => sugestoesAgenda(() => ctx.rerender()),
+    }, [el('span', { text: 'sugestões' })]),
+    itens.length
+      ? el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.go('agenda') }, [el('span', { text: 'ver o mês' })])
+      : null,
+  ].filter(Boolean)));
+
+  return box;
 }
 
 /* ── Lembrete ──────────────────────────────────────────────── */
@@ -615,7 +693,7 @@ function selectRow(title, desc, options, value, onChange) {
   sel.addEventListener('change', () => onChange(sel.value));
   return row(title, desc, sel);
 }
-const section = (title, body) => el('div.section', {}, [
+const section = (title, body, id = null) => el('div.section', { id: id ? `sec-${id}` : null }, [
   el('div.section__h', {}, [el('p.micro', { text: title })]),
   body,
 ]);

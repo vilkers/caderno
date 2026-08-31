@@ -31,16 +31,16 @@
       "description": "Abrir direto a marcação rápida do que falta"
     },
     {
-      "name": "Check-in de hoje",
-      "short_name": "Hoje",
-      "url": "./?v=hoje",
-      "description": "Abrir o formulário do dia"
+      "name": "Agenda do mês",
+      "short_name": "Agenda",
+      "url": "./?v=agenda",
+      "description": "Contas, cartões e o que vence este mês"
     },
     {
-      "name": "Lista de afazeres",
-      "short_name": "Lista",
+      "name": "Organização pessoal",
+      "short_name": "Pessoal",
       "url": "./?v=lista",
-      "description": "Abrir a lista de tarefas"
+      "description": "Afazeres, assinaturas e carteira"
     },
     {
       "name": "Preencher a semana",

@@ -120,5 +120,31 @@ console.log('perfil');
   ok(doc.profile.nome === 'Daqui', 'perfil mais novo daqui não é sobrescrito');
 }
 
+console.log('agenda do mês');
+{
+  const item = (extra = {}) => ({ id: 'c1', label: 'Cartão', dia: 10, updatedAt: T, marcas: {}, ...extra });
+  // cada aparelho marcou um mês diferente: os dois têm de valer
+  const local = base({ agenda: [item({ marcas: { '2026-09': { feito: true, em: T + 10 } } })] });
+  const remote = base({ agenda: [item({ marcas: { '2026-10': { feito: true, em: T + 20 } } })] });
+  const { doc } = mergeDocs(local, remote, T + 30);
+  ok(doc.agenda.length === 1, 'o item não duplica');
+  ok(doc.agenda[0].marcas['2026-09']?.feito && doc.agenda[0].marcas['2026-10']?.feito,
+     'as marcas dos dois aparelhos convivem');
+}
+{
+  // desmarcar depois vence dentro do mesmo mês
+  const local = base({ agenda: [{ id: 'c1', updatedAt: T, marcas: { '2026-09': { feito: true, em: T } } }] });
+  const remote = base({ agenda: [{ id: 'c1', updatedAt: T, marcas: { '2026-09': { feito: false, em: T + 99 } } }] });
+  const { doc } = mergeDocs(local, remote, T + 100);
+  ok(doc.agenda[0].marcas['2026-09'].feito === false, 'no mesmo mês vale a marca mais nova');
+}
+{
+  const local = base({ agenda: [{ id: 'a', label: 'Luz', updatedAt: T }] });
+  const remote = base({ agenda: [{ id: 'a', label: 'Luz e força', updatedAt: T + 5 }, { id: 'b', label: 'Água', updatedAt: T }] });
+  const { doc, changed } = mergeDocs(local, remote, T + 10);
+  ok(doc.agenda.find(x => x.id === 'a').label === 'Luz e força', 'edição mais nova vence');
+  ok(doc.agenda.length === 2 && changed, 'compromisso do outro aparelho entra');
+}
+
 console.log(falhas ? `\n${falhas} teste(s) falharam` : '\ntodos os testes passaram');
 process.exit(falhas ? 1 : 0);

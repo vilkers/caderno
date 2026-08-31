@@ -15,7 +15,8 @@ const v1 = {
 const out = migrate(v1);
 let falhas = 0;
 const ok = (c, n) => { console.log((c ? '  ok  ' : '  FALHOU ') + n); if (!c) falhas++; };
-ok(out.version === 2, 'versão vira 2');
+ok(out.version === 3, 'versão vira 3');
+ok(Array.isArray(out.agenda) && out.agenda.length === 0, 'documento antigo ganha agenda vazia');
 ok(out.settings.palette === 'oceano' && out.settings.autolock === 5, 'preferências preservadas');
 ok(out.settings.weekStart === 1, 'início de semana ganha padrão');
 ok(out.settings.sync && out.settings.sync.enabled === false, 'bloco de sincronia criado desligado');
@@ -27,6 +28,17 @@ ok(out.todos[0].text === 'pagar luz' && out.todos[0].star === true, 'tarefa pres
 ok(out.todos[0].updatedAt > 0, 'tarefa ganha updatedAt');
 const vazio = migrate(null);
 ok(vazio.categories.length === 9 && vazio.days && vazio.todos.length === 0, 'documento nulo vira caderno novo');
+
+{
+  const doc = migrate({ ...v1, agenda: [
+    { label: 'Aluguel', dia: 5 },
+    { id: 'x', label: 'Netflix', tipo: 'assinatura', dia: 15, valor: 44.9, marcas: { '2026-09': { feito: true, em: 1 } } },
+  ] });
+  ok(doc.agenda.length === 2, 'agenda atravessa a migração');
+  ok(!!doc.agenda[0].id && doc.agenda[0].repete === 'mensal' && doc.agenda[0].tipo === 'conta',
+     'compromisso sem campos ganha id, tipo e repetição');
+  ok(doc.agenda[1].marcas['2026-09'].feito === true, 'as marcas do mês sobrevivem');
+}
 
 console.log(falhas ? `\n${falhas} teste(s) falharam` : '\ntodos os testes passaram');
 process.exit(falhas ? 1 : 0);

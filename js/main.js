@@ -23,11 +23,12 @@ import * as viewPerfil from './views/perfil.js';
 import * as viewResumo from './views/resumo.js';
 import * as viewRevisao from './views/revisao.js';
 import * as viewSettings from './views/settings.js';
+import * as viewAgenda from './views/agenda.js';
 
 const VIEWS = {
   hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
   insights: viewInsights, ajustes: viewSettings, perfil: viewPerfil,
-  resumo: viewResumo, revisao: viewRevisao,
+  resumo: viewResumo, revisao: viewRevisao, agenda: viewAgenda,
 };
 /* embaixo fica a rotina; o resto se alcança pelo topo e pelo menu */
 const PRIMARIAS = ['hoje', 'mes', 'lista', 'metas'];
@@ -242,7 +243,7 @@ function wire() {
     if ($('#app').hidden) return;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo', 9: 'revisao' };
+    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo', 9: 'revisao', 0: 'agenda' };
     if (keys[e.key]) { ctx.go(keys[e.key]); return; }
     if (e.key === 'Escape' && ctx.view !== 'hoje' && $('#sheet').hidden) { ctx.voltar(); return; }
     if (ctx.view === 'hoje') {
@@ -415,6 +416,7 @@ function menuSheet() {
       grupo('CADERNO', [
         item('hoje', 'Marcação rápida', 'Só o que falta hoje, numa caixa só.', () => { close(); marcacaoRapida(); }),
         item('revisao', 'Revisão da semana', 'Fechar a semana e ajustar as metas da próxima.', () => ir('revisao')),
+        item('mes', 'Agenda do mês', 'Contas, cartões, aluguel, NF — o que vence e o que entra.', () => ir('agenda')),
         item('metas', 'Metas e cobrança', 'O que o dia exige e o que é da semana.', () => ir('metas')),
         item('ajustes', 'Ajustes', 'Categorias, sincronia, senha e backup.', () => ir('ajustes')),
         item('paleta', 'Paleta', 'Trocar as cores do app.', () => { close(); paletteSheet(); }),

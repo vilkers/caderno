@@ -5,9 +5,11 @@
    fazem o mesmo. Enquanto ela está aberta o app some — é o único lugar do
    caderno que pede a tela inteira. */
 
-import { el } from '../utils.js';
+import { el, nf } from '../utils.js';
 import { cartoes, PERIODOS } from '../resumo.js';
 import { countUp, motionOn, onSwipe } from '../ui.js';
+import { anel, barras, colunas, malha, trilha, barraProgresso } from '../graficos.js';
+import { LEVELS } from '../badges.js';
 
 export function render(ctx) {
   const periodo = ctx.resumoPeriodo || 'tudo';
@@ -106,6 +108,8 @@ function cartao(c, indice) {
   });
   caixa.append(texto);
 
+  if (c.g) caixa.append(grafico(c.g));
+
   if (c.nota) caixa.append(el('p.card__nota', { text: c.nota }));
 
   if (c.capa) caixa.append(el('p.card__dica.micro', { text: motionOn() ? 'TOQUE PARA COMEÇAR →' : 'TOQUE PARA AVANÇAR →' }));
@@ -121,4 +125,61 @@ function cartao(c, indice) {
     }, [el('span', { text: 'voltar pro caderno' })]));
   }
   return caixa;
+}
+
+/* ── O desenho de cada cartão ──────────────────────────────── */
+/* O número já está escrito em corpo gigante; o gráfico serve pra dar a
+   proporção — quanto de um todo, comparado com o quê, distribuído como. */
+function grafico(g) {
+  const caixa = el('div.card__g');
+  const espera = 620;   // entra depois do texto, não junto
+
+  if (g.tipo === 'anel') {
+    caixa.append(el('div.card__g-linha', {}, [
+      anel(g.pct, { tamanho: 108, espessura: 11, texto: `${Math.round(g.pct * 100)}%`, atraso: espera }),
+      g.legenda ? el('p.micro', { text: g.legenda.toUpperCase() }) : null,
+    ]));
+  } else if (g.tipo === 'barras') {
+    caixa.append(barras(g.itens, { atraso: espera }));
+  } else if (g.tipo === 'colunas') {
+    caixa.append(colunas(g.valores, { labels: g.labels, destaque: g.destaque, altura: 108, atraso: espera }));
+  } else if (g.tipo === 'malha') {
+    caixa.append(malha(g.itens, { atraso: espera }));
+    const feitos = g.itens.filter(i => i.on).length;
+    caixa.append(el('p.micro', { text: `${feitos} DE ${g.itens.length} QUADRADINHOS` }));
+  } else if (g.tipo === 'trilha') {
+    caixa.append(trilha(g.n, { max: 24, atraso: espera }));
+  } else if (g.tipo === 'escada') {
+    caixa.append(escada(g, espera));
+  } else if (g.tipo === 'placar') {
+    caixa.append(el('div.card__placar', {}, g.itens.map(([n, l], i) => {
+      const num = el('span.card__placar-n.num', { text: motionOn() ? '0' : String(n) });
+      if (motionOn()) countUp(num, n, { ms: 900 });
+      return el('div.card__placar-i', { style: { '--i': String(i) } }, [num, el('span.micro', { text: l })]);
+    })));
+  }
+  return caixa;
+}
+
+/* A régua dos oito níveis, com você em algum degrau dela. */
+function escada(g, espera) {
+  const caixa = el('div.card__escada');
+  LEVELS.forEach((nivel, i) => {
+    const degrau = el('span.card__degrau' + (i < g.atual ? '.is-feito' : i === g.atual ? '.is-atual' : ''), {
+      title: nivel.name,
+      style: { '--i': String(i), height: `${28 + i * 7}px` },
+    });
+    caixa.append(degrau);
+  });
+  return el('div.card__g-linha', {}, [
+    caixa,
+    el('div.card__escada-pe', {}, [
+      barraProgresso(g.pct, { atraso: espera + 200 }),
+      el('p.micro', {
+        text: g.atual + 1 < LEVELS.length
+          ? `${Math.round(g.pct * 100)}% ATÉ ${LEVELS[g.atual + 1].name.toUpperCase()}`
+          : 'ÚLTIMO DEGRAU DA RÉGUA',
+      }),
+    ]),
+  ]);
 }

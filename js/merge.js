@@ -23,6 +23,33 @@ export function mergeById(localList = [], remoteList = [], now = Date.now()) {
   return [...out.values()].filter(i => !(i.deletedAt && now - i.deletedAt > TOMB_TTL));
 }
 
+/**
+ * A agenda junta-se por item, mas as marcas de cada mês ("paguei o cartão em
+ * setembro") são independentes entre si: se um aparelho marcou setembro e o
+ * outro outubro, os dois valem. Dentro do mesmo mês vale a marca mais nova.
+ */
+export function mergeAgenda(localList = [], remoteList = [], now = Date.now()) {
+  const porId = new Map();
+  for (const item of [...localList, ...remoteList]) if (item?.id) {
+    const anterior = porId.get(item.id);
+    porId.set(item.id, anterior ? newer(anterior, item) : item);
+  }
+  for (const [id, item] of porId) {
+    const marcas = {};
+    for (const lado of [localList, remoteList]) {
+      const dele = lado.find(x => x?.id === id)?.marcas || {};
+      for (const [mes, m] of Object.entries(dele)) {
+        const atual = marcas[mes];
+        if (!atual || Number(m?.em || 0) > Number(atual.em || 0)) marcas[mes] = m;
+      }
+    }
+    porId.set(id, { ...item, marcas });
+  }
+  return [...porId.values()]
+    .filter(i => !(i.deletedAt && now - i.deletedAt > TOMB_TTL))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
 /** Junta os dias: a chave é a data, ganha o registro editado por último. */
 export function mergeDays(localDays = {}, remoteDays = {}) {
   const out = { ...localDays };
@@ -46,6 +73,7 @@ export function mergeDocs(local, remote, now = Date.now()) {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const todos = mergeById(local.todos, remote.todos, now)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const agenda = mergeAgenda(local.agenda, remote.agenda, now);
 
   // preferências são do aparelho, mas o lado editado por último vence
   // a configuração de sincronia é sempre deste aparelho (guarda o token)
@@ -74,11 +102,11 @@ export function mergeDocs(local, remote, now = Date.now()) {
     version: Math.max(local.version || 2, remote.version || 2),
     rev: Math.max(local.rev || 0, remote.rev || 0) + 1,
     updatedAt: Math.max(local.updatedAt || 0, remote.updatedAt || 0, now),
-    profile, settings, categories, days, todos, reviews, badges,
+    profile, settings, categories, days, todos, agenda, reviews, badges,
   };
 
-  const changed = JSON.stringify([local.days, local.categories, local.todos])
-                !== JSON.stringify([doc.days, doc.categories, doc.todos]);
+  const changed = JSON.stringify([local.days, local.categories, local.todos, local.agenda])
+                !== JSON.stringify([doc.days, doc.categories, doc.todos, doc.agenda]);
   return { doc, changed };
 }
 
