@@ -34,7 +34,10 @@ export function render(ctx) {
   const topo = el('div.resumo__topo', {}, [
     trilhas,
     el('div.resumo__acoes', {}, [
-      el('div.chips', {}, PERIODOS.map(p =>
+      /* Trocar o período é uma decisão da capa: depois que a história
+         começou, o seletor competia com o cartão em todas as nove telas.
+         Some ao virar a página e volta ao voltar pro começo. */
+      el('div.chips.resumo__periodos', {}, PERIODOS.map(p =>
         el('button.chip' + (periodo === p.id ? '.is-on' : ''), {
           type: 'button', text: p.label,
           onclick: e => { e.stopPropagation(); ctx.resumoPeriodo = p.id; ctx.resumoIndice = 0; ctx.rerender(); },
@@ -51,6 +54,7 @@ export function render(ctx) {
     });
     palco.replaceChildren(cartao(c, i));
     palco.dataset.cartao = c.id;
+    topo.querySelector('.resumo__periodos').hidden = i !== 0;
   };
 
   const vai = passo => {
@@ -136,19 +140,19 @@ function grafico(g) {
 
   if (g.tipo === 'anel') {
     caixa.append(el('div.card__g-linha', {}, [
-      anel(g.pct, { tamanho: 108, espessura: 11, texto: `${Math.round(g.pct * 100)}%`, atraso: espera }),
+      anel(g.pct, { tamanho: 168, espessura: 15, texto: `${Math.round(g.pct * 100)}%`, atraso: espera }),
       g.legenda ? el('p.micro', { text: g.legenda.toUpperCase() }) : null,
     ]));
   } else if (g.tipo === 'barras') {
     caixa.append(barras(g.itens, { atraso: espera }));
   } else if (g.tipo === 'colunas') {
-    caixa.append(colunas(g.valores, { labels: g.labels, destaque: g.destaque, altura: 108, atraso: espera }));
+    caixa.append(colunas(g.valores, { labels: g.labels, destaque: g.destaque, altura: 168, atraso: espera }));
   } else if (g.tipo === 'malha') {
     caixa.append(malha(g.itens, { atraso: espera }));
     const feitos = g.itens.filter(i => i.on).length;
     caixa.append(el('p.micro', { text: `${feitos} DE ${g.itens.length} QUADRADINHOS` }));
   } else if (g.tipo === 'trilha') {
-    caixa.append(trilha(g.n, { max: 24, atraso: espera }));
+    caixa.append(trilha(g.n, { max: 21, atraso: espera }));
   } else if (g.tipo === 'escada') {
     caixa.append(escada(g, espera));
   } else if (g.tipo === 'placar') {
@@ -167,7 +171,7 @@ function escada(g, espera) {
   LEVELS.forEach((nivel, i) => {
     const degrau = el('span.card__degrau' + (i < g.atual ? '.is-feito' : i === g.atual ? '.is-atual' : ''), {
       title: nivel.name,
-      style: { '--i': String(i), height: `${28 + i * 7}px` },
+      style: { '--i': String(i), height: `${40 + i * 11}px` },
     });
     caixa.append(degrau);
   });

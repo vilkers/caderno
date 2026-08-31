@@ -25,6 +25,119 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 14 — o sistema por baixo, e o dia da semana
+
+Duas frentes ao mesmo tempo: fechar os seis pontos que a crítica visual da
+rodada 13 deixou em aberto, e resolver o nó que você levantou — "todas as
+tarefas acabam sendo diárias, quero cadastrar terapia toda terça".
+
+### O nó dos três conceitos
+
+Um agente de UX e design analisou o modelo antes de eu escrever qualquer
+linha, porque "terapia toda terça" cabia em três lugares diferentes:
+categoria de rotina, tarefa da lista ou compromisso do mês. **O veredito foi
+que não era falha de modelo** — era uma cadência faltando e um campo (`due`)
+que existia desde a rodada 3 e nunca tinha sido ligado.
+
+Depois da decisão, os três em uma frase cada:
+
+- **Categoria** — uma pergunta que o caderno te faz de novo e de novo, num
+  ritmo; vira série histórica (sequência, meta, insight, XP).
+- **Tarefa** — uma coisa que acaba: nasce, tem no máximo *uma* data marcada,
+  é riscada e some.
+- **Compromisso** — uma data do mês que volta sozinha e pode carregar
+  dinheiro; você não completa, resolve — e no mês que vem volta em aberto.
+
+Terapia é categoria: repete sem fim (não é tarefa), não tem valor nem marca
+por mês (não é compromisso), e é exatamente o tipo de coisa que você quer ver
+em série. Só categoria dá sequência, meta e insight.
+
+**O que não fiz de propósito:** tarefa que se repete. Exigiria um segundo
+motor de recorrência dentro de `todos`, ao lado do que a agenda já faz com
+`marcas[mes]`. *Dois motores de repetição* — isso sim seria falha de modelo.
+
+**Dívida assumida:** `currentStreak` anda dia a dia, então uma categoria de
+terça vai ter sequência ≤ 1 até eu contá-la por ocorrência.
+
+### O que entrou
+
+1. **`cat.dias`** — lista de 0 (dom) a 6 (sáb), válida só em cadência diária;
+   **vazia ou ausente significa todos os sete**, que é como o app sempre
+   funcionou, e por isso a migração é nenhuma. No editor são sete chaves,
+   todas ligadas por padrão. Na segunda, terapia sai da conta do dia e o
+   cartão fica apagado com `TER` ao lado; marcada assim mesmo, conta como
+   extra — consulta remarcada é consulta.
+2. **A agenda saiu de Ajustes.** Ajustes guarda *configuração*; compromisso é
+   *conteúdo*, um item com data e valor que nasce e morre. Foi tudo pra aba
+   Contas, junto do dinheiro, com uma linha ao pé — "todos os compromissos" —
+   que é a única porta pros pausados e pros únicos de outros meses, e onde se
+   pausa um item sem apagar o histórico. Ficou pra trás de propósito o
+   **arrastar da agenda**: a ordem de uma agenda é a data, e ninguém arrasta
+   vencimento.
+3. **`todo.due`** — uma data por tarefa e nunca repetição. Quando tem data,
+   ela ocupa o lugar do ícone na linha (393px não comporta uma quarta ação); a
+   tarefa sobe na lista quando o dia chega, marca um quadradinho vazado no
+   calendário e encabeça o "na lista hoje". **Não entra no `dayStatus`**: o
+   painel responde "a rotina está em ordem?", e ser cobrado por "comprar
+   ração" treinaria você a ignorar a peça mais cara do app.
+4. **Criar tocando no dia** — quatro portas na prévia. Tarefa não abre
+   formulário nenhum (campo inline, dois toques); as outras abrem o editor
+   *encolhido*, porque o botão que você apertou já era a pergunta "que tipo
+   é". Um formulário de quatro perguntas virou um de uma.
+
+### Bugs achados no caminho
+
+- **`ctx.go('agenda')` não existia mais.** A rota sumiu do roteador quando a
+  Agenda virou aba de Pessoal, na rodada 12 — o "ver o mês" do check-in e o de
+  Ajustes eram botões que não faziam nada desde então.
+- **Folha fechada engolia a folha seguinte.** `closeSheet` marca
+  `hidden = true` num `setTimeout` de 300ms; quem fechava uma e abria outra na
+  sequência via a nova sumir sozinha, porque o temporizador da anterior ainda
+  estava a caminho. Só apareceu porque o "criar pelo calendário" faz
+  exatamente isso.
+
+### Os seis pontos da crítica visual
+
+1. **Espaço e raio viraram token**, como a tipografia na rodada 12: 25 valores
+   de `gap` e 30 de `padding` encostaram numa grade de 4px (`--s-1` a `--s-8`),
+   e 12 raios de canto viraram cinco que dizem *o que a coisa é* (`--r-fio`,
+   `--r-ctrl`, `--r-card`, `--r-painel`, `--r-pill`). Os três valores de
+   levantar no hover (−1, −2, −3px) viraram `--lift`.
+2. **As colisões da escala sumiram.** `--t-titulo` (27,2px) e `--t-num` (26px)
+   eram o mesmo degrau com nomes diferentes — viraram um. `--d-md` (22,4px)
+   brigava com `--t-destaque` (21px) e não era usado em lugar nenhum: saiu. E
+   os `clamp()` do display, que no telefone nunca saíam do mínimo (`6vw` só
+   cruza `2rem` aos 533px de tela), viraram degraus fixos com salto declarado
+   em 600px e 900px — que é o que de fato acontecia.
+3. **Um controle por pergunta no check-in.** Sono empilhava passo + régua +
+   chips; Maconha, passo + chips. Agora horas é a régua com o número grande em
+   cima, contagem é o passo, e a escala de 0 a 10 virou **medidor** — colunas
+   que enchem até onde você tocou, sem dígito dentro. Onze botõezinhos
+   numerados liam como teclado, e ninguém digita o humor.
+4. **Movimento mais curto.** O `stagger` ia até 18 itens a 45ms: o último
+   chegava 810ms depois do toque e, com a animação de 600ms em cima, a lista
+   só assentava perto de 1,4s. O teto virou 8. O wipe de tela caiu de .6s pra
+   .4s, o giro de 360° a cada hábito marcado saiu, e a dica da retrospectiva
+   parou de piscar pra sempre — entra uma vez e fica quieta.
+5. **Uma forma só pra "sim".** Sobravam dois `<input type=checkbox>` nativos
+   (Metas e o editor de categoria) ao lado das quatro formas desenhadas — eram
+   o único componente sem desenho no app. Viraram o interruptor da casa, agora
+   uma peça só em `ui.js` que as três telas importam.
+6. **A retrospectiva ganhou composição.** A altura mudou de dentro do cartão
+   pro palco, então cada tela ocupa o que precisa em vez de abrir 400px de
+   vazio; capa se centra, cartão de gráfico agrupa em duas famílias (texto no
+   alto, desenho e frase flutuando no que sobra), o de fechamento encosta no
+   rodapé. Os chips de período viraram decisão da capa e somem ao virar a
+   página. O anel dobrou de tamanho, a escada e a corrente cresceram junto. E
+   a capa deixou de dizer "70" três vezes: a malha passou a ter **tom** — o
+   quanto de cada dia você fechou —, em vez de 70 quadrados no acento puro,
+   que era textura, não informação.
+
+Nos números: nove degraus de corpo distintos e zero tamanho fora da escala nas
+quatro telas principais (o avatar, que calculava as iniciais em proporção,
+encosta no degrau mais próximo); os sete alvos de toque conferidos tocando 5px
+fora da borda desenhada; seis testes em Node e dezoito no navegador passando.
+
 ## Rodada 13 — a crítica visual
 
 Segundo agente, agora de direção de arte, com a instrução explícita de não
@@ -445,6 +558,11 @@ Das seis ideias de app de rotina que levantei, você aprovou três. Estas.
 9. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.
+10. **Sequência por ocorrência.** É a dívida que a rodada 14 assumiu:
+    `currentStreak` anda dia a dia, então terapia toda terça nunca passa de 1.
+    Contando por ocorrência (quantas terças seguidas), a sequência volta a
+    dizer o que promete — e os dias certos passam a aparecer na grade da
+    Semana e em Metas.
 
 Guardadas a seu pedido (as três que não entraram nesta rodada, se um dia
 fizerem sentido): **folga programada** — marcar o dia como folga pra não contar

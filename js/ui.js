@@ -32,9 +32,15 @@ export function toast(msg, { action, onAction, ms } = {}) {
 
 /* ── Sheet (modal de baixo) ────────────────────────────────── */
 let sheetEsc = null;
+let fecharTimer = 0;
 export function openSheet(title, buildBody) {
   const sheet = $('#sheet');
   const body = $('#sheetBody');
+  /* Fechar é animado: `hidden = true` só acontece 300ms depois. Quem fechava
+     uma folha e abria outra na sequência — tocar num dia do calendário e
+     escolher "conta", por exemplo — via a folha nova sumir sozinha, porque o
+     temporizador da anterior ainda estava a caminho. Cancela primeiro. */
+  clearTimeout(fecharTimer);
   $('#sheetTitle').textContent = title;
   body.replaceChildren();
   sheet.classList.remove('is-closing');
@@ -56,7 +62,7 @@ export function closeSheet() {
   document.body.classList.remove('has-sheet');
   if (!motionOn()) { sheet.hidden = true; return; }
   sheet.classList.add('is-closing');
-  setTimeout(() => { sheet.hidden = true; sheet.classList.remove('is-closing'); }, 300);
+  fecharTimer = setTimeout(() => { sheet.hidden = true; sheet.classList.remove('is-closing'); }, 300);
 }
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) closeSheet();
@@ -118,7 +124,11 @@ export function countUp(node, to, { dec = 0, ms = 800, suffix = '' } = {}) {
 }
 
 /* ── Stagger de entrada ────────────────────────────────────── */
-export function stagger(root, sel = '.rv', max = 18, step = null) {
+/* O teto era 18 a 45ms: o décimo oitavo item chegava 810ms depois do toque,
+   e com a animação de 600ms em cima disso a lista só assentava perto de 1,4s.
+   Movimento não pode custar mais que a informação — oito é o bastante pra
+   ler como cascata, e o resto entra junto. */
+export function stagger(root, sel = '.rv', max = 8, step = null) {
   root.querySelectorAll(sel).forEach((n, i) => {
     n.classList.add('rv');
     n.style.setProperty('--i', Math.min(i, max));
@@ -223,4 +233,28 @@ export function onSwipe(node, { left, right, threshold = 70 } = {}) {
     if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy) * 1.6) (dx < 0 ? left : right)?.();
     x0 = y0 = null;
   }, { passive: true });
+}
+
+/* ── Interruptor ───────────────────────────────────────────── */
+/**
+ * A única forma de "ligado/desligado" do app. Existia em Ajustes e, ao lado
+ * dela, dois `<input type=checkbox>` nativos (Metas e o editor de categoria)
+ * — o único componente sem desenho da casa. Agora é um só, e mora aqui
+ * porque três telas o usam.
+ *
+ * `onChange` recebe o novo estado. O elemento devolve `.ligado` pra quem
+ * precisa ler sem consultar o atributo.
+ */
+export function interruptor(ligado, aoMudar = () => {}, rotulo = '') {
+  const sw = el('button.switch', {
+    type: 'button', role: 'switch',
+    'aria-checked': String(!!ligado),
+    'aria-label': rotulo || null,
+  });
+  Object.defineProperty(sw, 'ligado', {
+    get: () => sw.getAttribute('aria-checked') === 'true',
+    set: v => sw.setAttribute('aria-checked', String(!!v)),
+  });
+  sw.addEventListener('click', () => { sw.ligado = !sw.ligado; aoMudar(sw.ligado); });
+  return sw;
 }

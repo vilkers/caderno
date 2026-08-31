@@ -9,7 +9,7 @@ import { el, nf } from '../utils.js';
 import * as store from '../store.js';
 import { CADENCIAS } from '../store.js';
 import { weekGoals, goalProgress } from '../analysis.js';
-import { toast } from '../ui.js';
+import { toast, interruptor } from '../ui.js';
 
 const SITUACAO = {
   batida: { txt: 'batida', cor: '#3ecf8e' },
@@ -100,8 +100,7 @@ function linhaMeta(cat, ctx) {
   });
 
   /* meta */
-  const temMeta = el('input', { type: 'checkbox', 'aria-label': `Meta para ${cat.label}` });
-  temMeta.checked = !!cat.goal;
+  const temMeta = interruptor(!!cat.goal, () => salvar(), `Meta para ${cat.label}`);
   const modo = el('select.minisel', {}, [
     el('option', { value: 'min', text: 'no mínimo', selected: cat.goal?.mode !== 'max' ? true : null }),
     el('option', { value: 'max', text: 'no máximo', selected: cat.goal?.mode === 'max' ? true : null }),
@@ -114,18 +113,17 @@ function linhaMeta(cat, ctx) {
 
   const salvar = () => {
     store.updateCategory(cat.id, {
-      goal: temMeta.checked
+      goal: temMeta.ligado
         ? { mode: modo.value, value: Number(valor.value) || 0, period: periodo.value }
         : null,
     });
-    campos.forEach(c => { c.disabled = !temMeta.checked; });
-    linha.classList.toggle('sem-meta', !temMeta.checked);
+    campos.forEach(c => { c.disabled = !temMeta.ligado; });
+    linha.classList.toggle('sem-meta', !temMeta.ligado);
     pintaProgresso();
     toast('meta salva');
   };
   const campos = [modo, valor, periodo];
-  campos.forEach(c => { c.disabled = !temMeta.checked; c.addEventListener('change', salvar); });
-  temMeta.addEventListener('change', salvar);
+  campos.forEach(c => { c.disabled = !temMeta.ligado; c.addEventListener('change', salvar); });
 
   linha.classList.toggle('sem-meta', !cat.goal);
   linha.append(
@@ -136,7 +134,7 @@ function linhaMeta(cat, ctx) {
     ]),
     el('div.meta__ctl', {}, [
       el('label.meta__cad', {}, [el('span.micro', { text: 'COBRA' }), cadSel]),
-      el('label.meta__on', {}, [temMeta, el('span.micro', { text: 'META' })]),
+      el('div.meta__on', {}, [temMeta, el('span.micro', { text: 'META' })]),
       el('div.meta__campos', {}, [modo, valor, periodo]),
     ]),
   );

@@ -2,16 +2,15 @@
    editáveis, preferências, senha e backup. Tudo o que muda a forma do
    caderno mora aqui. */
 
-import { el, moeda } from '../utils.js';
+import { el, WD, WD_LONG } from '../utils.js';
 import * as store from '../store.js';
 import { TYPES, CADENCIAS } from '../store.js';
 import * as vault from '../vault.js';
 import * as sync from '../sync.js';
 import * as lembrete from '../lembrete.js';
 import { PALETTES } from '../palettes.js';
-import { toast, openSheet, confirmSheet, stagger } from '../ui.js';
+import { toast, openSheet, confirmSheet, stagger, interruptor } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
-import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
 import { abrirPaleta } from './paleta.js';
 
 export function render(ctx) {
@@ -62,9 +61,6 @@ export function render(ctx) {
       }, [el('span', { text: 'restaurar padrão' })]),
     ]),
   ])));
-
-  /* ── Agenda do mês ── */
-  view.append(section('AGENDA DO MÊS', agendaBox(ctx), 'agenda'));
 
   /* ── Lembrete ── */
   view.append(section('LEMBRETE DO DIA', lembreteBox(ctx)));
@@ -139,67 +135,6 @@ export function render(ctx) {
     }, 120);
   }
   return view;
-}
-
-/* ── Agenda do mês ─────────────────────────────────────────── */
-/* Fica aqui, junto das categorias, porque é a mesma pergunta: o que este
-   caderno cobra de mim? A rotina cobra todo dia; a agenda cobra no dia. */
-function agendaBox(ctx) {
-  const box = el('div');
-  const itens = store.listAgenda();
-
-  box.append(el('p', {
-    style: { color: 'var(--dim)', fontSize: 'var(--t-corpo)', marginBottom: '1rem', maxWidth: '52ch' },
-    text: 'O que acontece todo mês num dia certo: aluguel, cartões, contas de casa, a nota fiscal da agência — e também as assinaturas e o que entra. Aparece no calendário, no dia, e na tela da Agenda.',
-  }));
-
-  if (itens.length) {
-    const lista = el('div.cats');
-    itens.forEach(a => lista.append(el('div.cat', { 'data-id': a.id }, [
-      el('button.cat__pega', {
-        type: 'button', 'aria-label': `Mover ${a.label}`, title: 'Arraste para ordenar (ou use ↑ ↓)',
-        html: '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">'
-          + [4, 8, 12].map(y => [5, 11].map(x => `<circle cx="${x}" cy="${y}" r="1.4"/>`).join('')).join('')
-          + '</svg>',
-      }),
-      el('span.cat__i', { text: a.emoji || '•' }),
-      el('span.cat__n', { text: a.label }),
-      el('span.cat__t', {
-        text: [
-          a.repete === 'unico' ? (a.data || 'sem data') : `dia ${a.dia}`,
-          store.AGENDA_TIPOS[a.tipo]?.label || a.tipo,
-          a.valor ? moeda(a.valor) : '',
-        ].filter(Boolean).join(' · '),
-      }),
-      el('button.btn.btn--sm', {
-        type: 'button', onclick: () => editarCompromisso(a, () => ctx.rerender()),
-      }, [el('span', { text: 'editar' })]),
-    ])));
-    listaArrastavel(lista, {
-      itemSel: '.cat', pegaSel: '.cat__pega',
-      aoSoltar: ids => { store.reorderAgenda(ids); toast('ordem salva'); },
-    });
-    box.append(lista);
-  } else {
-    box.append(el('div.empty', {}, [
-      el('b', { text: 'Agenda vazia' }),
-      el('p', { text: 'Comece pelas sugestões — dá pra ajustar o dia e o valor de cada uma depois.' }),
-    ]));
-  }
-
-  box.append(el('div.wrap', { style: { marginTop: '.8rem' } }, [
-    el('button.btn.btn--sm.btn--solid', {
-      type: 'button', onclick: () => editarCompromisso(null, () => ctx.rerender()),
-    }, [el('span', { text: '+ novo compromisso' })]),
-    el('button.btn.btn--sm', {
-      type: 'button', onclick: () => sugestoesAgenda(() => ctx.rerender()),
-    }, [el('span', { text: 'sugestões' })]),
-    itens.length
-      ? el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.go('agenda') }, [el('span', { text: 'ver o mês' })])
-      : null,
-  ].filter(Boolean)));
-
-  return box;
 }
 
 /* ── Lembrete ──────────────────────────────────────────────── */
@@ -421,8 +356,43 @@ function editCategory(cat, ctx) {
     const cadSel = el('select', {}, Object.entries(CADENCIAS).map(([k, v]) =>
       el('option', { value: k, text: v.label, selected: store.cadencia(draft) === k ? true : null })));
     const cadHint = el('p.micro', { text: CADENCIAS[store.cadencia(draft)].hint });
-    cadSel.addEventListener('change', () => { cadHint.textContent = CADENCIAS[cadSel.value].hint; });
-    const cadence = field('O DIA COBRA?', el('div', {}, [cadSel, cadHint]));
+
+    /* Em que dias da semana. Todos ligados = "todo dia", que é como o app
+       sempre foi; desligar alguns é o que faz terapia toda terça existir sem
+       inventar um quarto tipo de coisa. Só aparece em cadência diária. */
+    const dias = new Set(Array.isArray(draft.dias) ? draft.dias : []);
+    if (!dias.size) [0, 1, 2, 3, 4, 5, 6].forEach(d => dias.add(d));
+    const resumoDias = el('p.micro');
+    const pintaResumo = () => {
+      resumoDias.textContent = dias.size === 7
+        ? 'TODOS OS DIAS'
+        : dias.size
+          ? `SÓ ${[...dias].sort((a, b) => a - b).map(d => WD[d]).join('·').toUpperCase()}`
+          : 'NENHUM DIA — ELA NÃO VAI COBRAR NADA';
+    };
+    const diasBox = el('div.diasem', {}, [0, 1, 2, 3, 4, 5, 6].map(d => {
+      const b = el('button.diasem__d' + (dias.has(d) ? '.is-on' : ''), {
+        type: 'button', 'aria-pressed': String(dias.has(d)),
+        'aria-label': WD_LONG[d], text: WD[d],
+      });
+      b.addEventListener('click', () => {
+        if (dias.has(d)) dias.delete(d); else dias.add(d);
+        b.classList.toggle('is-on', dias.has(d));
+        b.setAttribute('aria-pressed', String(dias.has(d)));
+        pintaResumo();
+      });
+      return b;
+    }));
+    pintaResumo();
+    const campoDias = el('div.field', { hidden: store.cadencia(draft) !== 'diaria' }, [
+      el('p.micro', { text: 'EM QUE DIAS' }), diasBox, resumoDias,
+    ]);
+
+    cadSel.addEventListener('change', () => {
+      cadHint.textContent = CADENCIAS[cadSel.value].hint;
+      campoDias.hidden = cadSel.value !== 'diaria';
+    });
+    const cadence = field('O DIA COBRA?', el('div', {}, [cadSel, cadHint, campoDias]));
 
     /* ── faixa e referências escritas de cada nível ── */
     const minIn = el('input', { type: 'number', min: '0', max: '9', value: String(draft.min ?? 1), style: { width: '64px' } });
@@ -461,8 +431,9 @@ function editCategory(cat, ctx) {
       return out;
     };
 
-    const goalOn = el('input', { type: 'checkbox' });
-    goalOn.checked = !!draft.goal;
+    const goalOn = interruptor(!!draft.goal, () => {
+      goalBox.style.opacity = goalOn.ligado ? '1' : '.4';
+    }, 'Cobrar meta');
     const goalMode = el('select', {}, [
       el('option', { value: 'min', text: 'no mínimo', selected: draft.goal?.mode === 'min' ? true : null }),
       el('option', { value: 'max', text: 'no máximo', selected: draft.goal?.mode === 'max' ? true : null }),
@@ -473,8 +444,7 @@ function editCategory(cat, ctx) {
       el('option', { value: 'day', text: 'por dia', selected: draft.goal?.period === 'day' ? true : null }),
     ]);
     const goalBox = el('div.wrap', { style: { alignItems: 'center' } }, [goalMode, goalVal, goalPeriod]);
-    goalBox.style.opacity = goalOn.checked ? '1' : '.4';
-    goalOn.addEventListener('change', () => { goalBox.style.opacity = goalOn.checked ? '1' : '.4'; });
+    goalBox.style.opacity = goalOn.ligado ? '1' : '.4';
     const pintaTipo = () => {
       typeHint.textContent = TYPES[type.value].hint;
       faixa.hidden = type.value !== 'scale';
@@ -497,7 +467,7 @@ function editCategory(cat, ctx) {
       faixa,
       unit,
       refsBox,
-      el('label.row', { style: { cursor: 'pointer' } }, [
+      el('div.row', {}, [
         el('div.row__l', {}, [
           el('p.row__t', { text: 'Definir meta' }),
           el('p.row__d', { text: 'Aparece no check-in e nos insights.' }),
@@ -542,11 +512,12 @@ function editCategory(cat, ctx) {
               label: label.querySelector('input').value.trim() || 'Sem nome',
               type: type.value,
               cadence: cadSel.value,
+              dias: cadSel.value === 'diaria' && dias.size < 7 ? [...dias].sort((a, b) => a - b) : [],
               unit: unit.querySelector('input').value.trim(),
               min: type.value === 'scale' ? Math.max(0, Number(minIn.value) || 0) : undefined,
               max: type.value === 'scale' ? Math.max(1, Number(maxIn.value) || 5) : (cat?.max ?? undefined),
               levels: Object.keys(niveis).length ? niveis : undefined,
-              goal: goalOn.checked
+              goal: goalOn.ligado
                 ? { mode: goalMode.value, value: Number(goalVal.value) || 0, period: goalPeriod.value }
                 : null,
             };
@@ -659,13 +630,7 @@ function row(title, desc, control) {
   ]);
 }
 function switchRow(title, desc, value, onChange) {
-  const sw = el('button.switch', { type: 'button', role: 'switch', 'aria-checked': String(!!value), 'aria-label': title });
-  sw.addEventListener('click', () => {
-    const next = sw.getAttribute('aria-checked') !== 'true';
-    sw.setAttribute('aria-checked', String(next));
-    onChange(next);
-  });
-  return row(title, desc, sw);
+  return row(title, desc, interruptor(value, onChange, title));
 }
 function selectRow(title, desc, options, value, onChange) {
   const sel = el('select.minisel', {}, options.map(([v, label]) =>

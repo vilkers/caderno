@@ -12,7 +12,7 @@
 
 import { el, monthKey, todayKey, parseKey, moeda, WD } from '../utils.js';
 import * as store from '../store.js';
-import { toast, stagger } from '../ui.js';
+import { toast, stagger, openSheet, interruptor } from '../ui.js';
 import { barraProgresso, anel } from '../graficos.js';
 import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
 
@@ -79,10 +79,18 @@ export function painelContas(ctx, mes) {
       type: 'button',
       onclick: () => sugestoesAgenda(() => ctx.rerender(), { grupos: ['CARTÕES', 'CASA', 'TRABALHO'] }),
     }, [el('span', { text: 'sugestões' })]),
-    el('button.btn.btn--sm', {
-      type: 'button',
-      onclick: () => { ctx.ajustesFoco = 'agenda'; ctx.go('ajustes'); },
-    }, [el('span', { text: 'editar tudo' })]),
+  ]));
+
+  /* A lista completa mora aqui, não em Ajustes: Ajustes guarda o que o app
+     te pergunta todo dia; compromisso é conteúdo — nasce, tem valor e morre.
+     Esta é a única porta pros pausados e pros únicos de outros meses. */
+  const todos = store.listAgenda();
+  view.append(el('button.linhatudo', {
+    type: 'button',
+    onclick: () => listaCompleta(ctx),
+  }, [
+    el('span', { text: `todos os compromissos (${todos.length})` }),
+    el('span.linhatudo__s.micro', { text: 'INCLUI PAUSADOS E DE OUTROS MESES' }),
   ]));
 
   view.append(el('p.nota-pe', {
@@ -169,6 +177,60 @@ function proximoTexto(acoes, hoje) {
   const proximo = pendentes.find(a => a.data >= hoje);
   if (proximo) return `o próximo é ${proximo.label}, dia ${proximo.dia}`;
   return 'nada com data à frente';
+}
+
+/**
+ * Todos os compromissos, de qualquer mês, pausados inclusive — a visão de
+ * manutenção, separada da visão do mês porque respondem perguntas
+ * diferentes: "o que falta pagar agora" e "o que existe cadastrado".
+ */
+export function listaCompleta(ctx) {
+  const pinta = close => {
+    const itens = store.listAgenda();
+    const corpo = [
+      el('p', {
+        style: { color: 'var(--dim)', fontSize: 'var(--t-corpo)', marginBottom: 'var(--s-4)' },
+        text: 'Tudo que está cadastrado. Pausar tira do mês e do calendário sem apagar o histórico.',
+      }),
+    ];
+    if (!itens.length) {
+      corpo.push(el('p.micro', { text: 'NADA CADASTRADO AINDA' }));
+    } else {
+      corpo.push(el('div.tudolista', {}, itens.map(a => el('div.tudoitem' + (a.pausado ? '.is-pausado' : ''), {}, [
+        el('button.tudoitem__l', {
+          type: 'button',
+          onclick: () => editarCompromisso(a, () => { ctx.rerender(); close(); }),
+        }, [
+          el('span.tudoitem__t', {}, [
+            el('span', { text: a.emoji || '•' }),
+            el('span', { text: a.label }),
+          ]),
+          el('span.micro', {
+            text: [
+              a.repete === 'unico' ? (a.data || 'sem data') : `todo dia ${a.dia}`,
+              store.AGENDA_TIPOS[a.tipo]?.label || a.tipo,
+              a.valor ? moeda(a.valor) : null,
+              a.pausado ? 'pausado' : null,
+            ].filter(Boolean).join(' · '),
+          }),
+        ]),
+        interruptor(!a.pausado, ligado => {
+          store.updateAgenda(a.id, { pausado: !ligado });
+          toast(ligado ? 'de volta ao mês' : 'pausado');
+          ctx.rerender();
+        }, `Cobrar ${a.label}`),
+      ]))));
+    }
+    corpo.push(el('div.sheet__actions', {}, [
+      el('button.btn.btn--sm', {
+        type: 'button',
+        onclick: () => editarCompromisso(null, () => { ctx.rerender(); close(); }),
+      }, [el('span', { text: '+ novo' })]),
+      el('button.btn.btn--solid', { type: 'button', onclick: close }, [el('span', { text: 'pronto' })]),
+    ]));
+    return corpo;
+  };
+  openSheet('Todos os compromissos', pinta);
 }
 
 function vazio(ctx) {

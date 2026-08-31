@@ -10,7 +10,6 @@ import { currentStreak, goalProgress, isReduce, dayStatus, weekGoals, semanaPend
 import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
 import { summary as badgeSummary } from '../badges.js';
 
-const HOUR_PRESETS = [2, 4, 6, 8];
 const STRIP_DAYS = 10;
 
 export function render(ctx) {
@@ -137,7 +136,7 @@ export function render(ctx) {
     // o fio de aviso dos cartões acompanha
     entries.querySelectorAll('[data-cat]').forEach(card => {
       const c = store.catById(card.dataset.cat);
-      card.classList.toggle('falta-hoje', !!c && store.cadencia(c) === 'diaria' && !store.respondida(c, day));
+      card.classList.toggle('falta-hoje', !!c && store.cobraNoDia(c, day) && !store.respondida(c, day));
     });
   };
 
@@ -222,10 +221,17 @@ export function render(ctx) {
   ]));
   view.append(entries);
 
-  /* ── afazeres em aberto ── */
-  const abertas = store.openTodos().slice(0, 3);
+  /* ── afazeres em aberto ──
+     Ordem: as marcadas pra hoje, depois as que passaram do dia, depois as
+     soltas. Sempre fora do progresso do dia — tarefa se empurra pra frente
+     por definição, e ser cobrado por "comprar ração" treina você a ignorar
+     o painel, que é a peça mais cara do app. */
+  const comData = t => (t.due === day ? 0 : t.due && t.due < day ? 1 : 2);
+  const abertas = [...store.openTodos()]
+    .sort((a, b) => comData(a) - comData(b) || (a.due || '').localeCompare(b.due || ''))
+    .slice(0, 3);
   if (abertas.length) {
-    view.append(el('div.section', { style: { marginTop: '2rem' } }, [
+    view.append(el('div.section', { style: { marginTop: 'var(--s-7)' } }, [
       el('div.section__h', {}, [el('p.micro', { text: 'NA LISTA HOJE' })]),
       el('div.todos', {}, abertas.map(t => el('div.todo', {}, [
         el('button.todo__box', {
@@ -238,8 +244,13 @@ export function render(ctx) {
           },
         }, [check()]),
         el('span.todo__txt', { text: t.text }),
-      ]))),
-      el('button.btn.btn--sm.btn--ghost', { style: { marginTop: '.8rem' }, onclick: () => ctx.go('lista') },
+        t.due === day
+          ? el('span.micro.todo__sel', { text: 'HOJE' })
+          : t.due && t.due < day
+            ? el('span.micro.todo__sel.is-atrasada', { text: 'ERA PRA ' + humanDay(t.due).toUpperCase() })
+            : null,
+      ].filter(Boolean)))),
+      el('button.btn.btn--sm.btn--ghost', { style: { marginTop: 'var(--s-3)' }, onclick: () => ctx.go('lista') },
         [el('span', { text: `ver todas (${store.openTodos().length})` })]),
     ]));
   }
@@ -268,7 +279,13 @@ function compromissosDoDia(day, ctx) {
   const caixa = el('div.hojeagenda');
   caixa.append(el('div.hojeagenda__h', {}, [
     el('p.micro', { text: atrasados.length ? 'DO MÊS · TEM COISA ATRASADA' : 'DO MÊS, HOJE' }),
-    el('button.chip', { type: 'button', onclick: () => ctx.go('agenda'), text: 'ver o mês' }),
+    el('button.chip', {
+      type: 'button',
+      /* 'agenda' saiu do roteador quando a tela virou aba de Pessoal — este
+         botão passou a não fazer nada. Agora leva pra aba certa. */
+      onclick: () => { ctx.pessoalAba = 'contas'; ctx.go('lista'); },
+      text: 'ver o mês',
+    }),
   ]));
 
   itens.forEach(item => {
@@ -374,9 +391,16 @@ function entryCard(cat, day, ctx) {
   const card = el('div.entry' + (cat.type === 'text' ? '.entry--wide' : ''), { 'data-cat': cat.id });
   const on = cat.type === 'toggle' ? !!val : Number(val) > 0;
   if (on) card.classList.add('is-on');
-  if (store.cadencia(cat) === 'diaria' && !store.respondida(cat, day)) card.classList.add('falta-hoje');
+  const cobra = store.cobraNoDia(cat, day);
+  if (cobra && !store.respondida(cat, day)) card.classList.add('falta-hoje');
+  /* Categoria de dia certo, num dia que não é o dela: continua marcável —
+     consulta remarcada é consulta —, mas não cobra e não pesa no progresso. */
+  const foraDoDia = store.cadencia(cat) === 'diaria' && !cobra;
+  if (foraDoDia) card.classList.add('fora-do-dia');
 
   const meta = el('div.entry__meta');
+  const dias = store.rotuloDias(cat);
+  if (dias) meta.append(el('span.entry__dias.micro', { text: dias, title: 'só nesses dias da semana' }));
   if (store.state.settings.showStreaks) {
     const s = currentStreak(cat, day);
     if (s > 1) meta.append(el('span.entry__streak', { text: (isReduce(cat) ? '∅ ' : '↑ ') + s + 'd' }));
@@ -448,8 +472,6 @@ export function control(cat, day, card, ctx) {
       el('span', {}, [valEl, el('span.step__unit', { text: cat.unit || '' })]),
       el('button.step__btn', { type: 'button', 'aria-label': 'Mais', onclick: () => set(cur() + 1), text: '+' }),
     ]));
-    wrap.append(el('div.chips', {}, [0, 1, 2, 3, 5].map(n =>
-      el('button.chip' + (cur() === n ? '.is-on' : ''), { type: 'button', 'data-v': n, onclick: () => set(n), text: String(n) }))));
     if (cat.levels) wrap.append(lvlNote);
     return wrap;
   }
@@ -458,27 +480,28 @@ export function control(cat, day, card, ctx) {
     const max = cat.max || 16;
     const cur = () => Number(store.getVal(day, cat.id) || 0);
     const wrap = el('div');
-    const valEl = el('span.step__val.num', { text: fmtH(cur()) });
+    const valEl = el('span.leitura__n.num', { text: fmtH(cur()) });
     if (!cur()) valEl.classList.add('is-zero');
-    const slider = el('input.slider', { type: 'range', min: 0, max, step: 0.5, value: cur(), 'aria-label': cat.label });
+    const slider = el('input.slider', {
+      type: 'range', min: 0, max, step: 0.5, value: cur(), 'aria-label': cat.label,
+    });
     const set = n => {
       const v = clamp(Math.round(n * 2) / 2, 0, max);
       valEl.textContent = fmtH(v);
       valEl.classList.toggle('is-zero', !v);
       slider.value = v;
       card?.classList.toggle('is-on', v > 0);
-      wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('is-on', Number(c.dataset.v) === v));
       save(v);
     };
-    wrap.append(el('div.step', {}, [
-      el('button.step__btn', { type: 'button', 'aria-label': 'Menos', onclick: () => set(cur() - 0.5), text: '−' }),
-      el('span', {}, [valEl, el('span.step__unit', { text: cat.unit || 'h' })]),
-      el('button.step__btn', { type: 'button', 'aria-label': 'Mais', onclick: () => set(cur() + 0.5), text: '+' }),
-    ]));
+    wrap.append(
+      el('div.leitura', {}, [valEl, el('span.leitura__u.micro', { text: cat.unit || 'h' })]),
+      slider,
+      el('div.regua', {}, [
+        el('span.micro', { text: '0' }),
+        el('span.micro', { text: `${max}${cat.unit || 'h'}` }),
+      ]),
+    );
     slider.addEventListener('input', () => set(Number(slider.value)));
-    wrap.append(slider);
-    wrap.append(el('div.chips', {}, HOUR_PRESETS.filter(h => h <= max).map(h =>
-      el('button.chip' + (cur() === h ? '.is-on' : ''), { type: 'button', 'data-v': h, onclick: () => set(h), text: `${h}h` }))));
     return wrap;
   }
 
@@ -501,21 +524,29 @@ export function control(cat, day, card, ctx) {
       /* Zero é resposta, mas não é conquista: o pixel mais saturado da tela
          não pode estar dizendo "não fiz". */
       box.querySelectorAll('[data-v]').forEach(b => {
-        const escolhido = Number(b.dataset.v) === v;
-        b.classList.toggle('is-on', escolhido);
-        b.classList.toggle('is-zero', escolhido && Number(b.dataset.v) === 0);
+        const n = Number(b.dataset.v);
+        const escolhido = n === v;
+        /* No medidor longo o preenchimento vai até o valor — é um medidor,
+           não onze escolhas soltas. Na escala curta continua marcando um. */
+        b.classList.toggle('is-on', largo ? (v !== null && n <= v && n > 0) : escolhido);
+        b.classList.toggle('is-topo', largo && escolhido);
+        b.classList.toggle('is-zero', escolhido && n === 0);
       });
       wrap.querySelectorAll('.refs__r').forEach(r =>
         r.classList.toggle('is-atual', Number(r.dataset.v) === v));
       const txt = store.levelLabel(cat, v);
-      nota.textContent = v === null ? 'sem resposta' : (txt ? `${v} · ${txt}` : String(v));
+      nota.replaceChildren(...(v === null
+        ? [el('span', { text: 'sem resposta' })]
+        : [el('b.lvl__n.num', { text: String(v) }), txt ? el('span', { text: txt }) : null].filter(Boolean)));
       nota.classList.toggle('is-empty', v === null);
       card?.classList.toggle('is-on', v !== null && v > 0);
     };
 
     niveis.forEach(n => {
       const b = el('button' + (largo ? '.meter__s' : '.scale__dot'), {
-        type: 'button', 'data-v': n, text: String(n),
+        type: 'button', 'data-v': n,
+        text: largo ? '' : String(n),
+        'aria-label': `${n}${store.levelLabel(cat, n) ? ` — ${store.levelLabel(cat, n)}` : ''}`,
         title: store.levelLabel(cat, n) || `nível ${n}`,
       });
       b.addEventListener('click', () => {

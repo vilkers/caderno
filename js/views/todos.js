@@ -8,9 +8,9 @@
    metas: dinheiro não é hábito, e transformar conta em pontuação seria
    converter uma coisa chata numa coisa chata e barulhenta. */
 
-import { el, humanDay, todayKey, monthKey, monthLabel, moeda, nf } from '../utils.js';
+import { el, humanDay, todayKey, monthKey, monthLabel, moeda, nf, parseKey, keyOf } from '../utils.js';
 import * as store from '../store.js';
-import { toast, stagger, confirmSheet } from '../ui.js';
+import { toast, stagger, confirmSheet, openSheet } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
 import { barras, barraProgresso } from '../graficos.js';
 import { check, iconBtn } from './today.js';
@@ -276,6 +276,7 @@ function listaAgenda(itens, mes, ctx, { verbo }) {
 
 function painelTarefas(ctx) {
   const view = el('div.painel');
+  const hoje = todayKey();
   const tab = ctx.todoTab || 'abertas';
   const todos = store.listTodos();
   const abertas = todos.filter(t => !t.done);
@@ -343,9 +344,13 @@ function painelTarefas(ctx) {
   /* ordem manual manda: o que você arrastou fica onde deixou. A estrela
      virou marca-texto — antes ela empurrava a tarefa pro topo e brigava
      com o arrasto. */
+  /* Entre as abertas, quem tem dia marcado e já chegou sobe: a data existe
+     justamente pra dizer "esta é de hoje". O resto mantém a ordem do arrasto. */
+  const urgencia = t => (t.done || !t.due ? 2 : t.due <= hoje ? 0 : 1);
   const sorted = [...list].sort((a, b) =>
     (a.done ? 1 : 0) - (b.done ? 1 : 0)
-    || (a.done ? (b.doneAt || 0) - (a.doneAt || 0) : (a.order ?? 0) - (b.order ?? 0)));
+    || (a.done ? (b.doneAt || 0) - (a.doneAt || 0)
+      : urgencia(a) - urgencia(b) || (a.due || '').localeCompare(b.due || '') || (a.order ?? 0) - (b.order ?? 0)));
 
   for (const t of sorted) {
     const row = el('div.todo' + (t.done ? '.is-done' : '') + (t.star ? '.is-star' : ''), { 'data-id': t.id });
@@ -373,6 +378,15 @@ function painelTarefas(ctx) {
       if (e.key === 'Escape') { txt.textContent = t.text; txt.blur(); }
     });
 
+    /* Quando tem data, a data ocupa o lugar do ícone. Uma quarta ação em
+       393px não cabe, e a data escrita informa mais que qualquer glifo. */
+    const data = el('button.todo__data' + (t.due ? '.is-on' : '') + (t.due && t.due < hoje && !t.done ? '.is-atrasada' : ''), {
+      type: 'button',
+      'aria-label': t.due ? `Data: ${humanDay(t.due)}` : 'Marcar um dia pra fazer',
+      title: t.due ? humanDay(t.due) : 'quando eu vou fazer',
+    }, [t.due ? el('span.micro', { text: diaCurto(t.due) }) : el('span', { html: CAL_SVG })]);
+    data.addEventListener('click', () => escolherDia(t, () => ctx.rerender()));
+
     const star = el('button.star' + (t.star ? '.is-on' : ''), { type: 'button', 'aria-label': 'Destacar', html: starSvg });
     star.addEventListener('click', () => {
       store.updateTodo(t.id, { star: !t.star });
@@ -398,7 +412,7 @@ function painelTarefas(ctx) {
       'aria-label': `Mover: ${t.text}`, title: 'Arraste para ordenar (ou use ↑ ↓)',
       html: PEGA_SVG,
     });
-    row.append(pega, box, txt, el('div.todo__act', {}, [star, del]));
+    row.append(pega, box, txt, el('div.todo__act', {}, [data, star, del]));
     if (t.done && t.doneAt) {
       row.append(el('span.micro', { text: humanDay(new Date(t.doneAt).toISOString().slice(0, 10)) }));
     }
@@ -421,6 +435,56 @@ function painelTarefas(ctx) {
 const PEGA_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">'
   + [4, 8, 12].map(y => [5, 11].map(x => `<circle cx="${x}" cy="${y}" r="1.4"/>`).join('')).join('')
   + '</svg>';
+const CAL_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8">'
+  + '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>';
+
+/** dd/mm — cabe no lugar de um ícone; 'hoje' e 'amanhã' cabem melhor ainda. */
+function diaCurto(k) {
+  const hoje = todayKey();
+  if (k === hoje) return 'hoje';
+  const d = parseKey(hoje); d.setDate(d.getDate() + 1);
+  if (k === keyOf(d)) return 'amanhã';
+  return `${k.slice(8)}/${k.slice(5, 7)}`;
+}
+
+/**
+ * A folha de escolher o dia. Native <input type=date> pro calendário do
+ * sistema, e três atalhos pro caso comum — que é hoje, amanhã ou tirar.
+ */
+export function escolherDia(t, aoSalvar = () => {}) {
+  openSheet(t.text, close => {
+    const grava = due => {
+      store.updateTodo(t.id, { due });
+      toast(due ? `marcada pra ${humanDay(due)}` : 'sem data');
+      close();
+      aoSalvar();
+    };
+    const campo = el('input', { type: 'date', value: t.due || todayKey(), 'aria-label': 'Dia' });
+    const amanha = parseKey(todayKey()); amanha.setDate(amanha.getDate() + 1);
+
+    return [
+      el('p', {
+        style: { color: 'var(--dim)', fontSize: 'var(--t-corpo)', marginBottom: 'var(--s-4)' },
+        text: 'Que dia você vai fazer? Ela aparece no calendário do mês e sobe na lista quando o dia chega. Não entra na conta da rotina — tarefa se empurra pra frente, e o check-in não pode virar cobrança de recado.',
+      }),
+      el('div.chips', {}, [
+        ['hoje', todayKey()], ['amanhã', keyOf(amanha)],
+      ].map(([rot, k]) => el('button.chip' + (t.due === k ? '.is-on' : ''), {
+        type: 'button', onclick: () => grava(k), text: rot,
+      }))),
+      el('div.field', {}, [el('p.micro', { text: 'OU ESCOLHA' }), campo]),
+      el('div.sheet__actions', {}, [
+        t.due
+          ? el('button.btn.btn--sm', { type: 'button', onclick: () => grava(null) }, [el('span', { text: 'tirar a data' })])
+          : null,
+        el('button.btn.btn--solid', {
+          type: 'button', onclick: () => grava(campo.value || null),
+        }, [el('span', { text: 'salvar' })]),
+      ].filter(Boolean)),
+    ];
+  });
+}
+
 const starSvg = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 3.5l2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.9L6.8 20l1-6L3.5 9.8l5.9-.8z"/></svg>';
 const xSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 

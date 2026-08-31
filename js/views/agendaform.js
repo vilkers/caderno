@@ -10,6 +10,11 @@ import { openSheet, closeSheet, toast, confirmSheet } from '../ui.js';
 
 const DIAS = Array.from({ length: 31 }, (_, i) => i + 1);
 
+/** "8 de setembro" — pro título da folha aberta a partir do calendário. */
+const diaEscrito = k => `${Number(k.slice(8))} de ${MESES[Number(k.slice(5, 7)) - 1]}`;
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
 /** "1.234,56", "1234.56", "R$ 90" ou vazio → número ou null. */
 export function lerValor(texto) {
   const cru = String(texto ?? '').trim();
@@ -42,7 +47,20 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
   };
   const rascunho = { ...base };
 
-  openSheet(novo ? 'Novo compromisso' : `${base.emoji || '•'} ${base.label}`, close => {
+  /* Vindo de um toque no calendário, o tipo e o dia já foram respondidos —
+     o botão que se apertou *era* a pergunta "que tipo é". Aí o formulário
+     encolhe: some o seletor de tipo, some a repetição (é único por
+     definição) e evento nem pergunta valor. Um formulário de quatro
+     perguntas vira um de uma. */
+  const enxuto = novo && !!padroes.tipo && !!padroes.data;
+  const pedeValor = !enxuto || rascunho.tipo !== 'evento';
+  const titulo = novo
+    ? (enxuto
+        ? `${store.AGENDA_TIPOS[rascunho.tipo]?.label || 'Compromisso'} · ${diaEscrito(rascunho.data)}`
+        : 'Novo compromisso')
+    : `${base.emoji || '•'} ${base.label}`;
+
+  openSheet(titulo, close => {
     const corpo = [];
 
     /* emoji + nome */
@@ -62,11 +80,13 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
       rascunho.tipo = tipo.value;
       rascunho.fluxo = store.AGENDA_TIPOS[tipo.value]?.fluxo || 'saida';
     });
-    corpo.push(el('div.field', {}, [
-      el('p.micro', { text: 'ONDE ELE APARECE' }),
-      tipo,
-      el('p.micro', { style: { color: 'var(--dim)' }, text: 'ASSINATURA E ENTRADA VÃO PRA ÁREA PESSOAL. O RESTO FICA NA AGENDA DO MÊS.' }),
-    ]));
+    if (!enxuto) {
+      corpo.push(el('div.field', {}, [
+        el('p.micro', { text: 'ONDE ELE APARECE' }),
+        tipo,
+        el('p.micro', { style: { color: 'var(--dim)' }, text: 'ASSINATURA E ENTRADA VÃO PRA ÁREA PESSOAL. O RESTO FICA NA AGENDA DO MÊS.' }),
+      ]));
+    }
 
     /* repetição + dia */
     const campoDia = el('div');
@@ -101,7 +121,8 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
       text: label,
     })));
     pintaDia();
-    corpo.push(el('div.field', {}, [el('p.micro', { text: 'REPETE?' }), rep]), campoDia);
+    if (enxuto) corpo.push(campoDia);
+    else corpo.push(el('div.field', {}, [el('p.micro', { text: 'REPETE?' }), rep]), campoDia);
 
     /* valor */
     /* Texto, não number: no teclado brasileiro o separador é vírgula, e
@@ -114,16 +135,31 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
     valor.addEventListener('input', () => {
       rascunho.valor = lerValor(valor.value);
     });
-    corpo.push(el('div.field', {}, [
-      el('p.micro', { text: 'VALOR (R$)' }),
-      valor,
-      el('p.micro', { style: { color: 'var(--dim)' }, text: 'SEM VALOR ELE VIRA SÓ UM LEMBRETE — NÃO ENTRA EM CONTA NENHUMA.' }),
-    ]));
+    if (pedeValor) {
+      corpo.push(el('div.field', {}, [
+        el('p.micro', { text: 'VALOR (R$)' }),
+        valor,
+        enxuto ? null : el('p.micro', { style: { color: 'var(--dim)' }, text: 'SEM VALOR ELE VIRA SÓ UM LEMBRETE — NÃO ENTRA EM CONTA NENHUMA.' }),
+      ].filter(Boolean)));
+    }
 
     /* nota */
     const nota = el('input', { type: 'text', value: rascunho.nota || '', placeholder: 'ex.: débito automático', 'aria-label': 'Nota' });
     nota.addEventListener('input', () => { rascunho.nota = nota.value; });
-    corpo.push(el('div.field', {}, [el('p.micro', { text: 'NOTA' }), nota]));
+    if (!enxuto) corpo.push(el('div.field', {}, [el('p.micro', { text: 'NOTA' }), nota]));
+
+    /* de único pra todo mês, sem sair da folha: o caso comum é único, e
+       "todo dia 8" é uma exceção que cabe num chip. */
+    if (enxuto) {
+      const mensal = el('button.chip', { type: 'button', text: `repetir todo dia ${Number(rascunho.data.slice(8))}` });
+      mensal.addEventListener('click', () => {
+        const virou = rascunho.repete !== 'mensal';
+        rascunho.repete = virou ? 'mensal' : 'unico';
+        rascunho.dia = Number(rascunho.data.slice(8));
+        mensal.classList.toggle('is-on', virou);
+      });
+      corpo.push(el('div.chips', {}, [mensal]));
+    }
 
     /* ações */
     corpo.push(el('div.sheet__actions', {}, [
@@ -158,7 +194,7 @@ export function editarCompromisso(item, aoSalvar = () => {}, padroes = {}) {
             repete: rascunho.repete,
             dia: rascunho.repete === 'mensal' ? Number(rascunho.dia) || 1 : null,
             data: rascunho.repete === 'unico' ? (rascunho.data || todayKey()) : null,
-            valor: lerValor(valor.value),
+            valor: pedeValor ? lerValor(valor.value) : null,
             nota: (rascunho.nota || '').trim(),
           };
           if (novo) store.addAgenda(dados);

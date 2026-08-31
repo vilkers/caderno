@@ -5,7 +5,7 @@
    aparelho com o do repositório sem perder nem ressuscitar nada. */
 
 import * as vault from './vault.js';
-import { uid, debounce, todayKey, monthKey, daysInMonth, keyOf } from './utils.js';
+import { uid, debounce, todayKey, monthKey, daysInMonth, keyOf, parseKey, WD } from './utils.js';
 import { mergeDocs } from './merge.js';
 
 export const VERSION = 3;
@@ -17,6 +17,26 @@ export const CADENCIAS = {
   semanal: { label: 'Na semana',  hint: 'Cobrada pela meta da semana, não por dia (academia, louça).' },
   livre:   { label: 'Quando rolar', hint: 'Registra quando acontece e não cobra nada (bebida, humor).' },
 };
+
+/**
+ * Em que dias da semana a categoria cobra. `cat.dias` é uma lista de 0 (dom)
+ * a 6 (sáb); **vazia ou ausente significa todos os sete**, que é como o app
+ * sempre funcionou — por isso não há migração nenhuma a fazer.
+ *
+ * Só faz sentido em cadência diária: "na semana" já é cobrada pela meta e
+ * "quando rolar" não cobra nada.
+ */
+export function cobraNoDia(cat, key) {
+  if (cadencia(cat) !== 'diaria') return false;
+  if (!Array.isArray(cat?.dias) || !cat.dias.length) return true;
+  return cat.dias.includes(parseKey(key).getDay());
+}
+
+/** Rótulo curto dos dias — 'TER' pra um só, 'SEG·QUA·SEX' pra alguns. */
+export function rotuloDias(cat) {
+  if (!Array.isArray(cat?.dias) || !cat.dias.length || cat.dias.length === 7) return null;
+  return [...cat.dias].sort((a, b) => a - b).map(d => WD[d]).join('·');
+}
 
 /** Cadência de uma categoria, deduzida da meta quando não foi escolhida. */
 export function cadencia(cat) {
@@ -177,6 +197,8 @@ export function migrate(data) {
     .map((c, i) => ({
       ...c, id: c.id || uid(), order: c.order ?? i,
       cadence: c.cadence || cadencia(c),
+      /* dias vazio = todos os sete; guardo normalizado pra não vazar lixo */
+      dias: Array.isArray(c.dias) ? c.dias.map(Number).filter(d => d >= 0 && d <= 6) : [],
       updatedAt: Number(c.updatedAt) || t,
     }));
 
@@ -419,6 +441,16 @@ export const scaleMax = cat => (cat.type === 'scale' ? (cat.max ?? 5) : (cat.max
 /* ── Afazeres ──────────────────────────────────────────────── */
 export const listTodos = () => state.todos.filter(t => !t.deletedAt);
 export const openTodos = () => listTodos().filter(t => !t.done);
+
+/**
+ * As tarefas marcadas pra um dia. `due` é uma data só — nunca repetição:
+ * se tem que voltar, ou é ritmo (categoria) ou é dia do mês (compromisso).
+ * É essa linha que impede um quarto tipo de coisa nascer aqui.
+ */
+export const todosDoDia = k => listTodos().filter(t => t.due === k && !t.done);
+/** As que já passaram do dia e continuam abertas. */
+export const todosAtrasados = (hoje = todayKey()) =>
+  listTodos().filter(t => t.due && t.due < hoje && !t.done);
 
 export function addTodo(text, extra = {}) {
   const menor = Math.min(0, ...listTodos().map(x => x.order ?? 0));

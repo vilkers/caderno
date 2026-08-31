@@ -49,8 +49,20 @@ export function cartoes(periodo = 'tudo') {
     id: 'capa', capa: true,
     olho: periodoEmTexto(dias),
     linhas: ['O SEU', 'CADERNO', 'ATÉ AQUI'],
-    nota: registrados ? `${registrados} dias registrados` : 'ainda sem dados — registre alguns dias',
-    g: { tipo: 'malha', itens: dias.map(k => ({ on: hasEntry(k), title: k })) },
+    /* O número do período já está na tarja de cima e nos quadradinhos —
+       escrevê-lo de novo aqui era a terceira vez na mesma tela. A nota
+       passa a explicar o desenho, que é o que faltava. */
+    nota: registrados ? 'cada quadrado é um dia, e o tom diz quanto dele você fechou' : 'ainda sem dados — registre alguns dias',
+    /* Aceso/apagado deixava 70 quadrados no acento puro: virava um bloco
+       laranja sólido, textura em vez de informação. O tom passa a ser
+       quanto do dia foi marcado — o mesmo desenho, agora dizendo algo. */
+    g: {
+      tipo: 'malha',
+      itens: dias.map(k => {
+        const marcadas = cats.filter(c => hasEntry(k) && num(c, k) !== 0).length;
+        return { on: hasEntry(k), tom: cats.length ? marcadas / cats.length : 1, title: k };
+      }),
+    },
   });
 
   if (!registrados) return out;

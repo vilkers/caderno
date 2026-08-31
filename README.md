@@ -142,6 +142,15 @@ O que entra nessa conta é a **cadência** de cada categoria:
 Sem isso o progresso mentia: marcar 4 de 9 num dia em que só 3 coisas eram
 obrigatórias parecia fracasso, e não era.
 
+**Todo dia, mas nem todo dia.** Uma categoria diária pode escolher *em que
+dias da semana* ela cobra — terapia toda terça, feira no sábado. São sete
+chaves no editor, todas ligadas por padrão (que é como o app sempre
+funcionou, e por isso não há nada a migrar). Na segunda, terapia sai da conta
+do dia e o cartão fica apagado na lista com `TER` escrito ao lado; na terça
+ela entra no "falta marcar 5 de 5". O cartão **continua marcável fora do dia
+dela** — consulta remarcada é consulta —, e nesse caso conta como extra, sem
+mexer no denominador.
+
 ### Metas (uma tela só)
 Ajustar nove metas entrando em nove categorias é trabalho demais para uma
 decisão que se toma junta. Em **Metas** está tudo lado a lado — cadência,
@@ -186,19 +195,31 @@ lá em cima abre o check-in completo. Rola só na vertical, e a troca de semana 
 por botão — nada de gesto lateral. É por aqui que se recupera uma semana
 inteira em menos de um minuto.
 
-**Mês** deixou de ser um campo de bolinhas iguais. Cada dia carrega três
-informações, cada uma com uma forma própria:
+**Mês** deixou de ser um campo de bolinhas iguais. Cada dia carrega quatro
+informações, cada uma com uma forma própria e um canto próprio:
 
 - **anel** em volta do número — quanto do que era obrigatório naquele dia foi
   fechado (é a cobrança do dia, do vazio ao anel inteiro);
 - **barra embaixo** — quantas marcações o dia teve, comparado com o resto do
   mês: lado a lado, os dias viram um gráfico de barras da sua constância;
-- **ponto no canto** — tinha compromisso do mês caindo ali (conta, cartão, NF);
-  fica apagado quando você já resolveu.
+- **pílula no canto direito** — tinha compromisso do mês caindo ali (conta,
+  cartão, NF); fica apagada quando você já resolveu;
+- **quadradinho vazado no canto esquerdo** — tinha tarefa marcada pra esse dia.
+  A forma não é arbitrária: no app, quadrado já é tarefa e círculo já é
+  compromisso.
 
 Tocar num dia abre uma **prévia**: o que foi marcado, o que faltou, a anotação,
-os compromissos daquele dia (com um toque pra resolver) e os botões de fechar
-ou abrir o dia — em vez de sair do calendário no primeiro toque. Embaixo, dias
+o que cai naquele dia — compromissos e tarefas, com um toque pra resolver — e
+os botões de fechar ou abrir o dia, em vez de sair do calendário no primeiro
+toque.
+
+E dá pra **criar ali mesmo**: quatro portas (`📌 evento`, `💸 conta`,
+`💰 entrada`, `✓ tarefa`) que já sabem o dia. Tarefa não abre formulário
+nenhum — o campo abre dentro da prévia, dois toques. As outras três abrem o
+editor de compromisso **encolhido**: o botão que você apertou *era* a pergunta
+"que tipo é", então some o seletor de tipo, some a repetição (é único por
+definição, com um chip opcional pra virar mensal) e evento nem pergunta valor.
+Um formulário de quatro perguntas vira um de uma. Embaixo, dias
 registrados semana a semana e o anel do mês. Filtrando por uma categoria, tudo
 isso dá lugar ao mapa de calor dela, com a linha do mês.
 
@@ -210,12 +231,16 @@ marcar como resolvido; **a marcação vale por mês**, então em setembro tudo
 volta em aberto sozinho.
 
 A tela mostra o mês inteiro em ordem de dia, quanto já foi resolvido, quanto
-sai e quanto entra, e o que passou do dia. Dá pra criar e editar ali mesmo, e a lista
-completa (com arrastar pra ordenar) fica em **Ajustes → Agenda do mês**, ao lado
-das categorias da rotina — é a mesma pergunta ("o que
-este caderno cobra de mim?"), só que a rotina cobra todo dia e a agenda cobra
-no dia. Tem sugestões prontas pra montar em alguns toques; os dias vêm de
-exemplo e você ajusta pro seu vencimento.
+sai e quanto entra, e o que passou do dia. Dá pra criar e editar ali mesmo, e
+**a lista completa mora ali também** — ao pé da aba, "todos os compromissos",
+que é a única porta pros pausados e pros únicos de outros meses, e onde se
+pausa um item sem apagar o histórico. Tem sugestões prontas pra montar em
+alguns toques; os dias vêm de exemplo e você ajusta pro seu vencimento.
+
+Isso saiu de Ajustes de propósito: **Ajustes guarda configuração** — o que o
+app te pergunta todo dia —, e compromisso é *conteúdo*, um item com data e
+valor que nasce e morre. Ele passou a morar junto do dinheiro, que é onde
+você olha pra ele.
 
 Os compromissos do dia aparecem no check-in numa faixa própria, e no
 calendário como uma marca no canto do dia. Eles **não entram no progresso da
@@ -231,6 +256,16 @@ pra editar no lugar, e **arraste pelo punho (⠿) pra ordenar** — quem prefere
 teclado usa ↑ ↓ com o punho focado. A ordem que você deixar é a que fica; a
 estrela virou destaque, não muda mais o lugar. As abertas aparecem também no
 fim do check-in do dia. As categorias em Ajustes se reordenam do mesmo jeito.
+
+Cada tarefa pode ganhar **um dia pra ser feita** — uma data só, nunca
+repetição: se tem que voltar, ou é ritmo (categoria) ou é dia do mês
+(compromisso), e é essa linha que impede um quarto tipo de coisa nascer.
+Quando tem data, ela ocupa o lugar do ícone na linha (`hoje`, `amanhã`,
+`14/09`), a tarefa sobe na lista quando o dia chega, aparece no calendário do
+mês como um quadradinho vazado e encabeça o "na lista hoje" do check-in — com
+`ERA PRA ONTEM` em vermelho quando passou. **Não entra no progresso da
+rotina**: tarefa se empurra pra frente por definição, e ser cobrado por
+"comprar ração" treinaria você a ignorar o painel do dia.
 
 **Assinaturas.** Só o que debita sozinho todo mês: Spotify, Google, Netflix,
 academia. A tela existe pra uma pergunta — quanto some da conta sem você fazer
@@ -338,8 +373,8 @@ nível e conquistas.
 
 ### Ajustes
 Sincronia com o repositório, paleta (8 opções), categorias (criar, editar,
-reordenar, arquivar, apagar), **agenda do mês**, metas, **lembrete do dia**,
-início da semana,
+reordenar, arquivar, apagar, **escolher os dias da semana**), metas,
+**lembrete do dia**, início da semana,
 movimento ligado/desligado, trava automática, troca de senha e backup.
 
 ## Atalhos (teclado)
@@ -417,6 +452,7 @@ js/graficos.js          anéis, barras, colunas, malhas e trilhas (sem lib)
 js/views/agenda.js      o mês pontual: contas, cartões, NF, eventos
 js/views/agendaform.js  a caixa que cria e edita um compromisso
 tools/test-agenda.mjs   calendário e dinheiro do mês — node tools/test-agenda.mjs
+tools/test-dias.mjs     cadência por dia da semana e tarefa com data
 tools/test-merge.mjs    teste da junção — node tools/test-merge.mjs
 tools/test-contraste.mjs contraste WCAG de todas as paletas
 ```
@@ -430,12 +466,37 @@ não conquista: escolher "0 doses" não pinta o pixel mais saturado da tela.
 Verde e vermelho existem (`--ok`, `--erro`), são por paleta e passam no teste de
 contraste — um verde fixo some numa paleta clara.
 
-**Duas famílias, sete degraus, três pesos.** A grotesca pro que se lê, a mono
+**Duas famílias, nove degraus, três pesos.** A grotesca pro que se lê, a mono
 pro que se mede — isso sempre foi assim. O que tinha escapado era a escala:
 17 tamanhos e 6 pesos, escolhidos um a um dentro de cada componente, o que dá
 a impressão de muita fonte diferente sem haver nenhuma a mais. Agora são
-tokens (`--t-micro` a `--t-num`, mais quatro degraus de display) e componente
-novo escolhe dentro deles.
+tokens — `--t-micro` (10) a `--t-num` (26) pro texto, `--d-lg` (32),
+`--d-xl` (44) e `--d-imersivo` (54) pro display — e componente novo escolhe
+dentro deles. No telefone os degraus são fixos e sobem em duas larguras
+declaradas (600px e 900px): os `clamp()` que havia ali nunca saíam do mínimo
+dentro da faixa de telefone — `6vw` só cruza `2rem` aos 533px de tela —, então
+eram fluidez decorativa, um valor fixo fingindo não ser. E os dois degraus
+que colidiam (27,2 contra 26; 22,4 contra 21) viraram um só: quando a
+diferença é de 1px, não é degrau, é ruído.
+
+**Espaço e raio também são tokens.** Eram 25 valores de `gap`, 30 de `padding`
+e 12 raios de canto — vizinhos indistinguíveis (`.5` e `.55rem`, `.7` e `.75`
+e `.8rem`) escolhidos um a um. O espaço encostou numa grade de 4px
+(`--s-1` a `--s-8`, de 4 a 40px) e o raio passou a contar *o que a coisa é*:
+`--r-fio` (trilho, barrinha), `--r-ctrl` (campo, botão de ícone),
+`--r-card` (caixa com conteúdo), `--r-painel` (a moldura grande) e
+`--r-pill`. O levantar do hover, que tinha três valores (−1, −2, −3px),
+virou `--lift`.
+
+**Um controle por pergunta.** O check-in empilhava três instrumentos pra uma
+pergunta só: Sono tinha passo, régua *e* chips; Maconha tinha passo e chips.
+Agora horas é a régua com o número lido grande em cima, contagem é o passo, e
+a escala de 0 a 10 virou um **medidor** — colunas que enchem até onde você
+tocou, sem dígito dentro. Onze botõezinhos numerados liam como teclado
+numérico, e ninguém digita o humor. Uma forma só pra "sim", também: o
+interruptor da casa substituiu os dois `<input type=checkbox>` nativos que
+tinham sobrado (Metas e o editor de categoria) — eram o único componente sem
+desenho no app.
 
 **Fundo vivo.** Três manchas da paleta presas à tela: no topo manda a de cima e,
 conforme a página rola, ela sobe e cede lugar à de baixo. Trocar de paleta troca

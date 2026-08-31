@@ -1,7 +1,7 @@
 /* analysis.js — leitura dos dados: sequências, metas, padrões,
    comparações entre categorias e sugestões em texto. Tudo local. */
 
-import { state, hasEntry, listCategories, listTodos, cadencia, respondida, getReview } from './store.js';
+import { state, hasEntry, listCategories, listTodos, cobraNoDia, respondida, getReview } from './store.js';
 import { addDays, todayKey, parseKey, lastNDays, weekOfKey, weekKey, WD_LONG, nf } from './utils.js';
 
 /* ── Base ──────────────────────────────────────────────────── */
@@ -111,13 +111,17 @@ export function goalProgress(cat, key = todayKey()) {
  * O que o dia cobra, o que já foi e o que falta.
  * Só as categorias de cadência diária entram na conta de "obrigatórias" —
  * as da semana são cobradas pela meta, e as livres não cobram nada.
+ *
+ * E "diária" agora sabe de dias da semana: terapia toda terça cobra na
+ * terça e cala na segunda. Marcada fora do dia dela, conta como extra —
+ * consulta remarcada continua sendo consulta.
  */
 export function dayStatus(key = todayKey()) {
   const ativas = listCategories().filter(c => !c.archived);
-  const obrigatorias = ativas.filter(c => cadencia(c) === 'diaria');
+  const obrigatorias = ativas.filter(c => cobraNoDia(c, key));
   const feitas = obrigatorias.filter(c => respondida(c, key));
   const faltando = obrigatorias.filter(c => !respondida(c, key));
-  const extras = ativas.filter(c => cadencia(c) !== 'diaria' && respondida(c, key));
+  const extras = ativas.filter(c => !obrigatorias.includes(c) && respondida(c, key));
   return {
     obrigatorias, feitas, faltando, extras,
     total: obrigatorias.length,

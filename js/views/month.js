@@ -13,7 +13,8 @@ import * as store from '../store.js';
 import { num, did, isReduce, loggedDays, goalProgress, dayStatus } from '../analysis.js';
 import { anel, colunas, linha, tomDoDia } from '../graficos.js';
 import { stagger, onSwipe, openSheet, toast } from '../ui.js';
-import { iconBtn, control, fmtH } from './today.js';
+import { iconBtn, control, fmtH, check } from './today.js';
+import { editarCompromisso } from './agendaform.js';
 
 export function render(ctx) {
   const modo = ctx.monthMode === 'semana' ? 'semana' : 'mes';
@@ -289,6 +290,16 @@ function renderMonth(view, ctx) {
         }));
       }
       if (rec?.closed) cell.classList.add('is-fechado');
+      /* Tarefa com dia marcado: quadradinho vazado no canto de cima à
+         esquerda — o único canto livre (anel no meio, volume na base,
+         compromisso à direita). Quadrado já é tarefa no app (.todo__box) e
+         círculo já é compromisso (.agitem__check); a forma não é arbitrária. */
+      const tarefas = store.todosDoDia(c.key);
+      if (tarefas.length && !c.out) {
+        cell.append(el('span.cal__tf', {
+          title: tarefas.map(t => t.text).join(' · '),
+        }));
+      }
       if (doDia.length) {
         cell.append(el('span.cal__ag' + (doDia.every(a => store.agendaFeito(a, mesChave)) ? '.is-ok' : ''), {
           text: doDia.length > 1 ? String(doDia.length) : '',
@@ -359,6 +370,7 @@ function legenda(fCat) {
     el('span.legend__i', {}, [el('span.legend__anel'), 'quanto do obrigatório do dia fechou']),
     el('span.legend__i', {}, [el('span.legend__vol'), 'quantas marcações teve']),
     el('span.legend__i', {}, [el('span.cal__ag', { style: { position: 'static' } }), 'compromisso do mês']),
+    el('span.legend__i', {}, [el('span.cal__tf', { style: { position: 'static' } }), 'tarefa marcada pro dia']),
   ]);
 }
 
@@ -403,8 +415,9 @@ function previaDoDia(k, ctx) {
 
     if (rec?.note) corpo.push(el('p.previa__nota', { text: rec.note }));
 
-    if (doDia.length) {
-      corpo.push(el('p.micro', { style: { marginTop: '1rem' }, text: 'DO MÊS, NESTE DIA' }));
+    const tarefasDoDia = store.listTodos().filter(t => t.due === k);
+    if (doDia.length || tarefasDoDia.length) {
+      corpo.push(el('p.micro', { style: { marginTop: 'var(--s-4)' }, text: 'NESTE DIA' }));
       const lista = el('div.agenda');
       doDia.forEach(item => {
         const feito = store.agendaFeito(item, mes);
@@ -427,8 +440,66 @@ function previaDoDia(k, ctx) {
         ].filter(Boolean));
         lista.append(linhaEl);
       });
+      tarefasDoDia.forEach(t => {
+        const linhaEl = el('div.agitem.agitem--curto' + (t.done ? '.is-feito' : ''));
+        linhaEl.append(
+          el('button.todo__box', {
+            type: 'button', 'aria-label': `${t.done ? 'Reabrir' : 'Concluir'} ${t.text}`,
+            onclick: e => {
+              store.updateTodo(t.id, { done: !t.done });
+              t.done = !t.done;
+              linhaEl.classList.toggle('is-feito', t.done);
+              e.currentTarget.classList.toggle('is-on', t.done);
+              toast(t.done ? 'feito' : 'reaberta');
+            },
+          }, [check()]),
+          el('span.agitem__t', {}, [el('span', { text: t.text })]),
+        );
+        lista.append(linhaEl);
+      });
       corpo.push(lista);
     }
+
+    /* Criar direto do dia. "Que tipo é" deixa de ser um select dentro do
+       formulário e vira o botão que se aperta — o dia já foi respondido
+       pelo toque, e o resto do formulário encolhe conforme o tipo. */
+    corpo.push(el('p.micro', { style: { marginTop: 'var(--s-5)' }, text: 'NOVO NESTE DIA' }));
+    const linhaNovo = el('div.chips');
+    const abrirForm = tipo => {
+      close();
+      editarCompromisso(null, () => ctx.rerender(), {
+        tipo, fluxo: store.AGENDA_TIPOS[tipo]?.fluxo || 'saida',
+        repete: 'unico', data: k,
+        emoji: { evento: '📌', conta: '💸', renda: '💰' }[tipo] || '📌',
+      });
+    };
+    [['evento', '📌 evento'], ['conta', '💸 conta'], ['renda', '💰 entrada']].forEach(([tipo, rot]) =>
+      linhaNovo.append(el('button.chip', { type: 'button', onclick: () => abrirForm(tipo), text: rot })));
+
+    /* Tarefa não abre formulário nenhum: o campo abre aqui mesmo. */
+    const campoT = el('input', {
+      type: 'text', placeholder: 'O que precisa ser feito?', 'aria-label': 'Nova tarefa',
+      autocomplete: 'off', enterkeyhint: 'done',
+    });
+    const caixaT = el('div.todoadd', { hidden: true }, [
+      campoT,
+      el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: () => criarTarefa() }, [el('span', { text: 'Add' })]),
+    ]);
+    const criarTarefa = () => {
+      const nova = store.addTodo(campoT.value, { due: k });
+      if (!nova) return;
+      campoT.value = '';
+      toast(`tarefa marcada pra ${longDay(k)}`);
+      close();
+      ctx.rerender();
+    };
+    campoT.addEventListener('keydown', e => { if (e.key === 'Enter') criarTarefa(); });
+    linhaNovo.append(el('button.chip', {
+      type: 'button',
+      onclick: () => { caixaT.hidden = false; campoT.focus(); },
+      text: '✓ tarefa',
+    }));
+    corpo.push(linhaNovo, caixaT);
 
     corpo.push(el('div.sheet__actions', {}, [
       el('button.btn', {
