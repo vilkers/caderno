@@ -131,7 +131,7 @@ export async function avisarSePreciso({ forcar = false } = {}) {
     const reg = await registro();
     const opcoes = {
       body: corpo, tag: 'caderno-dia', icon: './assets/icon.svg', badge: './assets/icon.svg',
-      data: { url: './?v=rapido' },
+      data: { url: './?v=hoje' },
     };
     if (reg) await reg.showNotification('Fecha o dia?', opcoes);
     else new Notification('Fecha o dia?', opcoes);

@@ -270,13 +270,17 @@ Três camadas, para a barra de baixo não virar depósito:
 - **Embaixo, a rotina** — Hoje, Mês, Pessoal, Metas. O que se toca todo dia.
 - **No topo, você e a leitura** — o avatar abre o **Perfil**, e ao lado ficam
   o estado da sincronia, o atalho de **Insights** e o **menu**.
-- **No menu, a configuração** — Perfil, Retrospectiva, Insights, Marcação
-  rápida, Revisão da semana, **Agenda do mês**, Metas, Ajustes, Paleta,
-  Caderno 2.0 e Trancar, agrupados por assunto.
+- **No menu, só o que não tem outra porta** — Retrospectiva, Revisão da semana,
+  Contas do mês, Ajustes, Paleta, Sincronizar e Trancar. Uma linha por item,
+  sem descrição: Perfil, Insights e Metas saíram porque já estão a um toque no
+  avatar, no ícone do topo e na barra de baixo.
 
-As telas secundárias trazem **← voltar**, e a navegação usa o histórico do
-navegador: o botão físico de voltar do Android (e o gesto do iOS) funciona,
-assim como `Esc` no teclado.
+**Em tela secundária a barra de cima muda de papel**: em vez de "quem sou eu",
+ela responde "onde estou e como saio" — a foto dá lugar a uma seta de voltar e
+o nome, ao nome da tela. Como ela é fixa, a saída não some quando você rola (a
+tela de Ajustes tem quase quatro telas de altura). A navegação usa o histórico
+do navegador, então o botão físico do Android, o gesto do iOS e o `Esc`
+funcionam do mesmo jeito.
 
 ### Revisão da semana
 Segunda de manhã, o Hoje mostra uma faixa: *a semana passada acabou*. A revisão
@@ -301,12 +305,6 @@ isso na própria tela, sem prometer o que não dá.
 O worker que dispara o aviso **não abre o cofre** — ele lê uma gaveta separada
 (`js/idb.js`) com o número de pendências e, se você pedir, os nomes das
 categorias. Nenhum valor marcado sai de lá.
-
-### Marcação rápida
-Do menu, **Marcação rápida** abre uma caixa só com o que ainda falta hoje —
-os mesmos controles do check-in, sem a tela inteira — e um botão pra fechar o
-dia. O aviso do lembrete e o atalho `?v=rapido` caem direto nela, então dá pra
-guardar isso como atalho na tela de início do celular: um toque, marca, pronto.
 
 ### Retrospectiva
 Uma tela por vez, tipografia grande entrando palavra a palavra, número subindo

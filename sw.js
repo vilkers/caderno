@@ -1,7 +1,7 @@
 /* sw.js — cache do casco do app para uso offline.
    Os dados nunca passam por aqui: ficam cifrados no localStorage. */
 
-const CACHE = 'caderno-v12';
+const CACHE = 'caderno-v13';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css', './css/fonts.css',
@@ -11,7 +11,7 @@ const SHELL = [
   './js/ui.js', './js/palettes.js', './js/analysis.js',
   './js/merge.js', './js/sync.js', './js/badges.js', './js/icons.js', './js/avatar.js', './js/idb.js', './js/lembrete.js', './js/arrastar.js', './js/resumo.js', './js/graficos.js',
   './js/views/today.js', './js/views/month.js', './js/views/todos.js',
-  './js/views/insights.js', './js/views/settings.js', './js/views/metas.js', './js/views/perfil.js', './js/views/resumo.js', './js/views/revisao.js', './js/views/agenda.js', './js/views/agendaform.js',
+  './js/views/insights.js', './js/views/settings.js', './js/views/metas.js', './js/views/perfil.js', './js/views/resumo.js', './js/views/revisao.js', './js/views/agenda.js', './js/views/agendaform.js', './js/views/paleta.js',
   './assets/icon.svg',
 ];
 
@@ -65,7 +65,7 @@ async function conferirLembrete() {
     tag: 'caderno-dia',
     icon: './assets/icon.svg',
     badge: './assets/icon.svg',
-    data: { url: './?v=rapido' },
+    data: { url: './?v=hoje' },
   });
   try { await comBanco('readwrite', loja => loja.put({ ...r, avisadoEm: hoje }, CHAVE)); } catch {}
 }

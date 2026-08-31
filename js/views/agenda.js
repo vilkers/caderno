@@ -38,7 +38,6 @@ export function render(ctx) {
           : null,
         iconBtn('M9 6l6 6-6 6', () => desloca(1), 'Próximo mês'),
       ]),
-      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
     ]),
   ]));
 

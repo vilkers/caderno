@@ -25,6 +25,62 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 11 — o menu emagrece e a barra de cima vira bússola
+
+Chamei um segundo par de olhos (um agente só pra UX) pra olhar menu e
+navegação com o app rodando no tamanho do iPhone, medindo posição de cada
+linha. O que ele achou, e o que eu fiz:
+
+- **Três itens do menu nasciam fora da tela.** Dez cartões de duas linhas em
+  750px de altura útil: Paleta, Caderno 2.0 e Trancar só existiam depois de
+  rolar. Pior: os três primeiros lugares — a área mais cara — eram Perfil,
+  Retrospectiva e Insights, e **dois deles já estão a um toque na barra de
+  cima**. O menu virou seis linhas de uma linha só, sem descrição, todas acima
+  da dobra. Perfil, Insights e Metas saíram (avatar, ícone do topo, barra de
+  baixo); Caderno 2.0 e a grade de paleta ficaram em Ajustes.
+
+- **Havia um quarto lugar listando os mesmos destinos**: um bloco "DO SEU
+  JEITO" dentro do Perfil, com as mesmas cinco entradas do menu e as descrições
+  copiadas — um menu dentro de uma tela que só se alcança pelo menu. Apagado.
+
+- **A barra de cima dizia "HOJE" enquanto você olhava a carteira de julho**, e
+  o "← voltar" morava no conteúdo, então sumia ao rolar (Ajustes tinha 4908px:
+  quase seis telas). Agora, em tela secundária, o avatar vira seta e o nome
+  vira o nome da tela — e como a barra é fixa, a saída está sempre ali. O
+  "← voltar" saiu de dentro das cinco telas que o tinham. Ajustes encolheu pra
+  3989px de quebra.
+
+- **Metas tinha "← voltar" sendo destino de barra**: voltar de uma raiz não tem
+  pra onde ir.
+
+- **"Agenda do mês" e "Mês" usavam o mesmo ícone e nomes quase iguais** pra
+  telas sem relação. A do menu virou **Contas do mês**, com ícone próprio.
+
+- **Marcação rápida saiu** (a pedido). O check-in já lista o que falta com um
+  botão por pendência — a caixa era a mesma coisa numa camada a mais. O aviso
+  do lembrete e o atalho do ícone passaram a abrir o dia; o `?v=rapido` de
+  avisos antigos continua caindo lá, pra não quebrar o que já foi disparado.
+
+- **Carteira e Assinaturas ganharam navegação de mês.** Sem ela, "quanto entrou
+  em julho" era uma pergunta sem resposta.
+
+- Layout: o contorno do dia selecionado no calendário era desenhado quadrado
+  dentro de uma grade arredondada que recorta — nos quatro cantos ele saía
+  comido. As células de canto ganharam o mesmo raio.
+
+Ficaram **em aberto pra você decidir** (o agente classificou como "vale
+discutir", e são mudanças estruturais):
+
+1. **Fundir a Agenda dentro de Pessoal**, como uma quarta aba. Hoje as duas
+   telas mostram quase o mesmo conjunto (a Carteira lista tudo da agenda, mais
+   assinaturas) e marcar como pago funciona nas duas. É a mudança de maior
+   retorno e a mais arriscada.
+2. **Trocar Metas por Insights na barra de baixo.** Meta se ajusta uma vez por
+   semana — e já se ajusta dentro da Revisão. Os atalhos do ícone instalado, a
+   propósito, elegem Hoje/Contas/Pessoal/Semana: o app já discorda da própria
+   barra sobre quais são os quatro destinos.
+3. Um índice de seções no topo de Ajustes.
+
 ## Rodada 10 — o fundo respira, e uma varredura de bugs
 
 - **Bug que impedia cadastrar compromisso.** O campo de nome tinha **0px de

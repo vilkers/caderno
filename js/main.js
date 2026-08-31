@@ -6,10 +6,8 @@ import * as vault from './vault.js';
 import * as sync from './sync.js';
 import * as badges from './badges.js';
 import * as lembrete from './lembrete.js';
-import { PALETTES, applyPalette } from './palettes.js';
+import { applyPalette } from './palettes.js';
 import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn, revelarAoRolar, observarTopo, fundoVivo } from './ui.js';
-import { control } from './views/today.js';
-import { dayStatus } from './analysis.js';
 import { icon } from './icons.js';
 import { avatar } from './avatar.js';
 import { el, debounce } from './utils.js';
@@ -24,6 +22,7 @@ import * as viewResumo from './views/resumo.js';
 import * as viewRevisao from './views/revisao.js';
 import * as viewSettings from './views/settings.js';
 import * as viewAgenda from './views/agenda.js';
+import { abrirPaleta } from './views/paleta.js';
 
 const VIEWS = {
   hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
@@ -67,6 +66,7 @@ function paint() {
   ctx.softRefresh = null;              // cada tela instala o seu, se quiser
   if (ctx.view !== 'resumo') document.body.classList.remove('modo-imersivo');
   if (ctx.view !== 'revisao') ctx.revisaoSemana = null;   // não guarda semana de ontem
+  if (ctx.view !== 'lista') ctx.pessoalMes = null;        // nem mês de ontem
   main.replaceChildren(VIEWS[ctx.view].render(ctx));
   main.scrollTop = 0;
   window.scrollTo({ top: 0, behavior: 'auto' });   // antes de medir a dobra
@@ -80,7 +80,7 @@ function paint() {
   const largo = window.matchMedia('(min-width:700px)').matches;
   $('#topDate').textContent = ctx.view === 'hoje'
     ? (largo ? longDay(ctx.day) : humanDay(ctx.day))
-    : humanDay(todayKey());
+    : PRIMARIAS.includes(ctx.view) ? humanDay(todayKey()) : '';
 }
 
 /* ── Tela de senha ─────────────────────────────────────────── */
@@ -162,10 +162,9 @@ function enterApp() {
   paintSync(sync.getStatus());
   lembrete.atualizar();
 
-  if (ctx.abrirRapido) { ctx.abrirRapido = false; setTimeout(marcacaoRapida, 260); }
-  else if (lembrete.pendenteAgora()) {
+  if (lembrete.pendenteAgora()) {
     setTimeout(() => toast('passou da hora e ainda falta marcar', {
-      action: 'marcar', ms: 7000, onAction: marcacaoRapida,
+      action: 'marcar', ms: 7000, onAction: () => { ctx.setDay(todayKey()); ctx.go('hoje'); },
     }), 900);
   }
 
@@ -193,7 +192,7 @@ function aplicarAtalhoDaURL() {
   const v = new URLSearchParams(location.search).get('v');
   if (!v) return;
   if (v === 'semana') { ctx.view = 'mes'; ctx.monthMode = 'semana'; }
-  else if (v === 'rapido') { ctx.view = 'hoje'; ctx.abrirRapido = true; }
+  else if (v === 'rapido') ctx.view = 'hoje';   // avisos antigos ainda apontam pra cá
   else if (VIEWS[v]) ctx.view = v;
   history.replaceState(null, '', location.pathname);
 }
@@ -230,7 +229,10 @@ function wire() {
   });
   observarTopo();
   medirFundo = fundoVivo();
-  $('#identBtn').addEventListener('click', () => ctx.go('perfil'));
+  $('#identBtn').addEventListener('click', () => {
+    if (PRIMARIAS.includes(ctx.view)) ctx.go('perfil');
+    else ctx.voltar();
+  });
   $('#insightsBtn').append(icon('insights', 18));
   $('#insightsBtn').addEventListener('click', () => ctx.go('insights'));
   $('#menuBtn').append(icon('menu', 18));
@@ -286,55 +288,6 @@ function wire() {
   });
 }
 
-/* ── Marcação rápida ───────────────────────────────────────── */
-/* O atalho do ícone e o toque no aviso caem aqui: abre, destranca, marca.
-   Sem navegar por tela nenhuma. */
-function marcacaoRapida() {
-  const dia = todayKey();
-  const st = dayStatus(dia);
-  const faltando = st.faltando;
-
-  openSheet(faltando.length ? `Falta marcar (${faltando.length})` : 'Tudo em ordem', close => {
-    if (!faltando.length) {
-      return [
-        el('p', { style: { fontSize: '1.05rem', lineHeight: '1.5' },
-          text: st.fechado ? 'O dia já está fechado. Nada te esperando.' : 'Nada obrigatório em aberto hoje.' }),
-        el('div.sheet__actions', {}, [
-          !st.fechado ? el('button.btn', {
-            type: 'button',
-            onclick: () => { store.closeDay(dia, true); toast('dia fechado'); close(); paint(); },
-          }, [el('span', { text: 'fechar o dia' })]) : null,
-          el('button.btn.btn--solid', { type: 'button', onclick: close }, [el('span', { text: 'beleza' })]),
-        ].filter(Boolean)),
-      ];
-    }
-    // o título acompanha o que você acabou de marcar
-    const recontar = () => {
-      const n = dayStatus(dia).faltando.length;
-      const t = $('#sheetTitle');
-      if (t) t.textContent = n ? `Falta marcar (${n})` : 'Tudo em ordem';
-    };
-    const corpo = faltando.map(cat => el('div.entry', { 'data-cat': cat.id }, [
-      el('div.entry__top', {}, [
-        el('div.entry__id', {}, [
-          el('span.entry__emoji', { text: cat.emoji || '•' }),
-          el('span.entry__label', { text: cat.label }),
-        ]),
-      ]),
-      el('div.entry__ctl', {}, [control(cat, dia, null, { softRefresh: () => { lembrete.atualizar(); recontar(); } })]),
-    ]));
-    corpo.push(el('div.sheet__actions', {}, [
-      el('button.btn', { type: 'button', onclick: () => { close(); ctx.go('hoje'); } },
-        [el('span', { text: 'ver tudo' })]),
-      el('button.btn.btn--solid', {
-        type: 'button',
-        onclick: () => { store.closeDay(dia, true); toast('dia fechado'); close(); paint(); },
-      }, [el('span', { text: 'fechar o dia' })]),
-    ]));
-    return corpo;
-  });
-}
-
 /* ── Conquistas ────────────────────────────────────────────── */
 const conferirConquistas = debounce(() => {
   if (!store.isUnlocked()) return;
@@ -382,15 +335,37 @@ function celebrar(novas, resumo) {
 }
 
 /* ── Identidade no topo ────────────────────────────────────── */
+const NOME_DA_TELA = {
+  insights: 'Padrões', ajustes: 'Ajustes', perfil: 'Perfil', resumo: 'Retrospectiva',
+  revisao: 'Revisão da semana', agenda: 'Contas do mês',
+};
+
+/* Em tela secundária a barra de cima troca de papel: em vez de "quem sou eu",
+   ela responde "onde estou e como saio". Antes dizia "Caderno · HOJE" mesmo
+   quando você estava na carteira de julho, e a única saída era o botão de
+   voltar lá do topo do conteúdo — que some assim que você rola. */
 function pintaIdentidade() {
+  const secundaria = !PRIMARIAS.includes(ctx.view);
+  const btn = $('#identBtn');
   const av = $('#identAv');
-  if (av) av.replaceChildren(avatar(30));
   const nome = $('#identNome');
+
+  if (av) {
+    av.replaceChildren(secundaria
+      ? el('span.ident__voltar', { text: '←', 'aria-hidden': 'true' })
+      : avatar(30));
+  }
   if (nome) {
     const p = store.state.profile || {};
-    nome.textContent = p.nome?.trim() || 'Caderno';
+    nome.textContent = secundaria
+      ? (NOME_DA_TELA[ctx.view] || 'Caderno')
+      : (p.nome?.trim() || 'Caderno');
   }
-  $('#identBtn')?.classList.toggle('is-active', ctx.view === 'perfil');
+  if (btn) {
+    btn.setAttribute('aria-label', secundaria ? 'Voltar' : 'Seu perfil');
+    btn.title = secundaria ? 'Voltar' : 'Seu perfil';
+  }
+  btn?.classList.toggle('is-active', ctx.view === 'perfil');
   $('#insightsBtn')?.classList.toggle('is-active', ctx.view === 'insights');
 }
 
@@ -402,41 +377,41 @@ function menuSheet() {
       el('p.micro', { text: titulo }),
       el('div.menulista', {}, itens.filter(Boolean)),
     ]);
-    const item = (ic, titulo, desc, onclick) => el('button.menuitem', { type: 'button', onclick }, [
+    /* Uma linha por item, sem descrição: com dez cartões de duas linhas, três
+       itens nasciam fora da tela num menu que você já conhece de cor. */
+    const item = (ic, titulo, onclick) => el('button.menuitem', { type: 'button', onclick }, [
       el('span.menuitem__i', {}, [icon(ic, 18)]),
-      el('span.menuitem__t', {}, [
-        el('span.row__t', { text: titulo }),
-        el('span.row__d', { text: desc }),
-      ]),
+      el('span.row__t', { text: titulo }),
       el('span.atalho__seta', { text: '→' }),
     ]);
 
+    /* Perfil, Insights e Metas saíram: os três já estão a um toque no avatar,
+       no ícone do topo e na barra de baixo. Caderno 2.0 e a grade de paleta
+       vivem em Ajustes. O menu é o que NÃO tem outra porta. */
     return [
-      grupo('VOCÊ', [
-        item('perfil', 'Perfil', 'Nome, foto e o que o caderno sabe de você.', () => ir('perfil')),
-        item('estrela', 'Retrospectiva', 'O seu caderno até aqui, em tela cheia.', () => ir('resumo')),
-        item('insights', 'Insights', 'Padrões, sequências e conquistas.', () => ir('insights')),
+      grupo('LEITURA', [
+        item('estrela', 'Retrospectiva', () => ir('resumo')),
+        item('revisao', 'Revisão da semana', () => ir('revisao')),
+      ]),
+      grupo('MÊS', [
+        item('nf', 'Contas do mês', () => ir('agenda')),
       ]),
       grupo('CADERNO', [
-        item('hoje', 'Marcação rápida', 'Só o que falta hoje, numa caixa só.', () => { close(); marcacaoRapida(); }),
-        item('revisao', 'Revisão da semana', 'Fechar a semana e ajustar as metas da próxima.', () => ir('revisao')),
-        item('mes', 'Agenda do mês', 'Contas, cartões, aluguel, NF — o que vence e o que entra.', () => ir('agenda')),
-        item('metas', 'Metas e cobrança', 'O que o dia exige e o que é da semana.', () => ir('metas')),
-        item('ajustes', 'Ajustes', 'Categorias, sincronia, senha e backup.', () => ir('ajustes')),
-        item('paleta', 'Paleta', 'Trocar as cores do app.', () => { close(); paletteSheet(); }),
-        item('jogo', 'Caderno 2.0', 'A mesma rotina em forma de fase.', () => { location.href = './retro/'; }),
+        item('ajustes', 'Ajustes', () => ir('ajustes')),
+        item('paleta', 'Paleta', () => { close(); abrirPaleta(() => paint()); }),
       ]),
       grupo('COFRE', [
-        sync.configured() ? item('nuvem', 'Sincronizar agora', 'Gravar e puxar do repositório.', async () => {
+        sync.configured() ? item('nuvem', 'Sincronizar agora', async () => {
           close();
           try { await sync.syncNow(); toast('sincronizado'); }
           catch (err) { toast(err.message, { ms: 5000 }); }
         }) : null,
-        item('cadeado', 'Trancar', 'Fecha a sessão e pede a senha.', () => { close(); doLock(); }),
+        item('cadeado', 'Trancar', () => { close(); doLock(); }),
       ]),
     ];
   });
 }
+
 
 const SYNC_TXT = {
   off: 'sem sync', syncing: 'sincronizando', ok: 'sincronizado',
@@ -451,30 +426,6 @@ function paintSync(st) {
   btn.title = st.msg || '';
 }
 
-function paletteSheet() {
-  openSheet('Paleta', close => {
-    const grid = el('div.palettes', {}, PALETTES.map(p => el('button.pal' + (store.state.settings.palette === p.id ? '.is-on' : ''), {
-      type: 'button',
-      onclick: () => {
-        store.state.settings.palette = p.id;
-        applyPalette(p.id);
-        vault.writeMeta({ palette: p.id });
-        store.emit('settings');
-        close();
-        paint();
-        toast(`paleta ${p.name.toLowerCase()}`);
-      },
-    }, [
-      el('div.pal__sw', {}, [
-        el('i', { style: { background: p.vars.bg } }),
-        el('i', { style: { background: p.vars.fg } }),
-        el('i', { style: { background: p.vars.accent } }),
-      ]),
-      el('span.pal__n', { text: p.name }),
-    ])));
-    return [grid];
-  });
-}
 
 /* ── Arranque ──────────────────────────────────────────────── */
 function boot() {

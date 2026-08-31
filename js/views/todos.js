@@ -13,7 +13,7 @@ import * as store from '../store.js';
 import { toast, stagger, confirmSheet } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
 import { barras, barraProgresso } from '../graficos.js';
-import { check } from './today.js';
+import { check, iconBtn } from './today.js';
 import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
 
 const ABAS = [
@@ -26,7 +26,9 @@ export function render(ctx) {
   const aba = ABAS.some(([id]) => id === ctx.pessoalAba) ? ctx.pessoalAba : 'tarefas';
   const view = el('div.view');
   const abertas = store.listTodos().filter(t => !t.done).length;
-  const mes = monthKey();
+  /* As duas abas de dinheiro andam pelo tempo: o que se paga e o que se recebe
+     é por mês, e olhar o mês passado (ou o que vem) é metade da graça. */
+  const mes = ctx.pessoalMes || monthKey();
   const assinaturas = store.agendaDoMes(mes, { tipos: ['assinatura'] });
   const c = store.contasDoMes(mes);
   const sobra = c.totalEntrada - c.totalSaida;
@@ -56,12 +58,34 @@ export function render(ctx) {
       el('span.micro.aba__n', { text: resumo[id] }),
     ]))));
 
+  if (aba !== 'tarefas') view.append(navMes(ctx, mes));
+
   view.append(
     aba === 'tarefas' ? painelTarefas(ctx)
       : aba === 'assinaturas' ? painelAssinaturas(ctx, mes)
       : painelCarteira(ctx, mes),
   );
   return view;
+}
+
+/* ── Andar pelos meses ─────────────────────────────────────── */
+function navMes(ctx, mes) {
+  const desloca = n => {
+    const [y, m] = mes.split('-').map(Number);
+    const d = new Date(y, m - 1 + n, 1);
+    ctx.pessoalMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    ctx.rerender();
+  };
+  return el('div.mesnav', {}, [
+    el('div.daynav', {}, [
+      iconBtn('M15 6l-6 6 6 6', () => desloca(-1), 'Mês anterior'),
+      el('span.daynav__label', { text: monthLabel(mes) }),
+      iconBtn('M9 6l6 6-6 6', () => desloca(1), 'Próximo mês'),
+    ]),
+    mes !== monthKey()
+      ? el('button.chip', { type: 'button', onclick: () => { ctx.pessoalMes = null; ctx.rerender(); }, text: 'este mês' })
+      : null,
+  ]);
 }
 
 /* ══ ASSINATURAS ════════════════════════════════════════════ */
@@ -145,7 +169,6 @@ function painelCarteira(ctx, mes) {
       type: 'button',
       onclick: () => editarCompromisso(null, () => ctx.rerender(), { tipo: 'conta', emoji: '💸' }),
     }, [el('span', { text: '+ a pagar' })]),
-    el('p.micro', { text: monthLabel(mes).toUpperCase() }),
   ]));
 
   if (!entra.length && !sai.length) {

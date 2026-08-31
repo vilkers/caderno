@@ -8,10 +8,11 @@ import { TYPES, CADENCIAS } from '../store.js';
 import * as vault from '../vault.js';
 import * as sync from '../sync.js';
 import * as lembrete from '../lembrete.js';
-import { PALETTES, applyPalette } from '../palettes.js';
+import { PALETTES } from '../palettes.js';
 import { toast, openSheet, confirmSheet, stagger } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
 import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
+import { abrirPaleta } from './paleta.js';
 
 export function render(ctx) {
   const view = el('div.view');
@@ -21,9 +22,6 @@ export function render(ctx) {
     el('div.vhead__l', {}, [
       el('p.micro', { text: '06 — AJUSTES' }),
       el('h2.display.h-lg', { text: 'AJUSTES' }),
-    ]),
-    el('div.vhead__r', {}, [
-      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
     ]),
   ]));
 
@@ -35,24 +33,11 @@ export function render(ctx) {
   ])));
 
   /* ── Paleta ── */
-  view.append(section('PALETA', el('div.palettes', {}, PALETTES.map(p =>
-    el('button.pal' + (s.palette === p.id ? '.is-on' : ''), {
-      type: 'button', 'data-id': p.id,
-      onclick: () => {
-        store.setSetting('palette', p.id);
-        applyPalette(p.id);
-        vault.writeMeta({ palette: p.id });
-        view.querySelectorAll('.pal').forEach(b => b.classList.toggle('is-on', b.dataset.id === p.id));
-        toast(`paleta ${p.name.toLowerCase()}`);
-      },
-    }, [
-      el('div.pal__sw', {}, [
-        el('i', { style: { background: p.vars.bg } }),
-        el('i', { style: { background: p.vars.fg } }),
-        el('i', { style: { background: p.vars.accent } }),
-      ]),
-      el('span.pal__n', { text: p.name }),
-    ])))));
+  view.append(section('PALETA', el('div', {}, [
+    row('Cores do app', `Agora em ${PALETTES.find(p => p.id === s.palette)?.name || 'Noir'}. São oito, e a troca é na hora.`,
+      el('button.btn.btn--sm', { type: 'button', onclick: () => abrirPaleta(() => ctx.rerender()) },
+        [el('span', { text: 'trocar' })])),
+  ])));
 
   /* ── Categorias ── */
   const cats = el('div.cats');
@@ -61,11 +46,6 @@ export function render(ctx) {
     itemSel: '.cat', pegaSel: '.cat__pega',
     aoSoltar: ids => { store.reorderCategories(ids); toast('ordem salva'); },
   });
-  view.append(section('METAS E COBRANÇA', el('div', {}, [
-    row('Painel de metas', 'Cadência e meta de todas as categorias numa tela só, com o progresso da semana ao lado.',
-      el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: () => ctx.go('metas') }, [el('span', { text: 'abrir' })])),
-  ])));
-
   view.append(section('CATEGORIAS', el('div', {}, [
     cats,
     el('div.wrap', { style: { marginTop: '.8rem' } }, [

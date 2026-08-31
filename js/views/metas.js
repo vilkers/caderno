@@ -27,9 +27,6 @@ export function render(ctx) {
       el('p.micro', { text: '04 — METAS' }),
       el('h2.display.h-lg', { text: 'METAS' }),
     ]),
-    el('div.vhead__r', {}, [
-      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
-    ]),
   ]));
 
   /* resumo da semana */

@@ -25,7 +25,6 @@ export function render(ctx) {
       el('h2.display.h-lg', { text: 'PADRÕES' }),
     ]),
     el('div.vhead__r', {}, [
-      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
       el('div.chips', {}, RANGES.map(([n, label]) =>
         el('button.chip' + (range === n ? '.is-on' : ''), {
           type: 'button', onclick: () => { ctx.range = n; ctx.rerender(); }, text: label,

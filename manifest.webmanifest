@@ -27,8 +27,8 @@
     {
       "name": "Marcar o dia",
       "short_name": "Marcar",
-      "url": "./?v=rapido",
-      "description": "Abrir direto a marcação rápida do que falta"
+      "url": "./?v=hoje",
+      "description": "Abrir direto o check-in de hoje"
     },
     {
       "name": "Agenda do mês",

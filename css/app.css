@@ -196,6 +196,13 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 }
 .ident:hover,.ident.is-active{background:var(--surface-2)}
 .ident__av{flex:none}
+/* em tela secundária o avatar dá lugar à seta de voltar */
+.ident__voltar{
+  display:grid;place-items:center;width:30px;height:30px;border-radius:50%;
+  border:1px solid var(--line-2);font-size:15px;line-height:1;
+}
+body.em-secundaria .ident:hover .ident__voltar{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o nome centraliza */
 .ident__txt{display:grid;min-width:0}
 .ident__n{font-weight:700;letter-spacing:-.02em;font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ident__txt .micro{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -218,8 +225,9 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 .menulista{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .menuitem{
   display:flex;align-items:center;gap:.9rem;text-align:left;background:var(--bg);
-  padding:.85rem 1rem;transition:background .25s var(--ease);
+  padding:.85rem 1rem;min-height:52px;transition:background .25s var(--ease);
 }
+.menuitem .row__t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menuitem:hover{background:var(--surface)}
 .menuitem__i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--line-2);flex:none;color:var(--fg)}
 .menuitem__t{flex:1;min-width:0;display:grid;gap:.1rem}
@@ -464,7 +472,17 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 /* ── 11. Calendário ────────────────────────────────────────── */
 .cal__head{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:.4rem}
 .cal__head span{text-align:center;font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cal{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+}
+/* o contorno do dia é desenhado por dentro da célula; nos quatro cantos da
+   grade ele encostava na curva do contêiner e saía comido. Dando o mesmo raio
+   às células de canto, o contorno acompanha a curvatura. */
+.cal__day:first-child{border-radius:13px 0 0 0}
+.cal__day:nth-child(7){border-radius:0 13px 0 0}
+.cal__day:nth-last-child(7){border-radius:0 0 0 13px}
+.cal__day:last-child{border-radius:0 0 13px 0}
 .cal__day{
   position:relative;background:var(--bg);aspect-ratio:1/1;min-height:54px;padding:.35rem;
   display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;
@@ -475,6 +493,7 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 .cal__day.is-out .cal__n,.cal__day.is-out .cal__dots{opacity:.3}
 .cal__day.is-today .cal__n{color:var(--accent-txt);font-weight:700}
 .cal__day.is-sel{box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface)}
+.cal__day.is-sel,.cal__day.is-today{z-index:1}
 .cal__n{font-family:var(--font-mono);font-size:11px;color:var(--dim)}
 .cal__day.has-data .cal__n{color:var(--fg)}
 .cal__dots{display:flex;flex-wrap:wrap;gap:3px;width:100%}
@@ -1186,6 +1205,7 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 .totalzao__n{font-size:clamp(2rem,9vw,3rem);font-weight:800;letter-spacing:-.045em;line-height:1}
 .confronto{border:1px solid var(--line);border-radius:14px;padding:1rem;margin:1rem 0}
 .carteirabloco{margin:1.6rem 0 .6rem;display:grid;gap:.5rem}
+.mesnav{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:1.2rem}
 .totalzao__n.is-neg{color:#e5484d}
 
 .hojeagenda{border:1px dashed var(--line-2);border-radius:14px;padding:.9rem;margin-bottom:1.4rem;display:grid;gap:.4rem}

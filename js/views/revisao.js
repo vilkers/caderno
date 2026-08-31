@@ -40,7 +40,6 @@ export function render(ctx) {
           ? iconBtn('M9 6l6 6-6 6', () => { ctx.revisaoSemana = addDays(chave, 7); ctx.rerender(); }, 'Semana seguinte')
           : null,
       ]),
-      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
     ]),
   ]));
 

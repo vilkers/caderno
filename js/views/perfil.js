@@ -20,9 +20,6 @@ export function render(ctx) {
       el('p.micro', { text: '07 — PERFIL' }),
       el('h2.display.h-lg', { text: 'PERFIL' }),
     ]),
-    el('div.vhead__r', {}, [
-      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
-    ]),
   ]));
 
   /* ── cartão de identidade ── */
@@ -101,16 +98,12 @@ export function render(ctx) {
     stat(`${b.ganhas}/${b.total}`, 'conquistas'),
   ]));
 
-  /* ── atalhos organizados ── */
-  view.append(el('div.section', { style: { marginTop: '2rem' } }, [
-    el('div.section__h', {}, [el('p.micro', { text: 'DO SEU JEITO' })]),
-    el('div.atalhos', {}, [
-      atalho('Retrospectiva', 'O seu caderno até aqui, em tela cheia.', () => ctx.go('resumo')),
-      atalho('Metas e cobrança', 'O que o dia exige e o que é da semana.', () => ctx.go('metas')),
-      atalho('Insights', 'Padrões, sequências e o que eu leio nos seus dados.', () => ctx.go('insights')),
-      atalho('Ajustes', 'Paleta, categorias, sincronia, senha e backup.', () => ctx.go('ajustes')),
-      atalho('Caderno 2.0', 'A mesma rotina em forma de fase, com os mesmos dados.', () => { location.href = './retro/'; }),
-    ]),
+  /* Aqui existia um bloco "DO SEU JEITO" repetindo cinco destinos do menu,
+     com as descrições copiadas — um menu dentro de uma tela que se alcança
+     pelo menu. Ficou só a retrospectiva, que é leitura do próprio perfil. */
+  view.append(el('div.wrap', { style: { marginTop: '2rem' } }, [
+    el('button.btn.btn--solid', { type: 'button', onclick: () => ctx.go('resumo') },
+      [el('span', { text: 'ver a retrospectiva' })]),
   ]));
 
   return view;
@@ -121,10 +114,3 @@ const stat = (n, rot) => el('div.stat', {}, [
   el('p.micro.stat__l', { text: rot }),
 ]);
 
-const atalho = (titulo, desc, onclick) => el('button.atalho', { type: 'button', onclick }, [
-  el('div', {}, [
-    el('p.row__t', { text: titulo }),
-    el('p.row__d', { text: desc }),
-  ]),
-  el('span.atalho__seta', { text: '→' }),
-]);
