@@ -303,6 +303,12 @@ function marcacaoRapida() {
         ].filter(Boolean)),
       ];
     }
+    // o título acompanha o que você acabou de marcar
+    const recontar = () => {
+      const n = dayStatus(dia).faltando.length;
+      const t = $('#sheetTitle');
+      if (t) t.textContent = n ? `Falta marcar (${n})` : 'Tudo em ordem';
+    };
     const corpo = faltando.map(cat => el('div.entry', { 'data-cat': cat.id }, [
       el('div.entry__top', {}, [
         el('div.entry__id', {}, [
@@ -310,11 +316,11 @@ function marcacaoRapida() {
           el('span.entry__label', { text: cat.label }),
         ]),
       ]),
-      el('div.entry__ctl', {}, [control(cat, dia, null, { softRefresh: () => lembrete.atualizar() })]),
+      el('div.entry__ctl', {}, [control(cat, dia, null, { softRefresh: () => { lembrete.atualizar(); recontar(); } })]),
     ]));
     corpo.push(el('div.sheet__actions', {}, [
       el('button.btn', { type: 'button', onclick: () => { close(); ctx.go('hoje'); } },
-        [el('span', { text: 'abrir o dia inteiro' })]),
+        [el('span', { text: 'ver tudo' })]),
       el('button.btn.btn--solid', {
         type: 'button',
         onclick: () => { store.closeDay(dia, true); toast('dia fechado'); close(); paint(); },
