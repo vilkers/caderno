@@ -25,6 +25,44 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 8 — lembrete, marcação rápida e ritual da semana
+
+Das seis ideias de app de rotina que levantei, você aprovou três. Estas.
+
+- **Lembrete que sabe o que falta.** Um aviso por dia, no horário escolhido, e
+  só se ainda houver pendência — dia fechado não incomoda. Opcionalmente diz os
+  nomes ("falta: remédio, sono") em vez do número.
+
+  Sem servidor não existe alarme garantido e eu não ia fingir que existe: são
+  três camadas, da mais frágil pra mais confiável — Periodic Background Sync
+  (Android, app instalado), relógio dentro da página, e selo no ícone + aviso ao
+  abrir, que funcionam em qualquer lugar. A tela de Ajustes explica isso com
+  todas as letras, porque lembrete que falha em silêncio é pior que nenhum.
+
+  **O worker não abre o cofre.** Ele não tem a senha e nunca vai ter. Então o
+  app deixa uma gaveta separada (`js/idb.js`) com o mínimo: quantas marcações
+  faltam, o horário, e — só se você ligar *Dizer o que falta* — os nomes das
+  categorias pendentes. Nenhum valor marcado sai do cofre.
+
+- **Marcação rápida.** Uma caixa com só o que falta hoje e um botão de fechar o
+  dia. O aviso cai direto nela pelo endereço `?v=rapido`, que também serve de
+  atalho na tela de início: um toque, marca, pronto. É a diferença entre
+  registrar em cinco segundos e "depois eu abro o app" — que é nunca.
+
+- **Revisão da semana.** Segunda de manhã, uma faixa no Hoje: a semana passada
+  acabou. A revisão mostra o placar contra a semana anterior e vai meta por
+  meta — quanto foi, quanto era pra ser. E aqui está o pulo: **a meta se
+  corrige ali mesmo**, com `−` e `+`, no momento em que você está olhando pro
+  resultado dela. Era a tarefa mais chata do app (entrar em categoria por
+  categoria) e virou a mais natural. Fecha com uma linha escrita, e fica
+  gravada; dá pra reabrir.
+
+- Correção achada pelo teste: `navigator.serviceWorker.ready` **nunca resolve**
+  quando nenhum worker foi registrado (http local, navegador sem suporte,
+  registro que falhou). O botão de ligar o lembrete travava pra sempre nesse
+  caso. Agora `js/lembrete.js` pergunta primeiro por `getRegistration()` e
+  ainda corre contra um limite de 2s.
+
 ## Rodada 7 — arrastar, contraste medido e retrospectiva
 
 - **Ordenar arrastando** (tarefas e categorias), com punho dedicado — sem
@@ -123,36 +161,31 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
 
 ## Próximos passos, na ordem que eu faria
 
-1. **Lembrete diário.** Notificação local às 21h ("fecha o dia?"). Precisa de
-   permissão de notificação + Periodic Background Sync; no iOS só funciona
-   com o app instalado na tela de início. É o que mais aumenta constância —
-   nenhuma melhoria de tela compete com um empurrão na hora certa. Agora que
-   existe XP, o lembrete pode dizer o que você perde se não fechar o dia.
-2. **Lembrete que sabe o que falta.** Agora que existe o status do dia, a
-   notificação das 21h pode dizer *"faltam remédio e sono"* em vez de um
-   genérico "fecha o dia?".
-3. **Perfil que serve pra algo mais.** Hoje ele é identidade e vitrine.
+1. **Perfil que serve pra algo mais.** Hoje ele é identidade e vitrine.
    Podia guardar preferências de leitura (quais insights te interessam) e a
    foto podia virar o ícone do app instalado.
-4. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
+2. **Conquistas secretas e sazonais.** Uma ou outra que só aparece quando cai
    ("domingo de sofá honesto", "semana sem álcool no mês do aniversário").
    Surpresa vale mais que lista visível — mas não abuse, senão vira ruído.
-5. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
+3. **Cor por categoria.** Hoje os pontos do calendário se distinguem por
    posição. Com uma cor por categoria (matiz derivado do acento, pra não
    brigar com as paletas), o mês fica legível de relance.
-6. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
+4. **Correlação com defasagem.** O cruzamento atual é do mesmo dia. "Bebida
    ontem × humor hoje" costuma ser bem mais revelador.
-7. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
+5. **Anotação por categoria.** Um campo de contexto no cartão ("por que não
    fui?"), escondido atrás de um toque, sem poluir o check-in.
-8. **Arrastar pra reordenar categorias.** Hoje são setas — funcionam em
-   qualquer aparelho, mas arrastar é o gesto que a pessoa tenta primeiro.
-9. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
+6. **Vários registros no mesmo dia, com hora.** Abriria análise por horário
    ("bebi 2 às 19h e 1 às 23h"), ao custo de complicar o modelo.
-10. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
-11. **Exportar CSV** pra abrir em planilha, além do JSON.
-12. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
+7. **Metas por mês**, pras coisas raras (dentista, corte de cabelo).
+8. **Exportar CSV** pra abrir em planilha, além do JSON.
+9. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.
+
+Guardadas a seu pedido (as três que não entraram nesta rodada, se um dia
+fizerem sentido): **folga programada** — marcar o dia como folga pra não contar
+como falha; **retrospectiva em imagem** pra compartilhar; **histórico por
+categoria** numa tela só dela.
 
 ## Coisas que eu deixei de fora de propósito
 

@@ -78,6 +78,7 @@ export const blankState = () => ({
   categories: DEFAULT_CATEGORIES(),
   days: {},
   todos: [],
+  reviews: {},         // chave da semana → como ela fechou
   badges: {},          // id da conquista → quando caiu
   levelSeen: 0,        // último nível já comemorado
 });
@@ -152,6 +153,7 @@ export function migrate(data) {
     updatedAt: t,
     deviceId: data.deviceId || fresh.deviceId,
     profile, settings, categories, days, todos,
+    reviews: data.reviews && typeof data.reviews === 'object' ? data.reviews : {},
     badges: data.badges && typeof data.badges === 'object' ? data.badges : {},
     levelSeen: Number(data.levelSeen) || 0,
   };
@@ -410,6 +412,22 @@ export function clearDoneTodos() {
   cleared.forEach(t => { t.deletedAt = now(); t.updatedAt = now(); });
   emit('todos');
   return cleared.map(t => ({ ...t, deletedAt: undefined }));
+}
+
+/* ── Revisão da semana ─────────────────────────────────────── */
+export const getReview = chave => state.reviews?.[chave] || null;
+
+export function saveReview(chave, dados) {
+  if (!state.reviews) state.reviews = {};
+  state.reviews[chave] = { ...(state.reviews[chave] || {}), ...dados, chave, updatedAt: now() };
+  emit('reviews');
+  return state.reviews[chave];
+}
+export function reopenReview(chave) {
+  if (state.reviews?.[chave]) {
+    state.reviews[chave] = { ...state.reviews[chave], fechadaEm: 0, updatedAt: now() };
+    emit('reviews');
+  }
 }
 
 /* ── Perfil ────────────────────────────────────────────────── */

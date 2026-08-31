@@ -751,6 +751,7 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 }
 button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
 .alert b{color:var(--accent-txt);font-weight:650}
+.alert--warn{border-left-color:var(--dim)}
 
 /* ── 22. Segmentado (semana | mês) ─────────────────────────── */
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px}

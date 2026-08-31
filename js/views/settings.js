@@ -7,6 +7,7 @@ import * as store from '../store.js';
 import { TYPES, CADENCIAS } from '../store.js';
 import * as vault from '../vault.js';
 import * as sync from '../sync.js';
+import * as lembrete from '../lembrete.js';
 import { PALETTES, applyPalette } from '../palettes.js';
 import { toast, openSheet, confirmSheet, stagger } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
@@ -81,6 +82,9 @@ export function render(ctx) {
     ]),
   ])));
 
+  /* ── Lembrete ── */
+  view.append(section('LEMBRETE DO DIA', lembreteBox(ctx)));
+
   /* ── Preferências ── */
   view.append(section('PREFERÊNCIAS', el('div', {}, [
     selectRow('A semana começa', 'Vale pro calendário e pras metas semanais.', [
@@ -138,6 +142,74 @@ export function render(ctx) {
 
   stagger(view, '.section');
   return view;
+}
+
+/* ── Lembrete ──────────────────────────────────────────────── */
+function lembreteBox(ctx) {
+  const c = lembrete.config();
+  const perm = lembrete.permissao();
+  const box = el('div');
+
+  if (perm === 'unsupported') {
+    box.append(el('div.alert.alert--warn', {}, [
+      el('span.micro', { text: 'SEM AVISOS AQUI' }),
+      el('span', { text: 'Este navegador não tem notificações. No iPhone, elas só existem com o app instalado na tela de início.' }),
+    ]));
+    return box;
+  }
+  if (perm === 'denied') {
+    box.append(el('div.alert.alert--warn', {}, [
+      el('span.micro', { text: 'AVISOS BLOQUEADOS' }),
+      el('span', { text: 'Você negou as notificações para este site. Libere nas configurações do navegador e volte aqui.' }),
+    ]));
+    return box;
+  }
+
+  box.append(row('Me lembrar de fechar o dia',
+    'Um aviso por dia, se ainda faltar marcação. Sem servidor, o app usa o que o navegador permite — no celular instalado funciona melhor.',
+    el('button.btn.btn--sm' + (c.ligado ? '.btn--solid' : ''), {
+      type: 'button',
+      onclick: async e => {
+        e.currentTarget.disabled = true;
+        if (c.ligado) { lembrete.desligar(); toast('lembrete desligado'); }
+        else {
+          const r = await lembrete.ligar();
+          toast(r === 'granted' ? 'lembrete ligado' : 'o navegador não deixou');
+        }
+        ctx.rerender();
+      },
+    }, [el('span', { text: c.ligado ? 'ligado' : 'ligar' })])));
+
+  if (c.ligado) {
+    box.append(selectRow('Horário', 'A que horas cutucar, se ainda faltar algo.',
+      [['18', '18h'], ['20', '20h'], ['21', '21h'], ['22', '22h'], ['23', '23h']],
+      String(c.hora),
+      v => { store.setSetting('lembrete', { ...lembrete.config(), hora: Number(v) }); lembrete.atualizar(); toast('horário salvo'); }));
+
+    box.append(switchRow('Dizer o que falta',
+      'Com isso o aviso mostra os nomes ("falta: remédio, sono") na tela bloqueada. Desligado, só o número.',
+      c.detalhe,
+      v => { store.setSetting('lembrete', { ...lembrete.config(), detalhe: v }); lembrete.atualizar(); }));
+
+    box.append(row('Testar agora', 'Dispara um aviso igual ao do fim do dia.',
+      el('button.btn.btn--sm', {
+        type: 'button',
+        onclick: async () => {
+          const ok = await lembrete.avisarSePreciso({ forcar: true });
+          toast(ok ? 'aviso enviado' : 'não consegui enviar');
+        },
+      }, [el('span', { text: 'testar' })])));
+
+    box.append(el('p.micro', {
+      style: { marginTop: '.8rem', lineHeight: '1.9' },
+      html: 'COMO ISSO FUNCIONA SEM SERVIDOR:<br>' +
+            '• COM O APP ABERTO OU EM SEGUNDO PLANO, O AVISO SAI NA HORA CERTA<br>' +
+            '• INSTALADO NO ANDROID, O NAVEGADOR ACORDA O APP DE TEMPOS EM TEMPOS<br>' +
+            '• NO IPHONE, VALE O SELO NO ÍCONE E O AVISO AO ABRIR<br>' +
+            '• O AVISO SÓ SABE QUANTAS MARCAÇÕES FALTAM — SEUS DADOS CONTINUAM CIFRADOS',
+    }));
+  }
+  return box;
 }
 
 /* ── Sincronia ─────────────────────────────────────────────── */

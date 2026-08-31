@@ -4,7 +4,7 @@
    A faixa de dias no topo existe pro caso mais comum de esquecimento:
    voltar dois, três dias e preencher o que ficou em branco. */
 
-import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, WD } from '../utils.js';
+import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, weekKey, weekOfKey, WD } from '../utils.js';
 import * as store from '../store.js';
 import { currentStreak, goalProgress, isReduce, dayStatus, weekGoals } from '../analysis.js';
 import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
@@ -45,6 +45,21 @@ export function render(ctx) {
 
   /* ── faixa dos últimos dias ── */
   view.append(dayStrip(day, ctx));
+
+  /* ── convite pra fechar a semana ── */
+  const inicioSemana = store.state.settings.weekStart ?? 1;
+  const semanaAtual = weekOfKey(day, inicioSemana);
+  const ultimoDaSemana = semanaAtual[6];
+  const chaveSemana = weekKey(day, inicioSemana);
+  const jaFechou = !!store.getReview(chaveSemana)?.fechadaEm;
+  if (!jaFechou && todayKey() >= ultimoDaSemana && semanaAtual.some(store.hasEntry)) {
+    view.append(el('button.alert', {
+      type: 'button',
+      onclick: () => { ctx.revisaoSemana = day; ctx.go('revisao'); },
+      html: `<span class="micro">FIM DA SEMANA</span>
+             <span>A semana fecha hoje. <b>Revisar e ajustar as metas</b> da próxima →</span>`,
+    }));
+  }
 
   /* ── pendências da semana ── */
   const buracos = ultimosDias(14).filter(k => k !== todayKey() && !store.hasEntry(k));

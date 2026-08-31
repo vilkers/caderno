@@ -88,6 +88,11 @@ export function weekOfKey(key, weekStart = 0) {
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
+/** Chave da semana: a data do primeiro dia dela ('2026-08-24'). */
+export function weekKey(key = todayKey(), weekStart = 1) {
+  return weekOfKey(key, weekStart)[0];
+}
+
 export const lastNDays = (n, end = todayKey()) =>
   Array.from({ length: n }, (_, i) => addDays(end, -(n - 1 - i)));
 

@@ -58,6 +58,12 @@ export function mergeDocs(local, remote, now = Date.now()) {
     ? { ...local.profile, ...remote.profile }
     : local.profile;
 
+  // revisões: uma por semana, ganha a editada por último
+  const reviews = { ...(local.reviews || {}) };
+  for (const [k, r] of Object.entries(remote.reviews || {})) {
+    reviews[k] = !reviews[k] || ts(r) > ts(reviews[k]) ? r : reviews[k];
+  }
+
   const badges = { ...(remote.badges || {}) };
   for (const [id, at] of Object.entries(local.badges || {})) {
     badges[id] = badges[id] ? Math.min(badges[id], at) : at;    // vale a primeira vez
@@ -68,7 +74,7 @@ export function mergeDocs(local, remote, now = Date.now()) {
     version: Math.max(local.version || 2, remote.version || 2),
     rev: Math.max(local.rev || 0, remote.rev || 0) + 1,
     updatedAt: Math.max(local.updatedAt || 0, remote.updatedAt || 0, now),
-    profile, settings, categories, days, todos, badges,
+    profile, settings, categories, days, todos, reviews, badges,
   };
 
   const changed = JSON.stringify([local.days, local.categories, local.todos])

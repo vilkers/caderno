@@ -5,8 +5,11 @@ import * as store from './store.js';
 import * as vault from './vault.js';
 import * as sync from './sync.js';
 import * as badges from './badges.js';
+import * as lembrete from './lembrete.js';
 import { PALETTES, applyPalette } from './palettes.js';
 import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn, revelarAoRolar, observarTopo } from './ui.js';
+import { control } from './views/today.js';
+import { dayStatus } from './analysis.js';
 import { icon } from './icons.js';
 import { avatar } from './avatar.js';
 import { el, debounce } from './utils.js';
@@ -18,12 +21,13 @@ import * as viewInsights from './views/insights.js';
 import * as viewMetas from './views/metas.js';
 import * as viewPerfil from './views/perfil.js';
 import * as viewResumo from './views/resumo.js';
+import * as viewRevisao from './views/revisao.js';
 import * as viewSettings from './views/settings.js';
 
 const VIEWS = {
   hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
   insights: viewInsights, ajustes: viewSettings, perfil: viewPerfil,
-  resumo: viewResumo,
+  resumo: viewResumo, revisao: viewRevisao,
 };
 /* embaixo fica a rotina; o resto se alcança pelo topo e pelo menu */
 const PRIMARIAS = ['hoje', 'mes', 'lista', 'metas'];
@@ -151,6 +155,14 @@ function enterApp() {
   paint();
   armAutolock();
   paintSync(sync.getStatus());
+  lembrete.atualizar();
+
+  if (ctx.abrirRapido) { ctx.abrirRapido = false; setTimeout(marcacaoRapida, 260); }
+  else if (lembrete.pendenteAgora()) {
+    setTimeout(() => toast('passou da hora e ainda falta marcar', {
+      action: 'marcar', ms: 7000, onAction: marcacaoRapida,
+    }), 900);
+  }
 
   if (sync.configured()) {
     sync.pullAndMerge()
@@ -176,6 +188,7 @@ function aplicarAtalhoDaURL() {
   const v = new URLSearchParams(location.search).get('v');
   if (!v) return;
   if (v === 'semana') { ctx.view = 'mes'; ctx.monthMode = 'semana'; }
+  else if (v === 'rapido') { ctx.view = 'hoje'; ctx.abrirRapido = true; }
   else if (VIEWS[v]) ctx.view = v;
   history.replaceState(null, '', location.pathname);
 }
@@ -228,7 +241,7 @@ function wire() {
     if ($('#app').hidden) return;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo' };
+    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo', 9: 'revisao' };
     if (keys[e.key]) { ctx.go(keys[e.key]); return; }
     if (e.key === 'Escape' && ctx.view !== 'hoje' && $('#sheet').hidden) { ctx.voltar(); return; }
     if (ctx.view === 'hoje') {
@@ -263,6 +276,50 @@ function wire() {
     // dados trocados por fora (junção da sincronia, outra aba): repinta
     if (reason === 'replace' && !$('#app').hidden) paint();
     if (reason === 'profile') pintaIdentidade();
+    if (['day', 'categories', 'replace', 'settings'].includes(reason)) lembrete.atualizar();
+  });
+}
+
+/* ── Marcação rápida ───────────────────────────────────────── */
+/* O atalho do ícone e o toque no aviso caem aqui: abre, destranca, marca.
+   Sem navegar por tela nenhuma. */
+function marcacaoRapida() {
+  const dia = todayKey();
+  const st = dayStatus(dia);
+  const faltando = st.faltando;
+
+  openSheet(faltando.length ? `Falta marcar (${faltando.length})` : 'Tudo em ordem', close => {
+    if (!faltando.length) {
+      return [
+        el('p', { style: { fontSize: '1.05rem', lineHeight: '1.5' },
+          text: st.fechado ? 'O dia já está fechado. Nada te esperando.' : 'Nada obrigatório em aberto hoje.' }),
+        el('div.sheet__actions', {}, [
+          !st.fechado ? el('button.btn', {
+            type: 'button',
+            onclick: () => { store.closeDay(dia, true); toast('dia fechado'); close(); paint(); },
+          }, [el('span', { text: 'fechar o dia' })]) : null,
+          el('button.btn.btn--solid', { type: 'button', onclick: close }, [el('span', { text: 'beleza' })]),
+        ].filter(Boolean)),
+      ];
+    }
+    const corpo = faltando.map(cat => el('div.entry', { 'data-cat': cat.id }, [
+      el('div.entry__top', {}, [
+        el('div.entry__id', {}, [
+          el('span.entry__emoji', { text: cat.emoji || '•' }),
+          el('span.entry__label', { text: cat.label }),
+        ]),
+      ]),
+      el('div.entry__ctl', {}, [control(cat, dia, null, { softRefresh: () => lembrete.atualizar() })]),
+    ]));
+    corpo.push(el('div.sheet__actions', {}, [
+      el('button.btn', { type: 'button', onclick: () => { close(); ctx.go('hoje'); } },
+        [el('span', { text: 'abrir o dia inteiro' })]),
+      el('button.btn.btn--solid', {
+        type: 'button',
+        onclick: () => { store.closeDay(dia, true); toast('dia fechado'); close(); paint(); },
+      }, [el('span', { text: 'fechar o dia' })]),
+    ]));
+    return corpo;
   });
 }
 
@@ -349,6 +406,8 @@ function menuSheet() {
         item('insights', 'Insights', 'Padrões, sequências e conquistas.', () => ir('insights')),
       ]),
       grupo('CADERNO', [
+        item('hoje', 'Marcação rápida', 'Só o que falta hoje, numa caixa só.', () => { close(); marcacaoRapida(); }),
+        item('revisao', 'Revisão da semana', 'Fechar a semana e ajustar as metas da próxima.', () => ir('revisao')),
         item('metas', 'Metas e cobrança', 'O que o dia exige e o que é da semana.', () => ir('metas')),
         item('ajustes', 'Ajustes', 'Categorias, sincronia, senha e backup.', () => ir('ajustes')),
         item('paleta', 'Paleta', 'Trocar as cores do app.', () => { close(); paletteSheet(); }),

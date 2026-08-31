@@ -216,6 +216,36 @@ As telas secundárias trazem **← voltar**, e a navegação usa o histórico do
 navegador: o botão físico de voltar do Android (e o gesto do iOS) funciona,
 assim como `Esc` no teclado.
 
+### Revisão da semana
+Segunda de manhã, o Hoje mostra uma faixa: *a semana passada acabou*. A revisão
+abre o placar — dias registrados, metas batidas, comparação com a semana
+anterior — e vai meta por meta dizendo quanto foi e quanto era pra ser. Onde a
+meta apertou ou sobrou, dá pra **corrigir o número ali mesmo**, com `−` e `+`,
+sem entrar em cada categoria. Escreve uma linha sobre a semana, fecha, e ela
+fica gravada. Se quiser mexer depois, reabre.
+
+### Lembrete do dia
+Um aviso por dia, no horário que você escolher, **e só se ainda faltar
+marcação** — dia fechado não incomoda ninguém. Em *Dizer o que falta* o aviso
+mostra os nomes ("falta: remédio, sono"); desligado, só o número.
+
+Sem servidor não existe alarme garantido, então são três camadas, da mais
+frágil pra mais confiável: o **Periodic Background Sync** (o navegador acorda o
+app sozinho — Android, app instalado), o **relógio dentro da página** (vale
+enquanto o app estiver aberto ou em segundo plano) e o **selo no ícone** mais o
+aviso ao abrir, que funcionam em todo lugar, iPhone incluído. Ajustes explica
+isso na própria tela, sem prometer o que não dá.
+
+O worker que dispara o aviso **não abre o cofre** — ele lê uma gaveta separada
+(`js/idb.js`) com o número de pendências e, se você pedir, os nomes das
+categorias. Nenhum valor marcado sai de lá.
+
+### Marcação rápida
+Do menu, **Marcação rápida** abre uma caixa só com o que ainda falta hoje —
+os mesmos controles do check-in, sem a tela inteira — e um botão pra fechar o
+dia. O aviso do lembrete e o atalho `?v=rapido` caem direto nela, então dá pra
+guardar isso como atalho na tela de início do celular: um toque, marca, pronto.
+
 ### Retrospectiva
 Uma tela por vez, tipografia grande entrando palavra a palavra e o número
 subindo: dias em que você apareceu, maior sequência, o que mais fez, seu dia
@@ -232,8 +262,8 @@ nível e conquistas.
 
 ### Ajustes
 Sincronia com o repositório, paleta (8 opções), categorias (criar, editar,
-reordenar, arquivar, apagar), metas, início da semana, movimento ligado/
-desligado, trava automática, troca de senha e backup.
+reordenar, arquivar, apagar), metas, **lembrete do dia**, início da semana,
+movimento ligado/desligado, trava automática, troca de senha e backup.
 
 ## Atalhos (teclado)
 
@@ -303,6 +333,9 @@ tools/test-sprites.mjs  confere se todo sprite fecha retangular
 dados/caderno.enc.json  o banco de dados cifrado (escrito pelo app)
 js/arrastar.js          ordenar lista arrastando (Pointer Events + teclado)
 js/resumo.js            o cálculo da retrospectiva
+js/lembrete.js          o aviso do fim do dia (permissão, horário, selo)
+js/idb.js               a gaveta em claro que o worker lê (só contagem)
+js/views/revisao.js     o ritual de fechar a semana
 tools/test-merge.mjs    teste da junção — node tools/test-merge.mjs
 tools/test-contraste.mjs contraste WCAG de todas as paletas
 ```

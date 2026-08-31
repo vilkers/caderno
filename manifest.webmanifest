@@ -25,10 +25,16 @@
   ],
   "shortcuts": [
     {
+      "name": "Marcar o dia",
+      "short_name": "Marcar",
+      "url": "./?v=rapido",
+      "description": "Abrir direto a marcação rápida do que falta"
+    },
+    {
       "name": "Check-in de hoje",
       "short_name": "Hoje",
       "url": "./?v=hoje",
-      "description": "Abrir direto o formulário do dia"
+      "description": "Abrir o formulário do dia"
     },
     {
       "name": "Lista de afazeres",
