@@ -1,7 +1,7 @@
 /* sw.js — cache do casco do app para uso offline.
    Os dados nunca passam por aqui: ficam cifrados no localStorage. */
 
-const CACHE = 'caderno-v11';
+const CACHE = 'caderno-v12';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css', './css/fonts.css',
@@ -112,6 +112,9 @@ self.addEventListener('fetch', e => {
   const { request } = e;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+  // nada de fora daqui passa por este worker — a API do GitHub, em especial,
+  // não pode ver cache nenhum: é dela que sai o identificador do arquivo
+  if (url.origin !== location.origin) return;
 
   if (ehCodigo(url)) {
     e.respondWith(

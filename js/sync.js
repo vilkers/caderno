@@ -45,9 +45,17 @@ function fromB64(b64) {
 }
 
 /* ── Chamada crua ──────────────────────────────────────────── */
+/* `cache: 'no-store'` não é zelo: as respostas autenticadas do GitHub vêm com
+   `Cache-Control: private, max-age=60`. Sem isso o navegador devolve a leitura
+   guardada por um minuto inteiro — com o identificador ANTIGO do arquivo — e
+   toda gravação nesse intervalo bate de frente com o que já está lá. Era essa
+   a origem do "conflito no repositório": não era o GitHub demorando a ficar
+   consistente, era o app relendo a própria resposta velha, inclusive em cada
+   nova tentativa. */
 async function api(path, opts = {}) {
   const c = cfg();
   return fetch(API + path, {
+    cache: 'no-store',
     ...opts,
     headers: {
       Authorization: `Bearer ${c.token}`,
@@ -68,6 +76,7 @@ export async function check(candidate) {
   const c = { ...cfg(), ...candidate };
   if (!c.owner || !c.repo || !c.token) return { ok: false, msg: 'Faltam usuário, repositório ou token.' };
   const res = await fetch(`${API}/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}`, {
+    cache: 'no-store',
     headers: { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json' },
   });
   if (res.status === 401) return { ok: false, msg: 'Token inválido ou expirado.' };
@@ -182,10 +191,8 @@ export async function syncNow({ silent = false } = {}) {
         return { merged, pushed: false };
       }
 
-      /* A API de conteúdo do GitHub é consistente "com atraso": logo depois de
-         uma gravação, a leitura pode devolver o sha antigo, e aí a gravação
-         seguinte bate de frente. Então: puxa de novo, junta e tenta outra vez,
-         esperando um pouco mais a cada rodada. */
+      /* Ainda assim pode haver colisão de verdade (o outro aparelho gravou
+         no meio), então continua valendo puxar de novo, juntar e tentar. */
       let sha = remote.sha;
       let result = await put(sha);
       for (let tentativa = 1; result.conflict && tentativa <= 3; tentativa++) {

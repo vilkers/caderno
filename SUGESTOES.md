@@ -68,12 +68,19 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   meio da página — ela já era `fixed`. Só o `.main` precisava.
 
 - **"Conflito no repositório: tente de novo."** Aconteceu de verdade no seu
-  aparelho. A API de conteúdo do GitHub é consistente com atraso: logo depois
-  de gravar, a leitura pode devolver o sha antigo do arquivo — e aí a gravação
-  seguinte bate de frente. O app tentava uma vez só, e essa uma caía no mesmo
-  atraso. Agora são três rodadas com espera crescente, puxando e juntando a
-  cada uma; e se ainda assim não passar, a mensagem diz o que importa: os dados
-  estão salvos aqui.
+  aparelho, e minha primeira explicação estava errada: culpei a consistência
+  com atraso do GitHub e pus três tentativas — que continuaram falhando.
+
+  A causa real é uma linha na resposta da API: **`Cache-Control: private,
+  max-age=60`**. Toda resposta autenticada do GitHub pede pro navegador guardar
+  por um minuto. O app relia o arquivo, recebia **a resposta velha do cache**,
+  com o identificador antigo, e gravava com ele — o que o GitHub recusa, com
+  razão. E as três tentativas novas liam exatamente a mesma resposta guardada,
+  então repetiam o mesmo erro três vezes mais rápido. Um `cache: 'no-store'`
+  em cada chamada resolve.
+
+  Fica a lição: o repique só maquiava. A pergunta certa não era "como tentar de
+  novo", era "por que a segunda leitura devolve a mesma coisa que a primeira".
 
   Junto disso, duas causas de fundo: a sincronia **gravava mesmo quando nada
   tinha mudado** (e cada junção agendava a próxima, num vaivém que só produzia
