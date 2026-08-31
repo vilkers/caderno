@@ -37,7 +37,7 @@ export function render(ctx) {
 
   view.append(el('div.vhead', {}, [
     el('div.vhead__l', {}, [
-      el('p.micro', { text: `01 — CHECK-IN · ${longDay(day)}` }),
+      el('p.micro', { text: '01 — CHECK-IN' }),
       el('h2.display.h-lg', { text: tituloDoDia(day) }),
     ]),
     el('div.vhead__r', {}, [nav]),
@@ -498,8 +498,15 @@ export function control(cat, day, card, ctx) {
 
     const pinta = () => {
       const v = cur();
-      box.querySelectorAll('[data-v]').forEach(b =>
-        b.classList.toggle('is-on', Number(b.dataset.v) === v));
+      /* Zero é resposta, mas não é conquista: o pixel mais saturado da tela
+         não pode estar dizendo "não fiz". */
+      box.querySelectorAll('[data-v]').forEach(b => {
+        const escolhido = Number(b.dataset.v) === v;
+        b.classList.toggle('is-on', escolhido);
+        b.classList.toggle('is-zero', escolhido && Number(b.dataset.v) === 0);
+      });
+      wrap.querySelectorAll('.refs__r').forEach(r =>
+        r.classList.toggle('is-atual', Number(r.dataset.v) === v));
       const txt = store.levelLabel(cat, v);
       nota.textContent = v === null ? 'sem resposta' : (txt ? `${v} · ${txt}` : String(v));
       nota.classList.toggle('is-empty', v === null);
@@ -522,7 +529,7 @@ export function control(cat, day, card, ctx) {
     wrap.append(box, nota);
 
     if (cat.levels && Object.keys(cat.levels).length) {
-      const lista = el('div.refs', { hidden: true }, niveis.map(n => el('div.refs__r', {}, [
+      const lista = el('div.refs', { hidden: true }, niveis.map(n => el('div.refs__r' + (cur() === n ? '.is-atual' : ''), { 'data-v': n }, [
         el('span.refs__n.num', { text: String(n) }),
         el('span', { text: store.levelLabel(cat, n) || '—' }),
       ])));

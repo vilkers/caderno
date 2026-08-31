@@ -56,6 +56,12 @@ export function render(ctx) {
 
   /* ── barras por categoria ── */
   const bars = el('div.bars');
+  /* Só a maior leva o acento. Nove barras a 100% de laranja não são
+     hierarquia, são textura — e a barra já diz o tamanho pela largura. */
+  const topo = cats.reduce((melhor, c) => {
+    const n = days.filter(k => did(c, k)).length;
+    return !isReduce(c) && n > melhor.n ? { id: c.id, n } : melhor;
+  }, { id: null, n: 0 }).id;
   for (const cat of cats) {
     const isBin = cat.type === 'toggle';
     const hits = days.filter(k => did(cat, k)).length;
@@ -65,7 +71,7 @@ export function render(ctx) {
     const val = isBin
       ? `${nf(pct * 100)}% · ${hits}/${logged} dias`
       : `média ${nf(media, 1)}${cat.unit ? ' ' + cat.unit : ''} · ${hits} dias`;
-    const fill = el('div.bar__fill', { style: { background: isReduce(cat) ? 'var(--dim)' : 'var(--accent)' } });
+    const fill = el('div.bar__fill' + (cat.id === topo ? '.is-top' : ''));
     bars.append(el('div', {}, [
       el('div.bar__top', {}, [
         el('span.bar__name', {}, [`${cat.emoji || '•'} ${cat.label}`,

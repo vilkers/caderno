@@ -423,6 +423,13 @@ tools/test-contraste.mjs contraste WCAG de todas as paletas
 
 ## Design
 
+**Um acento só, e ele significa alguma coisa.** O laranja marca o que você
+escolheu e o que está em primeiro lugar — não é textura de fundo. Barra de
+frequência: só a maior é acentuada, o resto lê pela largura. Zero é resposta,
+não conquista: escolher "0 doses" não pinta o pixel mais saturado da tela.
+Verde e vermelho existem (`--ok`, `--erro`), são por paleta e passam no teste de
+contraste — um verde fixo some numa paleta clara.
+
 **Duas famílias, sete degraus, três pesos.** A grotesca pro que se lê, a mono
 pro que se mede — isso sempre foi assim. O que tinha escapado era a escala:
 17 tamanhos e 6 pesos, escolhidos um a um dentro de cada componente, o que dá

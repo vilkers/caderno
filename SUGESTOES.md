@@ -25,6 +25,64 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 13 — a crítica visual
+
+Segundo agente, agora de direção de arte, com a instrução explícita de não
+repetir navegação. Achou coisa que meu próprio audit não pegava, porque eu
+media a página e ele mediu os elementos:
+
+- **O domingo estava cortado em todo iPhone.** `1fr` é `minmax(auto,1fr)`, e o
+  mínimo automático de uma célula com `aspect-ratio` mais `min-height:54px` é a
+  própria min-height. Onde só cabiam 50px, cada coluna pedia 54: a sétima saía
+  24px além da grade — e como `.cal` tem `overflow:hidden`, a página não rolava
+  pro lado e o meu teste de overflow passava limpo. Lição: medir a página não
+  é medir os elementos.
+- A faixa do mês no Hoje furava a margem em 8px (item de grade não encolhe
+  sozinho: falta `min-width:0`), e o `<a class="btn">` de Ajustes saía
+  **sublinhado** dentro da pílula.
+
+- **O acento tinha virado textura.** Ele contou os elementos pintados com
+  `--accent`: 39 no Hoje, 47 no Mês, 60 em Padrões. Nove barras de frequência a
+  100% de laranja não são hierarquia — a barra já diz o tamanho pela largura.
+  Agora só a maior leva o acento; as dicas perderam o filete laranja e o
+  negrito virou peso em vez de cor; a coluna de volume do calendário virou
+  `--fg`; o cartão respondido troca a borda laranja por fundo. Mês 47 → 11,
+  Padrões 60 → 28, Hoje 39 → 25.
+
+- **O acento estava celebrando o zero.** Escolher "0 doses" pintava o pixel
+  mais saturado da tela — o app comemorando "não fiz". Zero continua sendo
+  resposta, mas em `--surface-2` com borda `--fg`. Idem a aba que mostrava
+  "VAZIO" em laranja, e a régua de referências que acendia os dezesseis níveis
+  de uma vez em vez do escolhido.
+
+- **Mono caixa-alta com tracking aberto é rótulo, não frase.** Havia 279
+  caracteres assim no Hoje e 730 em Padrões, incluindo "INCLUI R$ 66,80 DE
+  ASSINATURA, QUE DEBITA SOZINHA" quebrando em duas linhas de 10px. Frase agora
+  é grotesca em corpo pequeno (`.nota-pe`), e dinheiro saiu de `.micro` — número
+  com tracking de rótulo deixa de ler como quantidade.
+
+- **Doze cores fora do sistema.** `#3ecf8e` e `#e5484d` fixos no CSS: no Papel o
+  ✓ verde dava 1,8:1 sobre o cartão e sumia. Viraram `--ok` e `--erro` por
+  paleta, calculados até passarem contra fundo, cartão e a mancha do fundo vivo
+  — e o teste de contraste passou a cobrir os seis pares novos. O ícone do
+  seletor de data também tinha `filter:invert(.6)` fixo, que só fazia sentido no
+  escuro.
+
+- O nome próprio virava minúscula em "emitir a nf passou do dia", e a data
+  aparecia três vezes no topo do Hoje (barra, olho e H1).
+
+**Ficou para discutir** (o agente ranqueou como B, e são mudanças de sistema ou
+de gosto, não defeitos): tokenizar espaço e raio como fiz com o tipo — são 12
+raios de card, 25 valores de `gap` e 10 paddings pro mesmo objeto; duas colisões
+na escala nova (`--t-titulo` 27,2 vs `--t-num` 26; `--t-destaque` 21 vs `--d-md`
+22,4) e três degraus cujo clamp nunca sai do mínimo no celular; três controles
+para o mesmo número no check-in (stepper + slider + chips); o stagger que faz o
+último item chegar 1,4s depois do toque e o giro de 360° a cada hábito marcado;
+cinco formas diferentes de "sim" (incluindo um checkbox nativo nas Metas, o
+único componente não desenhado do app); e a retrospectiva, que ele considera a
+peça mais bem composta mas ainda não a mais bonita — os nove cartões têm ritmo
+idêntico e os chips de período competem com o conteúdo em todos eles.
+
 ## Rodada 12 — as duas mudanças estruturais, e a escala tipográfica
 
 - **A Agenda virou aba de Pessoal.** As duas telas já mostravam quase o mesmo

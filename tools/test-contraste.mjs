@@ -47,6 +47,15 @@ const PARES = [
   ['texto sobre a mancha',      p => [p.fg, fundoVivo(p)], 4.5],
   ['secundário sobre a mancha', p => [p.dim, fundoVivo(p)], 4.5],
   ['acento sobre a mancha',     p => [p.accentTxt, fundoVivo(p)], 4.5],
+
+  /* verde e vermelho não são o acento, mas dizem "deu certo" e "deu errado" —
+     e um verde fixo some numa paleta clara. Cada paleta carrega o seu. */
+  ['ok no fundo',               p => [p.ok, p.bg], 4.5],
+  ['ok no cartão',              p => [p.ok, p.surface], 4.5],
+  ['ok sobre a mancha',         p => [p.ok, fundoVivo(p)], 4.5],
+  ['erro no fundo',             p => [p.erro, p.bg], 4.5],
+  ['erro no cartão',            p => [p.erro, p.surface], 4.5],
+  ['erro sobre a mancha',       p => [p.erro, fundoVivo(p)], 4.5],
 ];
 
 /** O fundo com as três manchas do topo empilhadas — o ponto mais claro. */

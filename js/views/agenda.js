@@ -46,7 +46,7 @@ export function painelContas(ctx, mes) {
             c.totalSaida ? linhaDinheiro('sai', c.totalSaida, c.pago, 'pago') : null,
             c.totalEntrada ? linhaDinheiro('entra', c.totalEntrada, c.recebido, 'recebido') : null,
             c.assinaturas
-              ? el('p.micro', { text: `INCLUI ${moeda(c.assinaturas)} DE ASSINATURA, QUE DEBITA SOZINHA` })
+              ? el('p.nota-pe', { text: `Inclui ${moeda(c.assinaturas)} de assinatura, que debita sozinha.` })
               : null,
             c.totalSaida && c.totalEntrada
               ? el('p.micro.dinheiro__saldo' + (c.saldo < 0 ? '.is-neg' : ''), {
@@ -85,10 +85,9 @@ export function painelContas(ctx, mes) {
     }, [el('span', { text: 'editar tudo' })]),
   ]));
 
-  view.append(el('p.micro', {
-    style: { marginTop: '1.6rem', lineHeight: '1.9' },
-    html: 'O QUE VOCÊ MARCA AQUI VALE SÓ PRA ESTE MÊS — NO MÊS QUE VEM TUDO VOLTA EM ABERTO.'
-      + (c.assinaturas ? '<br>ASSINATURA DEBITA SOZINHA: FICA NA ABA AO LADO E CONTA NO DINHEIRO DO MÊS.' : ''),
+  view.append(el('p.nota-pe', {
+    html: 'O que você marca aqui vale só pra este mês — no mês que vem tudo volta em aberto.'
+      + (c.assinaturas ? '<br>Assinatura debita sozinha: fica na aba ao lado e conta no dinheiro do mês.' : ''),
   }));
 
   stagger(lista, '.agitem');
@@ -152,17 +151,23 @@ function linhaAgenda(item, mes, hoje, ctx) {
 }
 
 const linhaDinheiro = (rotulo, total, feito, verbo) => el('div.dinheiro__l', {}, [
-  el('span.micro', { text: `${rotulo.toUpperCase()} ${moeda(total)}` }),
+  el('span.dinheiro__r', {}, [
+    el('span.micro', { text: rotulo.toUpperCase() }),
+    el('span.num', { text: moeda(total) }),
+  ]),
   barraProgresso(total ? feito / total : 0),
-  el('span.micro.dinheiro__f', { text: `${moeda(feito)} ${verbo}` }),
+  el('span.dinheiro__f', {}, [
+    el('span.num', { text: moeda(feito) }),
+    el('span.micro', { text: verbo }),
+  ]),
 ]);
 
 function proximoTexto(acoes, hoje) {
   const pendentes = acoes.filter(a => a.data && !store.agendaFeito(a, monthKey(a.data)));
   const atrasado = pendentes.find(a => a.data < hoje);
-  if (atrasado) return `${atrasado.label.toLowerCase()} passou do dia`;
+  if (atrasado) return `${atrasado.label} passou do dia`;
   const proximo = pendentes.find(a => a.data >= hoje);
-  if (proximo) return `o próximo é ${proximo.label.toLowerCase()}, dia ${proximo.dia}`;
+  if (proximo) return `o próximo é ${proximo.label}, dia ${proximo.dia}`;
   return 'nada com data à frente';
 }
 

@@ -61,7 +61,7 @@ export function render(ctx) {
       onclick: () => { ctx.pessoalAba = id; ctx.rerender(); },
     }, [
       el('span.aba__t', { text: label }),
-      el('span.micro.aba__n', { text: resumo[id] }),
+      el('span.micro.aba__n' + (resumo[id] === 'vazio' ? '.is-vazio' : ''), { text: resumo[id] }),
     ]))));
 
   if (aba !== 'tarefas') view.append(navMes(ctx, mes));
@@ -131,10 +131,10 @@ function painelAssinaturas(ctx, mes) {
   view.append(el('div.totalzao', {}, [
     el('p.micro', { text: 'TODO MÊS SAI, EM ASSINATURA' }),
     el('p.totalzao__n.num', { text: moeda(total) }),
-    el('p.micro', {
+    el('p.nota-pe', {
       text: total
-        ? `${moeda(total * 12)} POR ANO · ${itens.length} ASSINATURA${itens.length > 1 ? 'S' : ''}`
-        : `${itens.length} ASSINATURA${itens.length > 1 ? 'S' : ''} SEM VALOR ESCRITO`,
+        ? `${moeda(total * 12)} por ano, em ${itens.length} assinatura${itens.length > 1 ? 's' : ''}.`
+        : `${itens.length} assinatura${itens.length > 1 ? 's' : ''} ainda sem valor escrito.`,
     }),
   ]));
 
@@ -148,9 +148,8 @@ function painelAssinaturas(ctx, mes) {
     ));
   }
   if (semValor) {
-    view.append(el('p.micro', {
-      style: { marginTop: '.8rem', color: 'var(--dim)' },
-      text: `${semValor} SEM VALOR — TOQUE PRA COMPLETAR E ELAS ENTRAM NA CONTA.`,
+    view.append(el('p.nota-pe', {
+      text: `${semValor} sem valor — toque pra completar e elas entram na conta.`,
     }));
   }
 
@@ -195,7 +194,7 @@ function painelCarteira(ctx, mes) {
   view.append(el('div.totalzao', {}, [
     el('p.micro', { text: sobra >= 0 ? 'SOBRA PREVISTA NO MÊS' : 'FALTA PRA FECHAR O MÊS' }),
     el('p.totalzao__n.num' + (sobra < 0 ? '.is-neg' : ''), { text: moeda(Math.abs(sobra)) }),
-    el('p.micro', { text: `${moeda(c.totalEntrada)} A RECEBER · ${moeda(c.totalSaida)} A PAGAR` }),
+    el('p.nota-pe', { text: `${moeda(c.totalEntrada)} a receber · ${moeda(c.totalSaida)} a pagar` }),
     barras([
       { label: 'entra', valor: c.totalEntrada, texto: moeda(c.totalEntrada), destaque: sobra >= 0 },
       { label: 'sai', valor: c.totalSaida, texto: moeda(c.totalSaida), destaque: sobra < 0 },
@@ -210,9 +209,8 @@ function painelCarteira(ctx, mes) {
     view.append(bloco('A PAGAR', c.totalSaida, c.pago, 'já pago'));
     view.append(listaAgenda(sai, mes, ctx, { verbo: 'pagou' }));
     if (c.assinaturas) {
-      view.append(el('p.micro', {
-        style: { marginTop: '.7rem' },
-        text: `INCLUI ${moeda(c.assinaturas).toUpperCase()} DE ASSINATURA, QUE DEBITA SOZINHA.`,
+      view.append(el('p.nota-pe', {
+        text: `Inclui ${moeda(c.assinaturas)} de assinatura, que debita sozinha.`,
       }));
     }
   }
@@ -223,9 +221,12 @@ function painelCarteira(ctx, mes) {
 const bloco = (titulo, total, feito, verbo) => el('div.carteirabloco', {}, [
   el('div.section__h', {}, [el('p.micro', { text: titulo })]),
   el('div.dinheiro__l', {}, [
-    el('span.micro', { text: moeda(total) }),
+    el('span.num', { text: moeda(total) }),
     barraProgresso(total ? feito / total : 0),
-    el('span.micro.dinheiro__f', { text: `${moeda(feito)} ${verbo}` }),
+    el('span.dinheiro__f', {}, [
+      el('span.num', { text: moeda(feito) }),
+      el('span.micro', { text: verbo }),
+    ]),
   ]),
 ]);
 

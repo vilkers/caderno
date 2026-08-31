@@ -24,6 +24,8 @@
   --line-2:rgba(244,242,238,.36);     /* borda de componente: 3:1 */
   --accent:#ff4d17;
   --accent-txt:#ff4d17;               /* o acento quando é TEXTO */
+  --ok:#3ecf8e;                       /* deu certo — nunca é o acento */
+  --erro:#e85e62;                     /* deu errado */
   --ink:#0c0c0c;          /* texto sobre o acento */
 
   --font-display:'Archivo','Helvetica Neue',Helvetica,Arial,sans-serif;
@@ -158,6 +160,7 @@ svg{display:block}
 /* ── 5. Botões ─────────────────────────────────────────────── */
 .btn{
   position:relative;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  text-decoration:none;
   padding:.85rem 1.4rem;border:1px solid var(--line-2);border-radius:999px;
   font-family:var(--font-mono);font-size:var(--t-mini);letter-spacing:.16em;text-transform:uppercase;
   overflow:hidden;isolation:isolate;
@@ -177,8 +180,8 @@ svg{display:block}
 .btn--solid:hover{color:var(--bg)}
 .btn--ghost{border-color:var(--line);color:var(--dim)}
 .btn--ghost:hover{color:var(--ink)}
-.btn--danger::before{background:#e5484d}
-.btn--danger:hover{color:#fff;border-color:#e5484d}
+.btn--danger::before{background:var(--erro)}
+.btn--danger:hover{color:var(--bg);border-color:var(--erro)}
 .btn--sm{padding:.7rem 1.1rem;font-size:var(--t-micro);min-height:42px}
 
 .iconbtn{
@@ -340,7 +343,7 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
   transition:border-color .35s var(--ease),background .35s var(--ease),transform .35s var(--ease);
 }
 .entry:hover{border-color:color-mix(in srgb,var(--fg) 28%,transparent)}
-.entry.is-on{border-color:var(--accent)}
+.entry.is-on{border-color:var(--line-2);background:var(--surface-2)}
 .entry.falta-hoje{border-left:3px solid var(--accent)}
 .entry.pisca{animation:pisca 1.1s var(--ease) 2}
 @keyframes pisca{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent)}}
@@ -424,6 +427,8 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
 }
 .scale__dot:hover{border-color:var(--fg);color:var(--fg)}
 .scale__dot.is-on{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+/* escolher zero é uma resposta, não uma comemoração */
+.scale__dot.is-on.is-zero,.meter__s.is-on.is-zero,.chip.is-on.is-zero{background:var(--surface-2);border-color:var(--fg);color:var(--fg);transform:none}
 
 /* medidor de escala longa (0–10) + referência escrita */
 .meter{display:flex;gap:3px}
@@ -446,7 +451,9 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
 .reflink:hover{color:var(--fg)}
 .refs{display:grid;gap:1px;margin-top:.6rem;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .refs__r{display:flex;gap:.7rem;align-items:baseline;background:var(--bg);padding:.45rem .7rem;font-size:var(--t-corpo)}
-.refs__n{color:var(--accent-txt);font-size:var(--t-mini);min-width:1.6em}
+.refs__n{color:var(--dim);font-size:var(--t-mini);min-width:1.6em}
+.refs__r.is-atual .refs__n{color:var(--accent-txt)}
+.refs__r.is-atual{color:var(--fg)}
 
 /* nota */
 .note{
@@ -462,10 +469,10 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
   border-radius:0 14px 14px 0;padding:1rem 1.2rem;margin-bottom:1rem;background:var(--surface);
   display:grid;gap:.8rem;
 }
-.status.is-ok{border-left-color:#3ecf8e}
+.status.is-ok{border-left-color:var(--ok)}
 .status__topo{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .status__t{font-size:var(--t-destaque);font-weight:var(--peso-forte);letter-spacing:-.03em;margin-top:.2rem}
-.status.is-ok .status__t::before{content:"✓ ";color:#3ecf8e}
+.status.is-ok .status__t::before{content:"✓ ";color:var(--ok)}
 .status__sub{color:var(--dim)}
 .status__faltas{display:flex;flex-wrap:wrap;gap:.4rem}
 .falta{
@@ -489,15 +496,19 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
 .mini__b i{display:block;height:100%;width:0;background:var(--dim);transition:width .8s var(--ease)}
 .mini[data-sit="apertado"] .mini__b i,.mini[data-sit="estourou"] .mini__b i{background:var(--accent)}
 .mini[data-sit="apertado"] .mini__v,.mini[data-sit="estourou"] .mini__v{color:var(--accent-txt)}
-.mini[data-sit="batida"] .mini__b i{background:#3ecf8e}
+.mini[data-sit="batida"] .mini__b i{background:var(--ok)}
 .progress{position:relative;height:3px;background:var(--line);border-radius:2px;flex:1;min-width:120px;overflow:hidden}
 .progress__bar{position:absolute;inset:0 auto 0 0;background:var(--accent);width:0;transition:width .7s var(--ease)}
 
 /* ── 11. Calendário ────────────────────────────────────────── */
 .cal__head{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:.4rem}
 .cal__head span{text-align:center;font-family:var(--font-mono);font-size:var(--t-micro);letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+/* `1fr` é `minmax(auto,1fr)`, e o mínimo automático de uma célula com
+   aspect-ratio + min-height é a própria min-height: os 54px viravam largura
+   mínima onde só cabiam 50, e a sétima coluna (domingo) saía recortada pela
+   borda arredondada. `minmax(0,1fr)` deixa a proporção derivar da largura. */
 .cal{
-  display:grid;grid-template-columns:repeat(7,1fr);gap:1px;
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;
   background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;
 }
 /* o contorno do dia é desenhado por dentro da célula; nos quatro cantos da
@@ -508,7 +519,7 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
 .cal__day:nth-last-child(7){border-radius:0 0 0 13px}
 .cal__day:last-child{border-radius:0 0 13px 0}
 .cal__day{
-  position:relative;background:var(--bg);aspect-ratio:1/1;min-height:54px;padding:.35rem;
+  position:relative;background:var(--bg);aspect-ratio:1/1;min-height:44px;padding:.35rem;
   display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;
   transition:background .3s var(--ease);
 }
@@ -540,9 +551,9 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
 .cal__day.is-futuro{opacity:.45}
 .cal__vol{
   position:absolute;left:6px;bottom:5px;height:3px;border-radius:2px;
-  width:calc((100% - 12px) * var(--v,.3));background:var(--accent);opacity:.55;
+  width:calc((100% - 12px) * var(--v,.3));background:var(--fg);opacity:.4;
 }
-.cal__day.is-fechado .cal__vol{opacity:.95}
+.cal__day.is-fechado .cal__vol{opacity:.75}
 .cal__ag{
   position:absolute;top:5px;right:5px;min-width:10px;height:10px;padding:0 2px;border-radius:999px;
   background:var(--accent);color:var(--ink);
@@ -647,19 +658,21 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
 .bar__name{font-size:var(--t-corpo);font-weight:var(--peso-forte);letter-spacing:-.01em;display:flex;gap:.5rem;align-items:center}
 .bar__v{font-family:var(--font-mono);font-size:var(--t-mini);color:var(--dim);margin-left:auto;white-space:nowrap}
 .bar__track{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
-.bar__fill{height:100%;width:0;border-radius:3px;background:var(--accent);transition:width .9s var(--ease)}
+.bar__fill{height:100%;width:0;border-radius:3px;
+  background:color-mix(in srgb,var(--fg) 34%,transparent);transition:width .9s var(--ease)}
+.bar__fill.is-top{background:var(--accent)}
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.6rem;max-width:460px}
 .heat__c{max-height:56px}
 .heat__c{aspect-ratio:1;border-radius:4px;background:var(--line);position:relative}
 .heat__lbl{text-align:center;font-family:var(--font-mono);font-size:var(--t-micro);color:var(--dim);letter-spacing:.06em}
 .tips{display:grid;gap:.6rem;margin-top:.6rem}
 .tip{
-  border:1px solid var(--line);border-left:2px solid var(--accent);border-radius:0 12px 12px 0;
+  border:1px solid var(--line);border-left:2px solid var(--line-2);border-radius:0 12px 12px 0;
   padding:.9rem 1.1rem;background:var(--surface);
 }
 .tip__k{margin-bottom:.35rem}
 .tip__t{font-size:var(--t-corpo);line-height:1.5}
-.tip__t b{color:var(--accent-txt);font-weight:var(--peso-forte)}
+.tip__t b{font-weight:var(--peso-forte)}
 
 /* ── 13b. Metas ────────────────────────────────────────────── */
 .metas{display:grid;gap:.6rem}
@@ -838,7 +851,13 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
   background:transparent;transition:border-color .3s var(--ease),color .3s var(--ease);
 }
 .daypick:hover{border-color:var(--fg);color:var(--fg)}
-.daypick::-webkit-calendar-picker-indicator{filter:invert(.6);cursor:pointer}
+/* o ícone nativo do seletor é preto: inverte só nas paletas escuras */
+.daypick::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.7}
+[data-palette="noir"] .daypick::-webkit-calendar-picker-indicator,
+[data-palette="acido"] .daypick::-webkit-calendar-picker-indicator,
+[data-palette="neon"] .daypick::-webkit-calendar-picker-indicator,
+[data-palette="oceano"] .daypick::-webkit-calendar-picker-indicator,
+[data-palette="mono"] .daypick::-webkit-calendar-picker-indicator{filter:invert(1)}
 
 /* ── 21. Aviso / chamada ───────────────────────────────────── */
 .alert{
@@ -921,18 +940,18 @@ button.alert:hover{transform:translateX(3px);border-color:var(--accent)}
 }
 .syncchip:hover{border-color:var(--fg);color:var(--fg)}
 .syncchip__dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
-.syncchip[data-state="ok"] .syncchip__dot{background:#3ecf8e}
+.syncchip[data-state="ok"] .syncchip__dot{background:var(--ok)}
 .syncchip[data-state="pending"] .syncchip__dot{background:var(--accent)}
-.syncchip[data-state="error"] .syncchip__dot{background:#e5484d}
+.syncchip[data-state="error"] .syncchip__dot{background:var(--erro)}
 .syncchip[data-state="syncing"] .syncchip__dot{background:var(--accent);animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.25}}
 .syncchip__t{color:inherit}
 @media (max-width:560px){.syncchip__t{display:none}.syncchip{padding:0;width:38px;justify-content:center}}
 .syncstat{display:flex;align-items:flex-start;gap:.7rem;border:1px solid var(--line);border-radius:12px;padding:.9rem 1.1rem;background:var(--surface)}
 .syncstat__dot{width:9px;height:9px;border-radius:50%;background:var(--dim);margin-top:.45rem;flex:none}
-.syncstat__dot[data-state="ok"]{background:#3ecf8e}
+.syncstat__dot[data-state="ok"]{background:var(--ok)}
 .syncstat__dot[data-state="pending"]{background:var(--accent)}
-.syncstat__dot[data-state="error"]{background:#e5484d}
+.syncstat__dot[data-state="error"]{background:var(--erro)}
 .minisel{border:1px solid var(--line-2);border-radius:999px;padding:.42rem .8rem;font-family:var(--font-mono);font-size:var(--t-micro);letter-spacing:.1em;color:var(--fg);background:transparent}
 .toast__act{
   margin-left:.7rem;padding-left:.7rem;border-left:1px solid color-mix(in srgb,var(--bg) 35%,transparent);
@@ -1178,6 +1197,7 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 .aba__t{font-size:var(--t-corpo);font-weight:var(--peso-forte);letter-spacing:-.01em}
 .aba__n{font-size:var(--t-micro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .aba.is-on .aba__n{color:var(--accent-txt)}
+.aba.is-on .aba__n.is-vazio{color:var(--dim)}   /* nada pra celebrar */
 
 .mescabeca{display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap;
   border:1px solid var(--line-2);border-radius:16px;padding:1.1rem;background:var(--surface);margin-bottom:1.4rem}
@@ -1185,9 +1205,18 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 
 .dinheiro{display:grid;gap:.5rem;margin-top:.3rem}
 .dinheiro__l{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.6rem}
-.dinheiro__f{color:var(--dim);white-space:nowrap}
+.dinheiro__r,.dinheiro__f{display:flex;align-items:baseline;gap:.35rem;color:var(--dim);white-space:nowrap}
+.dinheiro__r .num,.dinheiro__f .num,.dinheiro__l>.num{font-size:var(--t-mini);color:var(--fg);letter-spacing:-.01em}
+
+/* Nota de rodapé: frase é frase. Mono em caixa alta com tracking aberto é
+   rótulo curto — em duas linhas de texto corrido ela vira ruído, e número com
+   tracking de rótulo deixa de ler como quantidade. */
+.nota-pe{
+  font-family:var(--font-display);font-size:var(--t-mini);line-height:1.6;
+  color:var(--dim);margin-top:.8rem;max-width:60ch;
+}
 .dinheiro__saldo{color:var(--accent-txt);letter-spacing:.12em}
-.dinheiro__saldo.is-neg,.micro.is-neg{color:#e5484d}
+.dinheiro__saldo.is-neg,.micro.is-neg{color:var(--erro)}
 
 .agenda{display:grid;gap:.4rem}
 .agdia{display:flex;align-items:baseline;gap:.5rem;margin:1rem 0 .3rem}
@@ -1230,9 +1259,10 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 .confronto{border:1px solid var(--line);border-radius:14px;padding:1rem;margin:1rem 0}
 .carteirabloco{margin:1.6rem 0 .6rem;display:grid;gap:.5rem}
 .mesnav{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:1.2rem}
-.totalzao__n.is-neg{color:#e5484d}
+.totalzao__n.is-neg{color:var(--erro)}
 
-.hojeagenda{border:1px dashed var(--line-2);border-radius:14px;padding:.9rem;margin-bottom:1.4rem;display:grid;gap:.4rem}
+.hojeagenda{border:1px solid var(--line-2);border-radius:14px;padding:.9rem;margin-bottom:1.4rem;display:grid;gap:.4rem}
+.hojeagenda>*{min-width:0}   /* item de grade não encolhe sozinho */
 .hojeagenda__h{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.2rem}
 
 .section.is-alvo{outline:2px solid var(--accent);outline-offset:10px;border-radius:4px;transition:outline-color .6s var(--ease)}
