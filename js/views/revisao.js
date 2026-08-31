@@ -7,12 +7,15 @@
 
 import { el, nf, weekKey, weekOfKey, addDays, todayKey, parseKey, MONTHS } from '../utils.js';
 import * as store from '../store.js';
-import { goalProgress, loggedDays, did, num, isReduce } from '../analysis.js';
+import { goalProgress, loggedDays, did, num, isReduce, semanaPendente } from '../analysis.js';
+import { iconBtn } from './today.js';
 import { toast, confirmSheet } from '../ui.js';
 
 export function render(ctx) {
   const inicioSemana = store.state.settings.weekStart ?? 1;
-  const ancora = ctx.revisaoSemana || todayKey();
+  // sem escolha explícita, abre a semana que está pedindo revisão — na segunda
+  // de manhã é a que acabou de terminar, não a que mal começou
+  const ancora = ctx.revisaoSemana || semanaPendente(todayKey(), inicioSemana) || todayKey();
   const chave = weekKey(ancora, inicioSemana);
   const dias = weekOfKey(chave, inicioSemana);
   const anterior = weekOfKey(addDays(chave, -7), inicioSemana);
@@ -21,6 +24,7 @@ export function render(ctx) {
   const cats = store.activeCategories().filter(c => c.goal);
 
   const view = el('div.view');
+  const adiante = chave < weekKey(todayKey(), inicioSemana);
   const a = parseKey(dias[0]), b = parseKey(dias[6]);
   const rotulo = `${a.getDate()}–${b.getDate()} ${MONTHS[b.getMonth()].slice(0, 3)}`.toUpperCase();
 
@@ -30,10 +34,12 @@ export function render(ctx) {
       el('h2.display.h-lg', { text: fechada ? 'SEMANA FECHADA' : 'FECHAR A SEMANA' }),
     ]),
     el('div.vhead__r', {}, [
-      el('button.btn.btn--sm', { type: 'button', onclick: () => { ctx.revisaoSemana = addDays(chave, -7); ctx.rerender(); }, text: '←' }),
-      chave !== weekKey(todayKey(), inicioSemana)
-        ? el('button.btn.btn--sm', { type: 'button', onclick: () => { ctx.revisaoSemana = todayKey(); ctx.rerender(); }, text: 'atual' })
-        : null,
+      el('div.daynav', {}, [
+        iconBtn('M15 6l-6 6 6 6', () => { ctx.revisaoSemana = addDays(chave, -7); ctx.rerender(); }, 'Semana anterior'),
+        adiante
+          ? iconBtn('M9 6l6 6-6 6', () => { ctx.revisaoSemana = addDays(chave, 7); ctx.rerender(); }, 'Semana seguinte')
+          : null,
+      ]),
       el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.voltar(), text: '← voltar' }),
     ]),
   ]));
@@ -86,7 +92,7 @@ export function render(ctx) {
           type: 'button',
           onclick: () => confirmSheet({
             title: 'Reabrir a semana?', text: 'Volta a ficar editável. O que você já escreveu continua aqui.',
-            ok: 'Reabrir', onOk: () => { store.reopenReview(chave); ctx.rerender(); },
+            ok: 'Reabrir', onOk: () => { store.reopenReview(chave); ctx.revisaoSemana = chave; ctx.rerender(); },
           }),
         }, [el('span', { text: 'reabrir' })])
       : el('button.btn.btn--solid', {
@@ -102,6 +108,7 @@ export function render(ctx) {
               })),
             });
             toast('semana fechada');
+            ctx.revisaoSemana = chave;   // fica na semana que acabou de fechar
             ctx.rerender();
           },
         }, [el('span', { text: 'FECHAR A SEMANA' })]),

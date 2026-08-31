@@ -1,8 +1,8 @@
 /* analysis.js — leitura dos dados: sequências, metas, padrões,
    comparações entre categorias e sugestões em texto. Tudo local. */
 
-import { state, hasEntry, listCategories, listTodos, cadencia, respondida } from './store.js';
-import { addDays, todayKey, parseKey, lastNDays, weekOfKey, WD_LONG, nf } from './utils.js';
+import { state, hasEntry, listCategories, listTodos, cadencia, respondida, getReview } from './store.js';
+import { addDays, todayKey, parseKey, lastNDays, weekOfKey, weekKey, WD_LONG, nf } from './utils.js';
 
 /* ── Base ──────────────────────────────────────────────────── */
 
@@ -17,6 +17,19 @@ export function num(cat, key) {
   return Number.isFinite(n) ? n : 0;
 }
 export const did = (cat, key) => num(cat, key) > 0;
+
+/** Qual semana está pedindo revisão — a que acabou e ninguém fechou.
+    Só cobra semana com registro; e só a imediatamente anterior, então a
+    cobrança dura no máximo sete dias e some sozinha. */
+export function semanaPendente(hoje = todayKey(), inicioSemana = 1) {
+  const atual = weekKey(hoje, inicioSemana);
+  const aberta = s => !getReview(s)?.fechadaEm && weekOfKey(s, inicioSemana).some(hasEntry);
+
+  const passada = weekKey(addDays(atual, -7), inicioSemana);
+  if (aberta(passada)) return passada;
+  if (hoje >= weekOfKey(atual, inicioSemana)[6] && aberta(atual)) return atual;
+  return null;
+}
 
 /** Categorias que a gente quer manter em baixa (meta "no máximo"). */
 export const isReduce = cat => cat.goal?.mode === 'max';

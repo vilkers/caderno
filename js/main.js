@@ -63,6 +63,7 @@ function paint() {
   const main = $('#main');
   ctx.softRefresh = null;              // cada tela instala o seu, se quiser
   if (ctx.view !== 'resumo') document.body.classList.remove('modo-imersivo');
+  if (ctx.view !== 'revisao') ctx.revisaoSemana = null;   // não guarda semana de ontem
   main.replaceChildren(VIEWS[ctx.view].render(ctx));
   main.scrollTop = 0;
   window.scrollTo({ top: 0, behavior: 'auto' });   // antes de medir a dobra

@@ -218,7 +218,7 @@ assim como `Esc` no teclado.
 
 ### Revisão da semana
 Segunda de manhã, o Hoje mostra uma faixa: *a semana passada acabou*. A revisão
-abre o placar — dias registrados, metas batidas, comparação com a semana
+abre já na semana que terminou (não na que mal começou) e mostra o placar — dias registrados, metas batidas, comparação com a semana
 anterior — e vai meta por meta dizendo quanto foi e quanto era pra ser. Onde a
 meta apertou ou sobrou, dá pra **corrigir o número ali mesmo**, com `−` e `+`,
 sem entrar em cada categoria. Escreve uma linha sobre a semana, fecha, e ela
