@@ -582,7 +582,10 @@ body.rolou .topbar{border-bottom-color:var(--line);background:color-mix(in srgb,
 .meta__num{
   width:64px;padding:.42rem .5rem;border:1px solid var(--line-2);border-radius:999px;
   font-family:var(--font-mono);font-size:11px;text-align:center;color:var(--fg);background:transparent;
+  -moz-appearance:textfield;appearance:textfield;   /* o − e o + já são os botões */
 }
+.meta__num::-webkit-outer-spin-button,
+.meta__num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .meta__campos select:disabled,.meta__num:disabled{opacity:.4}
 
 /* ── 14. Ajustes ───────────────────────────────────────────── */
