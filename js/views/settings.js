@@ -149,7 +149,7 @@ function agendaBox(ctx) {
   const itens = store.listAgenda();
 
   box.append(el('p', {
-    style: { color: 'var(--dim)', fontSize: '.9rem', marginBottom: '1rem', maxWidth: '52ch' },
+    style: { color: 'var(--dim)', fontSize: 'var(--t-corpo)', marginBottom: '1rem', maxWidth: '52ch' },
     text: 'O que acontece todo mês num dia certo: aluguel, cartões, contas de casa, a nota fiscal da agência — e também as assinaturas e o que entra. Aparece no calendário, no dia, e na tela da Agenda.',
   }));
 
@@ -354,7 +354,7 @@ function syncSheet(ctx) {
 
     return [
       el('p.muted', {
-        style: { fontSize: '.88rem', lineHeight: '1.6' },
+        style: { fontSize: 'var(--t-corpo)', lineHeight: '1.6' },
         html: 'O caderno grava um arquivo cifrado no seu repositório a cada mudança e o lê de volta ao destrancar — é o banco de dados dele, e serve pra usar o app em mais de um aparelho.<br><br>' +
               'Crie um token em <b>github.com/settings/personal-access-tokens</b> → <i>Fine-grained</i> → só este repositório → <b>Contents: Read and write</b>. ' +
               'O token fica cifrado junto com os seus dados; se perder o aparelho, revogue ele no GitHub.',
@@ -567,7 +567,7 @@ function changePass(ctx) {
     const conf = field('CONFIRME', el('input', { type: 'password', autocomplete: 'new-password' }));
     const err = el('p.lock__error.micro');
     return [
-      el('p.muted', { style: { fontSize: '.88rem' }, text: 'Se a sincronia estiver ligada, mande sincronizar depois: o arquivo do repositório passa a usar a senha nova.' }),
+      el('p.muted', { style: { fontSize: 'var(--t-corpo)' }, text: 'Se a sincronia estiver ligada, mande sincronizar depois: o arquivo do repositório passa a usar a senha nova.' }),
       atual, nova, conf, err,
       el('div.sheet__actions', {}, [
         el('button.btn', { type: 'button', onclick: close }, [el('span', { text: 'cancelar' })]),
@@ -595,7 +595,7 @@ function editHint(ctx) {
   openSheet('Dica da senha', close => {
     const f = field('DICA', el('input', { type: 'text', value: vault.readMeta().hint || '', maxlength: 60, placeholder: 'aquela frase de 2019' }));
     return [
-      el('p.muted', { style: { fontSize: '.88rem' }, text: 'A dica fica em texto puro no aparelho — qualquer um que abrir o app a vê. Nunca escreva a senha nela.' }),
+      el('p.muted', { style: { fontSize: 'var(--t-corpo)' }, text: 'A dica fica em texto puro no aparelho — qualquer um que abrir o app a vê. Nunca escreva a senha nela.' }),
       f,
       el('div.sheet__actions', {}, [
         el('button.btn', { type: 'button', onclick: close }, [el('span', { text: 'cancelar' })]),

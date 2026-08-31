@@ -25,6 +25,34 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 12 — as duas mudanças estruturais, e a escala tipográfica
+
+- **A Agenda virou aba de Pessoal.** As duas telas já mostravam quase o mesmo
+  conjunto — a Carteira lista tudo da agenda mais assinaturas, e marcar como
+  pago funcionava nas duas —, só que uma estava a um toque e a outra a dois
+  mais rolagem. Agora Pessoal tem quatro abas: Tarefas · Contas · Assinaturas ·
+  Carteira, todas com navegação de mês. Sumiu um item do menu e a colisão entre
+  "Mês" (o calendário da rotina) e "Agenda do mês" (as contas).
+
+- **Metas saiu da barra de baixo e Insights entrou.** Meta se ajusta uma vez
+  por semana, e já se ajusta dentro da Revisão, com − e + ao lado do resultado;
+  Padrões é o que se abre à toa. Os atalhos do ícone instalado, aliás, já
+  elegiam Hoje/Contas/Pessoal/Semana — o app discordava da própria barra. Com
+  Insights embaixo, o ícone dele saiu do topo, que agora carrega só identidade,
+  sincronia e menu.
+
+- **A escala tipográfica.** Você sentiu "muita fonte diferente" e a medição deu
+  razão à sensação, mas o culpado não era a família: são duas, de propósito.
+  Eram **50 combinações distintas** de tamanho/peso/tracking, com **17 corpos**
+  (8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 21, 24, 26, 27, 29, 32) e **6
+  pesos**, cada componente escolhendo o seu na mão. Agora são sete degraus de
+  texto e quatro de display, três pesos, tudo em token — 36 combinações, e as
+  que sobram são as legítimas (o mesmo degrau em caixa alta, em mono, com
+  tracking). Componente novo escolhe dentro da escala em vez de inventar.
+
+- Nome de categoria comprido era cortado com reticências no check-in a 360px.
+  Quem escolheu o nome quer lê-lo inteiro: agora quebra em duas linhas.
+
 ## Rodada 11 — o menu emagrece e a barra de cima vira bússola
 
 Chamei um segundo par de olhos (um agente só pra UX) pra olhar menu e

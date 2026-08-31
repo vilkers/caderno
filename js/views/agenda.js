@@ -2,44 +2,24 @@
    o que se emite e o que entra.
 
    A rotina é diária e se mede em constância; isto aqui é pontual e se mede
-   em "resolvido ou não". Por isso vive numa tela própria, com o mês inteiro
-   à vista e um toque por item — e não no check-in do dia. */
+   em "resolvido ou não" — por isso não entra no check-in do dia.
 
-import { el, monthKey, monthLabel, todayKey, parseKey, moeda, nf, humanDay, MONTHS, WD } from '../utils.js';
+   Virou uma aba de Pessoal (Contas), e não uma tela própria: a Carteira já
+   listava os mesmos itens com a soma partida em entra/sai, e marcar como pago
+   funcionava nas duas. Duas telas quase iguais, uma a um toque e a outra a
+   dois. Aqui mora o painel; quem desenha cabeçalho e navegação de mês é
+   views/todos.js. */
+
+import { el, monthKey, todayKey, parseKey, moeda, WD } from '../utils.js';
 import * as store from '../store.js';
-import { toast, stagger, confirmSheet } from '../ui.js';
+import { toast, stagger } from '../ui.js';
 import { barraProgresso, anel } from '../graficos.js';
-import { iconBtn } from './today.js';
-import { editarCompromisso } from './agendaform.js';
+import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
 
-export function render(ctx) {
-  const mes = ctx.agendaMes || monthKey();
+export function painelContas(ctx, mes) {
   const hoje = todayKey();
   const c = store.contasDoMes(mes);
-  const view = el('div.view');
-
-  const desloca = n => {
-    const [y, m] = mes.split('-').map(Number);
-    const d = new Date(y, m - 1 + n, 1);
-    ctx.agendaMes = monthKey(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`);
-    ctx.rerender();
-  };
-
-  view.append(el('div.vhead', {}, [
-    el('div.vhead__l', {}, [
-      el('p.micro', { text: `AGENDA · ${monthLabel(mes).toUpperCase()}` }),
-      el('h2.display.h-lg', { text: 'O MÊS' }),
-    ]),
-    el('div.vhead__r', {}, [
-      el('div.daynav', {}, [
-        iconBtn('M15 6l-6 6 6 6', () => desloca(-1), 'Mês anterior'),
-        mes !== monthKey()
-          ? el('button.chip', { onclick: () => { ctx.agendaMes = null; ctx.rerender(); }, text: 'este mês' })
-          : null,
-        iconBtn('M9 6l6 6-6 6', () => desloca(1), 'Próximo mês'),
-      ]),
-    ]),
-  ]));
+  const view = el('div.painel');
 
   if (!c.itens.length) {
     view.append(vazio(ctx));
@@ -91,16 +71,24 @@ export function render(ctx) {
   view.append(lista);
 
   view.append(el('div.wrap', { style: { marginTop: '1.4rem' } }, [
+    el('button.btn.btn--sm.btn--solid', {
+      type: 'button',
+      onclick: () => editarCompromisso(null, () => ctx.rerender()),
+    }, [el('span', { text: '+ novo compromisso' })]),
+    el('button.btn.btn--sm', {
+      type: 'button',
+      onclick: () => sugestoesAgenda(() => ctx.rerender(), { grupos: ['CARTÕES', 'CASA', 'TRABALHO'] }),
+    }, [el('span', { text: 'sugestões' })]),
     el('button.btn.btn--sm', {
       type: 'button',
       onclick: () => { ctx.ajustesFoco = 'agenda'; ctx.go('ajustes'); },
-    }, [el('span', { text: 'editar a agenda' })]),
+    }, [el('span', { text: 'editar tudo' })]),
   ]));
 
   view.append(el('p.micro', {
     style: { marginTop: '1.6rem', lineHeight: '1.9' },
     html: 'O QUE VOCÊ MARCA AQUI VALE SÓ PRA ESTE MÊS — NO MÊS QUE VEM TUDO VOLTA EM ABERTO.'
-      + (c.assinaturas ? '<br>ASSINATURAS FICAM EM PESSOAL → ASSINATURAS.' : ''),
+      + (c.assinaturas ? '<br>ASSINATURA DEBITA SOZINHA: FICA NA ABA AO LADO E CONTA NO DINHEIRO DO MÊS.' : ''),
   }));
 
   stagger(lista, '.agitem');
@@ -180,15 +168,18 @@ function proximoTexto(acoes, hoje) {
 
 function vazio(ctx) {
   return el('div.empty', {}, [
-    el('p.display.h-md', { text: 'NADA NA AGENDA' }),
-    el('p', {
-      style: { color: 'var(--dim)', maxWidth: '42ch', margin: '.6rem 0 1.4rem' },
-      text: 'Aqui ficam as coisas que acontecem todo mês num dia certo: aluguel, cartões, contas de casa, a nota fiscal — e o que entra. Elas aparecem no calendário e cobram você no dia.',
-    }),
-    el('button.btn.btn--solid', {
-      type: 'button',
-      onclick: () => { ctx.ajustesFoco = 'agenda'; ctx.go('ajustes'); },
-    }, [el('span', { text: 'montar a agenda' })]),
+    el('b', { text: 'Nada nas contas' }),
+    el('p', { text: 'O que acontece todo mês num dia certo: aluguel, cartões, contas de casa, a nota fiscal. Aparece no calendário e cobra você no dia.' }),
+    el('div.wrap', { style: { marginTop: '1.2rem', justifyContent: 'center' } }, [
+      el('button.btn.btn--sm.btn--solid', {
+        type: 'button',
+        onclick: () => sugestoesAgenda(() => ctx.rerender(), { grupos: ['CARTÕES', 'CASA', 'TRABALHO'] }),
+      }, [el('span', { text: 'começar pelas sugestões' })]),
+      el('button.btn.btn--sm', {
+        type: 'button',
+        onclick: () => editarCompromisso(null, () => ctx.rerender()),
+      }, [el('span', { text: '+ do zero' })]),
+    ]),
   ]);
 }
 

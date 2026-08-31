@@ -185,7 +185,7 @@ export function sugestoesAgenda(aoAdicionar = () => {}, { grupos = null, titulo 
     const existentes = new Set(store.listAgenda().map(a => a.label.toLowerCase()));
     const corpo = [
       el('p', {
-        style: { color: 'var(--dim)', fontSize: '.9rem', marginBottom: '.4rem' },
+        style: { color: 'var(--dim)', fontSize: 'var(--t-corpo)', marginBottom: '.4rem' },
         text: 'Toque pra adicionar. Os dias são exemplo — cada banco e cada contrato tem o seu, então ajuste depois no item.',
       }),
     ];

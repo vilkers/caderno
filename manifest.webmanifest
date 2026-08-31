@@ -31,8 +31,8 @@
       "description": "Abrir direto o check-in de hoje"
     },
     {
-      "name": "Agenda do mês",
-      "short_name": "Agenda",
+      "name": "Contas do mês",
+      "short_name": "Contas",
       "url": "./?v=agenda",
       "description": "Contas, cartões e o que vence este mês"
     },

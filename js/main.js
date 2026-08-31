@@ -21,16 +21,18 @@ import * as viewPerfil from './views/perfil.js';
 import * as viewResumo from './views/resumo.js';
 import * as viewRevisao from './views/revisao.js';
 import * as viewSettings from './views/settings.js';
-import * as viewAgenda from './views/agenda.js';
 import { abrirPaleta } from './views/paleta.js';
 
 const VIEWS = {
   hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
   insights: viewInsights, ajustes: viewSettings, perfil: viewPerfil,
-  resumo: viewResumo, revisao: viewRevisao, agenda: viewAgenda,
+  resumo: viewResumo, revisao: viewRevisao,
 };
 /* embaixo fica a rotina; o resto se alcança pelo topo e pelo menu */
-const PRIMARIAS = ['hoje', 'mes', 'lista', 'metas'];
+/* Metas saiu da barra e Insights entrou. Meta se ajusta uma vez por semana —
+   e já se ajusta dentro da Revisão, com − e + ao lado do resultado. Padrões é
+   o que se abre à toa. Os atalhos do ícone instalado já diziam isso. */
+const PRIMARIAS = ['hoje', 'mes', 'lista', 'insights'];
 
 /* ── Contexto compartilhado entre as telas ─────────────────── */
 const ctx = {
@@ -193,6 +195,8 @@ function aplicarAtalhoDaURL() {
   if (!v) return;
   if (v === 'semana') { ctx.view = 'mes'; ctx.monthMode = 'semana'; }
   else if (v === 'rapido') ctx.view = 'hoje';   // avisos antigos ainda apontam pra cá
+  else if (v === 'agenda') { ctx.view = 'lista'; ctx.pessoalAba = 'contas'; }
+  else if (v === 'lista') { ctx.view = 'lista'; ctx.pessoalAba = 'tarefas'; }
   else if (VIEWS[v]) ctx.view = v;
   history.replaceState(null, '', location.pathname);
 }
@@ -233,8 +237,6 @@ function wire() {
     if (PRIMARIAS.includes(ctx.view)) ctx.go('perfil');
     else ctx.voltar();
   });
-  $('#insightsBtn').append(icon('insights', 18));
-  $('#insightsBtn').addEventListener('click', () => ctx.go('insights'));
   $('#menuBtn').append(icon('menu', 18));
   $('#menuBtn').addEventListener('click', menuSheet);
 
@@ -249,7 +251,7 @@ function wire() {
     if ($('#app').hidden) return;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo', 9: 'revisao', 0: 'agenda' };
+    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo', 9: 'revisao' };
     if (keys[e.key]) { ctx.go(keys[e.key]); return; }
     if (e.key === 'Escape' && ctx.view !== 'hoje' && $('#sheet').hidden) { ctx.voltar(); return; }
     if (ctx.view === 'hoje') {
@@ -336,8 +338,8 @@ function celebrar(novas, resumo) {
 
 /* ── Identidade no topo ────────────────────────────────────── */
 const NOME_DA_TELA = {
-  insights: 'Padrões', ajustes: 'Ajustes', perfil: 'Perfil', resumo: 'Retrospectiva',
-  revisao: 'Revisão da semana', agenda: 'Contas do mês',
+  ajustes: 'Ajustes', perfil: 'Perfil', resumo: 'Retrospectiva',
+  revisao: 'Revisão da semana', metas: 'Metas',
 };
 
 /* Em tela secundária a barra de cima troca de papel: em vez de "quem sou eu",
@@ -366,7 +368,6 @@ function pintaIdentidade() {
     btn.title = secundaria ? 'Voltar' : 'Seu perfil';
   }
   btn?.classList.toggle('is-active', ctx.view === 'perfil');
-  $('#insightsBtn')?.classList.toggle('is-active', ctx.view === 'insights');
 }
 
 /* ── Menu ──────────────────────────────────────────────────── */
@@ -393,8 +394,8 @@ function menuSheet() {
         item('estrela', 'Retrospectiva', () => ir('resumo')),
         item('revisao', 'Revisão da semana', () => ir('revisao')),
       ]),
-      grupo('MÊS', [
-        item('nf', 'Contas do mês', () => ir('agenda')),
+      grupo('COBRANÇA', [
+        item('metas', 'Metas e cobrança', () => ir('metas')),
       ]),
       grupo('CADERNO', [
         item('ajustes', 'Ajustes', () => ir('ajustes')),

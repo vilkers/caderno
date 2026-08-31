@@ -202,7 +202,7 @@ ou abrir o dia — em vez de sair do calendário no primeiro toque. Embaixo, dia
 registrados semana a semana e o anel do mês. Filtrando por uma categoria, tudo
 isso dá lugar ao mapa de calor dela, com a linha do mês.
 
-### Agenda do mês
+### Contas do mês (aba de Pessoal)
 O que não é rotina mas volta todo mês num dia certo: aluguel, cartões (Nubank,
 Itaú, BTG…), contas de casa, a NF da agência — e também os eventos que
 acontecem uma vez só. Cada item tem dia do mês, valor opcional e um toque pra
@@ -210,8 +210,9 @@ marcar como resolvido; **a marcação vale por mês**, então em setembro tudo
 volta em aberto sozinho.
 
 A tela mostra o mês inteiro em ordem de dia, quanto já foi resolvido, quanto
-sai e quanto entra, e o que passou do dia. Quem cria e edita é **Ajustes →
-Agenda do mês**, ao lado das categorias da rotina — é a mesma pergunta ("o que
+sai e quanto entra, e o que passou do dia. Dá pra criar e editar ali mesmo, e a lista
+completa (com arrastar pra ordenar) fica em **Ajustes → Agenda do mês**, ao lado
+das categorias da rotina — é a mesma pergunta ("o que
 este caderno cobra de mim?"), só que a rotina cobra todo dia e a agenda cobra
 no dia. Tem sugestões prontas pra montar em alguns toques; os dias vêm de
 exemplo e você ajusta pro seu vencimento.
@@ -221,8 +222,9 @@ calendário como uma marca no canto do dia. Eles **não entram no progresso da
 rotina** de propósito: pagar o aluguel não é hábito, e misturar as duas coisas
 faria a barra do dia mentir.
 
-### Pessoal — afazeres, assinaturas e carteira
-Três coisas que não são rotina mas ocupam a mesma cabeça:
+### Pessoal — afazeres, contas, assinaturas e carteira
+Quatro coisas que não são rotina mas ocupam a mesma cabeça. As três de
+dinheiro andam pelo tempo: dá pra ver o mês passado e o que vem.
 
 **Afazeres.** A lista de sempre, integrada ao app inteiro: escreva e dê Enter. Toque no quadrado pra concluir, no texto
 pra editar no lugar, e **arraste pelo punho (⠿) pra ordenar** — quem prefere
@@ -267,13 +269,14 @@ calculado no seu navegador, em cima dos seus dados.
 ### Navegação
 Três camadas, para a barra de baixo não virar depósito:
 
-- **Embaixo, a rotina** — Hoje, Mês, Pessoal, Metas. O que se toca todo dia.
+- **Embaixo, a rotina** — Hoje, Mês, Pessoal, Padrões. O que se toca todo dia.
+  Metas saiu daqui: meta se ajusta uma vez por semana, e já se ajusta dentro da
+  Revisão, com − e + ao lado do resultado.
 - **No topo, você e a leitura** — o avatar abre o **Perfil**, e ao lado ficam
   o estado da sincronia, o atalho de **Insights** e o **menu**.
 - **No menu, só o que não tem outra porta** — Retrospectiva, Revisão da semana,
-  Contas do mês, Ajustes, Paleta, Sincronizar e Trancar. Uma linha por item,
-  sem descrição: Perfil, Insights e Metas saíram porque já estão a um toque no
-  avatar, no ícone do topo e na barra de baixo.
+  Metas, Ajustes, Paleta, Sincronizar e Trancar. Uma linha por item, sem
+  descrição.
 
 **Em tela secundária a barra de cima muda de papel**: em vez de "quem sou eu",
 ela responde "onde estou e como saio" — a foto dá lugar a uma seta de voltar e
@@ -419,6 +422,13 @@ tools/test-contraste.mjs contraste WCAG de todas as paletas
 ```
 
 ## Design
+
+**Duas famílias, sete degraus, três pesos.** A grotesca pro que se lê, a mono
+pro que se mede — isso sempre foi assim. O que tinha escapado era a escala:
+17 tamanhos e 6 pesos, escolhidos um a um dentro de cada componente, o que dá
+a impressão de muita fonte diferente sem haver nenhuma a mais. Agora são
+tokens (`--t-micro` a `--t-num`, mais quatro degraus de display) e componente
+novo escolhe dentro deles.
 
 **Fundo vivo.** Três manchas da paleta presas à tela: no topo manda a de cima e,
 conforme a página rola, ela sobe e cede lugar à de baixo. Trocar de paleta troca

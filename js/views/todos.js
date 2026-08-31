@@ -15,9 +15,11 @@ import { listaArrastavel } from '../arrastar.js';
 import { barras, barraProgresso } from '../graficos.js';
 import { check, iconBtn } from './today.js';
 import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
+import { painelContas } from './agenda.js';
 
 const ABAS = [
   ['tarefas', 'Tarefas'],
+  ['contas', 'Contas'],
   ['assinaturas', 'Assinaturas'],
   ['carteira', 'Carteira'],
 ];
@@ -33,8 +35,12 @@ export function render(ctx) {
   const c = store.contasDoMes(mes);
   const sobra = c.totalEntrada - c.totalSaida;
 
+  const acoes = store.agendaDoMes(mes).filter(a => a.tipo !== 'assinatura');
+  const resolvidas = acoes.filter(a => store.agendaFeito(a, mes)).length;
+
   const resumo = {
     tarefas: abertas ? `${abertas} em aberto` : 'nada em aberto',
+    contas: acoes.length ? `${resolvidas}/${acoes.length} resolvidas` : 'vazio',
     assinaturas: assinaturas.length ? `${moeda(assinaturas.reduce((s, a) => s + (Number(a.valor) || 0), 0))}/mês` : 'vazio',
     carteira: (c.totalEntrada || c.totalSaida)
       ? `${sobra < 0 ? '−' : ''}${moeda(Math.abs(sobra))}`
@@ -44,7 +50,7 @@ export function render(ctx) {
   view.append(el('div.vhead', {}, [
     el('div.vhead__l', {}, [
       el('p.micro', { text: '03 — ORGANIZAÇÃO PESSOAL' }),
-      el('h2.display.h-lg', { text: aba === 'tarefas' ? 'AFAZERES' : aba === 'assinaturas' ? 'ASSINATURAS' : 'CARTEIRA' }),
+      el('h2.display.h-lg', { text: TITULOS[aba] }),
     ]),
     el('div.vhead__r', {}, [el('p.micro', { text: resumo[aba].toUpperCase() })]),
   ]));
@@ -62,11 +68,17 @@ export function render(ctx) {
 
   view.append(
     aba === 'tarefas' ? painelTarefas(ctx)
+      : aba === 'contas' ? painelContas(ctx, mes)
       : aba === 'assinaturas' ? painelAssinaturas(ctx, mes)
       : painelCarteira(ctx, mes),
   );
   return view;
 }
+
+const TITULOS = {
+  tarefas: 'AFAZERES', contas: 'CONTAS DO MÊS',
+  assinaturas: 'ASSINATURAS', carteira: 'CARTEIRA',
+};
 
 /* ── Andar pelos meses ─────────────────────────────────────── */
 function navMes(ctx, mes) {
