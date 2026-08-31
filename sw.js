@@ -1,7 +1,7 @@
 /* sw.js — cache do casco do app para uso offline.
    Os dados nunca passam por aqui: ficam cifrados no localStorage. */
 
-const CACHE = 'caderno-v10';
+const CACHE = 'caderno-v11';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css', './css/fonts.css',
@@ -86,19 +86,45 @@ self.addEventListener('notificationclick', e => {
   })());
 });
 
+/* Duas estratégias, porque as duas coisas envelhecem diferente:
+
+   • o código do app (html, js, css) vai pela REDE primeiro, com o cache como
+     rede de segurança depois de 2,5s ou se a conexão falhar. Antes era o
+     contrário, e a versão nova só aparecia na segunda vez que você abria o
+     app — dava toda a impressão de que a correção não tinha chegado.
+   • fonte, ícone e afins vão pelo CACHE primeiro: são grandes, não mudam e
+     não vale pagar rede por eles. */
+const ehCodigo = url =>
+  url.origin === location.origin && /\.(html|js|css|webmanifest)$|\/$/.test(url.pathname);
+
+const comLimite = (promessa, ms) =>
+  Promise.race([promessa, new Promise((_, x) => setTimeout(() => x(new Error('lento')), ms))]);
+
+function guardar(request, res) {
+  if (res && res.ok && new URL(request.url).origin === location.origin) {
+    const copia = res.clone();
+    caches.open(CACHE).then(c => c.put(request, copia));
+  }
+  return res;
+}
+
 self.addEventListener('fetch', e => {
   const { request } = e;
   if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+
+  if (ehCodigo(url)) {
+    e.respondWith(
+      comLimite(fetch(request).then(res => guardar(request, res)), 2500)
+        .catch(() => caches.match(request).then(hit => hit || fetch(request))),
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(request).then(hit => {
-      const net = fetch(request).then(res => {
-        if (res.ok && new URL(request.url).origin === location.origin) {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(request, copy));
-        }
-        return res;
-      }).catch(() => hit);
-      return hit || net;
-    })
+      const rede = fetch(request).then(res => guardar(request, res)).catch(() => hit);
+      return hit || rede;
+    }),
   );
 });

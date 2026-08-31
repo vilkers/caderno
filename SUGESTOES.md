@@ -67,6 +67,13 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   `.nav` pra levantar o conteúdo acima do fundo derrubou a barra de baixo pro
   meio da página — ela já era `fixed`. Só o `.main` precisava.
 
+- **A versão nova só chegava na segunda abertura.** O service worker servia o
+  cache primeiro e atualizava por trás, então você abria o app depois de um
+  deploy e via a versão velha — parecia que a correção não tinha saído. Agora o
+  código do app (html, js, css) vai pela rede primeiro, com o cache entrando se
+  a conexão demorar mais de 2,5s ou falhar; fonte e ícone continuam vindo do
+  cache, que é onde essa estratégia faz sentido.
+
 ## Rodada 9 — o mês entra no caderno
 
 Até aqui o caderno só sabia de dias. Mas metade do que ocupa a cabeça acontece
