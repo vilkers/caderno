@@ -121,10 +121,39 @@ async function put(sha) {
   const res = await api(contentsUrl(), { method: 'PUT', body: JSON.stringify(body) });
   if (res.status === 409 || res.status === 422) return { conflict: true };
   if (res.status === 401) throw new Error('Token inválido ou expirado.');
-  if (res.status === 403) throw new Error('Sem permissão de escrita nesse repositório.');
-  if (!res.ok) throw new Error(`GitHub respondeu ${res.status} ao gravar.`);
+  if (res.status === 403) {
+    // pode ser permissão, mas também é o que o GitHub responde quando se
+    // grava rápido demais — a mensagem dele diz qual dos dois é
+    const dele = await mensagemDoGitHub(res);
+    throw new Error(/secondary rate|abuse/i.test(dele || '')
+      ? 'O GitHub pediu pra desacelerar (muitas gravações seguidas). Tento de novo em instantes.'
+      : (dele || 'Sem permissão de escrita nesse repositório.'));
+  }
+  if (!res.ok) throw new Error(await mensagemDoGitHub(res) || `GitHub respondeu ${res.status} ao gravar.`);
   const out = await res.json();
   return { sha: out.content?.sha };
+}
+
+async function mensagemDoGitHub(res) {
+  try { const j = await res.clone().json(); return j?.message || ''; } catch { return ''; }
+}
+
+const espera = ms => new Promise(ok => setTimeout(ok, ms));
+
+/**
+ * Os dois cadernos têm o mesmo conteúdo?
+ * `rev`, `updatedAt` e `deviceId` ficam de fora: eles mudam a cada junção,
+ * então compará-los faria toda sincronia parecer uma mudança — e era isso
+ * que mantinha o app gravando sem parar.
+ */
+function mesmoConteudo(a, b) {
+  if (!a || !b) return false;
+  const limpo = d => JSON.stringify({
+    days: d.days, categories: d.categories, todos: d.todos, agenda: d.agenda,
+    reviews: d.reviews, badges: d.badges, profile: d.profile, levelSeen: d.levelSeen,
+    settings: { ...d.settings, sync: undefined, updatedAt: undefined },
+  });
+  return limpo(a) === limpo(b);
 }
 
 /* ── Sincronia completa ────────────────────────────────────── */
@@ -144,12 +173,31 @@ export async function syncNow({ silent = false } = {}) {
       const remote = await pull();
       const merged = remote.doc ? store.applyRemote(remote.doc) : false;
 
-      let result = await put(remote.sha);
+      /* Nada a gravar: o repositório já está igual a isto aqui. Sair agora
+         evita um commit vazio e, principalmente, evita o vaivém em que cada
+         junção agendava a próxima sincronia sem nenhuma mudança real. */
+      if (remote.doc && mesmoConteudo(store.syncDoc(), remote.doc)) {
+        store.setSync({ lastSync: Date.now(), lastSha: remote.sha || '', lastError: '' });
+        setStatus('ok', 'sincronizado');
+        return { merged, pushed: false };
+      }
+
+      /* A API de conteúdo do GitHub é consistente "com atraso": logo depois de
+         uma gravação, a leitura pode devolver o sha antigo, e aí a gravação
+         seguinte bate de frente. Então: puxa de novo, junta e tenta outra vez,
+         esperando um pouco mais a cada rodada. */
+      let sha = remote.sha;
+      let result = await put(sha);
+      for (let tentativa = 1; result.conflict && tentativa <= 3; tentativa++) {
+        setStatus('syncing', `o repositório mudou — tentando de novo (${tentativa}/3)`);
+        await espera(700 * tentativa);
+        const denovo = await pull();
+        if (denovo.doc) store.applyRemote(denovo.doc);
+        sha = denovo.sha;
+        result = await put(sha);
+      }
       if (result.conflict) {
-        const again = await pull();
-        if (again.doc) store.applyRemote(again.doc);
-        result = await put(again.sha);
-        if (result.conflict) throw new Error('Conflito no repositório: tente de novo.');
+        throw new Error('O repositório mudou enquanto eu gravava. Seus dados estão salvos aqui — toque em sincronizar de novo.');
       }
 
       store.setSync({ lastSync: Date.now(), lastSha: result.sha || '', lastError: '' });
@@ -183,10 +231,13 @@ export async function pullAndMerge() {
 }
 
 /* ── Automático ────────────────────────────────────────────── */
+/* 15s em vez de 6: cada sincronia é um commit no seu repositório, e marcar
+   cinco coisas seguidas não precisa virar cinco commits. Os dados já estão
+   cifrados no aparelho o tempo todo; o repositório pode ficar 15s atrás. */
 const auto = debounce(() => {
   if (!configured() || !navigator.onLine) return;
   syncNow({ silent: true }).catch(() => {});
-}, 6000);
+}, 15000);
 
 export function start() {
   store.subscribe(reason => {

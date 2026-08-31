@@ -67,6 +67,20 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   `.nav` pra levantar o conteúdo acima do fundo derrubou a barra de baixo pro
   meio da página — ela já era `fixed`. Só o `.main` precisava.
 
+- **"Conflito no repositório: tente de novo."** Aconteceu de verdade no seu
+  aparelho. A API de conteúdo do GitHub é consistente com atraso: logo depois
+  de gravar, a leitura pode devolver o sha antigo do arquivo — e aí a gravação
+  seguinte bate de frente. O app tentava uma vez só, e essa uma caía no mesmo
+  atraso. Agora são três rodadas com espera crescente, puxando e juntando a
+  cada uma; e se ainda assim não passar, a mensagem diz o que importa: os dados
+  estão salvos aqui.
+
+  Junto disso, duas causas de fundo: a sincronia **gravava mesmo quando nada
+  tinha mudado** (e cada junção agendava a próxima, num vaivém que só produzia
+  commits vazios e mais chance de colisão), e o intervalo automático de 6s
+  virava um commit por marcação. Agora compara o conteúdo antes de gravar e
+  espera 15s.
+
 - **A versão nova só chegava na segunda abertura.** O service worker servia o
   cache primeiro e atualizava por trás, então você abria o app depois de um
   deploy e via a versão velha — parecia que a correção não tinha saído. Agora o

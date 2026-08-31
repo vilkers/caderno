@@ -85,6 +85,17 @@ ao trancar e ao sair da aba.
 
 > Trocou a senha? Sincronize logo em seguida — o arquivo passa a exigir a nova.
 
+**Quando dá conflito.** A API de conteúdo do GitHub é consistente com atraso:
+logo depois de gravar, a leitura pode devolver o identificador antigo do
+arquivo, e a gravação seguinte bate de frente. O app puxa de novo, junta e
+tenta outra vez — até três rodadas, esperando um pouco mais a cada uma. Se
+mesmo assim não passar, ele diz isso e não perde nada: os dados continuam
+cifrados no aparelho, e basta tocar em sincronizar de novo.
+
+E quando não há nada de diferente entre o aparelho e o repositório, ele **não
+grava**: sem commit vazio, e sem o vaivém em que cada junção agendava a
+próxima sincronia sem mudança nenhuma.
+
 ## Primeiro uso
 
 Na primeira abertura o app pede uma senha nova (e a confirmação). Ela cria o
