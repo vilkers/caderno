@@ -131,11 +131,16 @@ export function migrate(data) {
     days[k] = { v: d.v || {}, note: d.note || '', closed: !!d.closed, updatedAt: Number(d.updatedAt) || t };
   }
 
-  const todos = (data.todos || []).map(x => ({
-    ...x, id: x.id || uid(),
-    createdAt: Number(x.createdAt) || t,
-    updatedAt: Number(x.updatedAt) || Number(x.doneAt) || Number(x.createdAt) || t,
-  }));
+  const todos = (data.todos || [])
+    .map(x => ({
+      ...x, id: x.id || uid(),
+      createdAt: Number(x.createdAt) || t,
+      updatedAt: Number(x.updatedAt) || Number(x.doneAt) || Number(x.createdAt) || t,
+    }))
+    .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity)
+      || (b.star ? 1 : 0) - (a.star ? 1 : 0)
+      || b.createdAt - a.createdAt)
+    .map((x, i) => ({ ...x, order: x.order ?? i }));
 
   const profile = { ...fresh.profile, ...(data.profile || {}) };
   profile.desde = Number(data.profile?.desde) || menorData(days) || t;
@@ -349,8 +354,10 @@ export const listTodos = () => state.todos.filter(t => !t.deletedAt);
 export const openTodos = () => listTodos().filter(t => !t.done);
 
 export function addTodo(text, extra = {}) {
+  const menor = Math.min(0, ...listTodos().map(x => x.order ?? 0));
   const t = {
     id: uid(), text: String(text || '').trim(), done: false, star: false,
+    order: menor - 1,                       // entra no topo da lista
     createdAt: now(), updatedAt: now(), due: null, ...extra,
   };
   if (!t.text) return null;
@@ -380,6 +387,24 @@ export function restoreTodo(snapshot) {
   else state.todos.unshift({ ...snapshot, deletedAt: undefined, updatedAt: now() });
   emit('todos');
 }
+/** Reordena pela sequência de ids que veio do arrasto. */
+export function reorderTodos(ids) {
+  ids.forEach((id, i) => {
+    const t = state.todos.find(x => x.id === id);
+    if (t && t.order !== i) { t.order = i; t.updatedAt = now(); }
+  });
+  emit('todos');
+}
+
+/** Mesma ideia para as categorias. */
+export function reorderCategories(ids) {
+  ids.forEach((id, i) => {
+    const c = state.categories.find(x => x.id === id);
+    if (c && c.order !== i) { c.order = i; c.updatedAt = now(); }
+  });
+  emit('categories');
+}
+
 export function clearDoneTodos() {
   const cleared = listTodos().filter(t => t.done);
   cleared.forEach(t => { t.deletedAt = now(); t.updatedAt = now(); });

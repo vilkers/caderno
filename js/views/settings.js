@@ -9,6 +9,7 @@ import * as vault from '../vault.js';
 import * as sync from '../sync.js';
 import { PALETTES, applyPalette } from '../palettes.js';
 import { toast, openSheet, confirmSheet, stagger } from '../ui.js';
+import { listaArrastavel } from '../arrastar.js';
 
 export function render(ctx) {
   const view = el('div.view');
@@ -54,6 +55,10 @@ export function render(ctx) {
   /* ── Categorias ── */
   const cats = el('div.cats');
   store.listCategories().forEach((c, i) => cats.append(catRow(c, i, ctx)));
+  listaArrastavel(cats, {
+    itemSel: '.cat', pegaSel: '.cat__pega',
+    aoSoltar: ids => { store.reorderCategories(ids); toast('ordem salva'); },
+  });
   view.append(section('METAS E COBRANÇA', el('div', {}, [
     row('Painel de metas', 'Cadência e meta de todas as categorias numa tela só, com o progresso da semana ao lado.',
       el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: () => ctx.go('metas') }, [el('span', { text: 'abrir' })])),
@@ -255,12 +260,16 @@ function syncSheet(ctx) {
 /* ── Linha de categoria ────────────────────────────────────── */
 function catRow(c, i, ctx) {
   const move = to => { store.moveCategory(c.id, to); ctx.rerender(); };
-  return el('div.cat', { style: c.archived ? { opacity: '.5' } : {} }, [
+  return el('div.cat', { 'data-id': c.id, style: c.archived ? { opacity: '.5' } : {} }, [
+    el('button.cat__pega', {
+      type: 'button', 'aria-label': `Mover ${c.label}`, title: 'Arraste para ordenar (ou use ↑ ↓)',
+      html: '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">'
+        + [4,8,12].map(y => [5,11].map(x => `<circle cx="${x}" cy="${y}" r="1.4"/>`).join('')).join('')
+        + '</svg>',
+    }),
     el('span.cat__i', { text: c.emoji || '•' }),
     el('span.cat__n', { text: c.label + (c.archived ? ' (arquivada)' : '') }),
     el('span.cat__t', { text: TYPES[c.type]?.label || c.type }),
-    el('button.iconbtn', { type: 'button', 'aria-label': 'Subir', onclick: () => move(i - 1), style: { width: '30px', height: '30px' }, html: '↑' }),
-    el('button.iconbtn', { type: 'button', 'aria-label': 'Descer', onclick: () => move(i + 1), style: { width: '30px', height: '30px' }, html: '↓' }),
     el('button.btn.btn--sm', { type: 'button', onclick: () => editCategory(c, ctx) }, [el('span', { text: 'editar' })]),
   ]);
 }

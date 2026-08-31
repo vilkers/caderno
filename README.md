@@ -180,9 +180,11 @@ inteira em menos de um minuto.
 Filtrando por uma categoria, vira mapa de calor com os valores.
 
 ### Lista
-Afazeres soltos: escreva e dê Enter. Toque no quadrado pra concluir, na
-estrela pra fixar, no texto pra editar no lugar. As abertas aparecem também no
-fim do check-in do dia.
+Afazeres soltos: escreva e dê Enter. Toque no quadrado pra concluir, no texto
+pra editar no lugar, e **arraste pelo punho (⠿) pra ordenar** — quem prefere
+teclado usa ↑ ↓ com o punho focado. A ordem que você deixar é a que fica; a
+estrela virou destaque, não muda mais o lugar. As abertas aparecem também no
+fim do check-in do dia. As categorias em Ajustes se reordenam do mesmo jeito.
 
 ### Nível e conquistas
 Um contador de XP tirado dos próprios dados — dia registrado, dia fechado,
@@ -213,6 +215,14 @@ Três camadas, para a barra de baixo não virar depósito:
 As telas secundárias trazem **← voltar**, e a navegação usa o histórico do
 navegador: o botão físico de voltar do Android (e o gesto do iOS) funciona,
 assim como `Esc` no teclado.
+
+### Retrospectiva
+Uma tela por vez, tipografia grande entrando palavra a palavra e o número
+subindo: dias em que você apareceu, maior sequência, o que mais fez, seu dia
+da semana, horas somadas, dias limpos, tarefas riscadas e onde você está na
+régua. Toque na direita avança, na esquerda volta; setas e deslizar também.
+Cartão sem dado não entra — retrospectiva com zero em tudo é constrangedora.
+Fica em **Perfil → Retrospectiva** ou no menu.
 
 ### Perfil
 Nome, uma frase sua e foto — reduzida a 192px e guardada **dentro do cofre**,
@@ -291,7 +301,10 @@ retro/js/sprites.js     a arte, em matrizes de caracteres viradas em SVG
 retro/js/sfx.js         os bipes, sintetizados em WebAudio
 tools/test-sprites.mjs  confere se todo sprite fecha retangular
 dados/caderno.enc.json  o banco de dados cifrado (escrito pelo app)
+js/arrastar.js          ordenar lista arrastando (Pointer Events + teclado)
+js/resumo.js            o cálculo da retrospectiva
 tools/test-merge.mjs    teste da junção — node tools/test-merge.mjs
+tools/test-contraste.mjs contraste WCAG de todas as paletas
 ```
 
 ## Design

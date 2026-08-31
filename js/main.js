@@ -17,11 +17,13 @@ import * as viewTodos from './views/todos.js';
 import * as viewInsights from './views/insights.js';
 import * as viewMetas from './views/metas.js';
 import * as viewPerfil from './views/perfil.js';
+import * as viewResumo from './views/resumo.js';
 import * as viewSettings from './views/settings.js';
 
 const VIEWS = {
   hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
   insights: viewInsights, ajustes: viewSettings, perfil: viewPerfil,
+  resumo: viewResumo,
 };
 /* embaixo fica a rotina; o resto se alcança pelo topo e pelo menu */
 const PRIMARIAS = ['hoje', 'mes', 'lista', 'metas'];
@@ -56,6 +58,7 @@ const ctx = {
 function paint() {
   const main = $('#main');
   ctx.softRefresh = null;              // cada tela instala o seu, se quiser
+  if (ctx.view !== 'resumo') document.body.classList.remove('modo-imersivo');
   main.replaceChildren(VIEWS[ctx.view].render(ctx));
   main.scrollTop = 0;
   window.scrollTo({ top: 0, behavior: 'auto' });   // antes de medir a dobra
@@ -225,7 +228,7 @@ function wire() {
     if ($('#app').hidden) return;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil' };
+    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo' };
     if (keys[e.key]) { ctx.go(keys[e.key]); return; }
     if (e.key === 'Escape' && ctx.view !== 'hoje' && $('#sheet').hidden) { ctx.voltar(); return; }
     if (ctx.view === 'hoje') {
@@ -342,6 +345,7 @@ function menuSheet() {
     return [
       grupo('VOCÊ', [
         item('perfil', 'Perfil', 'Nome, foto e o que o caderno sabe de você.', () => ir('perfil')),
+        item('estrela', 'Retrospectiva', 'O seu caderno até aqui, em tela cheia.', () => ir('resumo')),
         item('insights', 'Insights', 'Padrões, sequências e conquistas.', () => ir('insights')),
       ]),
       grupo('CADERNO', [

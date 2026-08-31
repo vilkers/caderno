@@ -105,6 +105,7 @@ export function render(ctx) {
   view.append(el('div.section', { style: { marginTop: '2rem' } }, [
     el('div.section__h', {}, [el('p.micro', { text: 'DO SEU JEITO' })]),
     el('div.atalhos', {}, [
+      atalho('Retrospectiva', 'O seu caderno até aqui, em tela cheia.', () => ctx.go('resumo')),
       atalho('Metas e cobrança', 'O que o dia exige e o que é da semana.', () => ctx.go('metas')),
       atalho('Insights', 'Padrões, sequências e o que eu leio nos seus dados.', () => ctx.go('insights')),
       atalho('Ajustes', 'Paleta, categorias, sincronia, senha e backup.', () => ctx.go('ajustes')),

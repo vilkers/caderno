@@ -25,6 +25,23 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 7 — arrastar, contraste medido e retrospectiva
+
+- **Ordenar arrastando** (tarefas e categorias), com punho dedicado — sem
+  ele, no celular o gesto briga com a rolagem — e ↑ ↓ no teclado, porque
+  arrastar sozinho não é acessível. A ordem manual passou a mandar: a
+  estrela virou destaque em vez de empurrar a tarefa pro topo.
+- **Contraste medido, não estimado.** `node tools/test-contraste.mjs` audita
+  os pares que a interface usa em todas as oito paletas. Sete pares estavam
+  reprovando: o texto secundário nas paletas claras (3.6–4.0 onde precisa de
+  4.5), o acento como texto em Terra e Rosa, e as bordas de componente perto
+  de 1.4 onde precisam de 3.0. Corrigido com `--accent-txt` (o acento quando
+  é texto) e `--line-2` (borda de componente), sem mudar a cara de nenhuma
+  paleta.
+- **Retrospectiva** em tela cheia, com tipografia animada palavra a palavra.
+- Correção: animação com `fill: forwards` vencia o `transform` inline e
+  travava o arrasto — a mesma armadilha que já tinha aparecido no calendário.
+
 ## Rodada 6 — navegação em três camadas
 
 - **A barra de baixo virou o que devia ser**: só rotina (Hoje, Mês, Lista,

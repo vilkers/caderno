@@ -4,6 +4,7 @@
 import { el, humanDay, todayKey } from '../utils.js';
 import * as store from '../store.js';
 import { toast, stagger, confirmSheet } from '../ui.js';
+import { listaArrastavel } from '../arrastar.js';
 import { check } from './today.js';
 
 export function render(ctx) {
@@ -82,11 +83,15 @@ export function render(ctx) {
   }
 
   const ul = el('div.todos');
+  /* ordem manual manda: o que você arrastou fica onde deixou. A estrela
+     virou marca-texto — antes ela empurrava a tarefa pro topo e brigava
+     com o arrasto. */
   const sorted = [...list].sort((a, b) =>
-    (b.star ? 1 : 0) - (a.star ? 1 : 0) || (a.done ? 1 : 0) - (b.done ? 1 : 0) || b.createdAt - a.createdAt);
+    (a.done ? 1 : 0) - (b.done ? 1 : 0)
+    || (a.done ? (b.doneAt || 0) - (a.doneAt || 0) : (a.order ?? 0) - (b.order ?? 0)));
 
   for (const t of sorted) {
-    const row = el('div.todo' + (t.done ? '.is-done' : ''));
+    const row = el('div.todo' + (t.done ? '.is-done' : '') + (t.star ? '.is-star' : ''), { 'data-id': t.id });
 
     const box = el('button.todo__box', { type: 'button', 'aria-label': t.done ? 'Reabrir' : 'Concluir' }, [check()]);
     box.addEventListener('click', () => {
@@ -111,7 +116,7 @@ export function render(ctx) {
       if (e.key === 'Escape') { txt.textContent = t.text; txt.blur(); }
     });
 
-    const star = el('button.star' + (t.star ? '.is-on' : ''), { type: 'button', 'aria-label': 'Fixar no topo', html: starSvg });
+    const star = el('button.star' + (t.star ? '.is-on' : ''), { type: 'button', 'aria-label': 'Destacar', html: starSvg });
     star.addEventListener('click', () => {
       store.updateTodo(t.id, { star: !t.star });
       star.classList.toggle('is-on', !t.star);
@@ -131,17 +136,34 @@ export function render(ctx) {
       }, 300);
     });
 
-    row.append(box, txt, el('div.todo__act', {}, [star, del]));
+    const pega = el('button.todo__pega' + (t.done ? '.is-off' : ''), {
+      type: 'button', disabled: t.done || null,
+      'aria-label': `Mover: ${t.text}`, title: 'Arraste para ordenar (ou use ↑ ↓)',
+      html: PEGA_SVG,
+    });
+    row.append(pega, box, txt, el('div.todo__act', {}, [star, del]));
     if (t.done && t.doneAt) {
       row.append(el('span.micro', { text: humanDay(new Date(t.doneAt).toISOString().slice(0, 10)) }));
     }
     ul.append(row);
   }
   view.append(ul);
+
+  if (tab !== 'feitas') {
+    listaArrastavel(ul, {
+      itemSel: '.todo:not(.is-done)',
+      pegaSel: '.todo__pega:not(.is-off)',
+      aoSoltar: ids => { store.reorderTodos(ids); toast('ordem salva'); },
+    });
+  }
+
   stagger(ul, '.todo');
   return view;
 }
 
+const PEGA_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">'
+  + [4, 8, 12].map(y => [5, 11].map(x => `<circle cx="${x}" cy="${y}" r="1.4"/>`).join('')).join('')
+  + '</svg>';
 const starSvg = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 3.5l2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.9L6.8 20l1-6L3.5 9.8l5.9-.8z"/></svg>';
 const xSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
