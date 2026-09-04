@@ -1,0 +1,25 @@
+import { chromium, pastaDeShots, BASE } from './_comum.mjs';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport:{width:900,height:1000} });
+const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',c=>{const t=c.text(); if(t.startsWith('INICIOU')||t.startsWith('mover')) console.log('  [pág]', t);});
+await p.goto(BASE + '/index.html',{waitUntil:'networkidle'});
+await p.fill('#lockPass','s1234'); await p.fill('#lockPass2','s1234'); await p.click('#lockBtn');
+await p.waitForSelector('#app:not([hidden])'); await p.waitForTimeout(500);
+await p.click('#menuBtn'); await p.waitForTimeout(350); await p.click('.menuitem:has-text("Ajustes")'); await p.waitForTimeout(800);
+const ordem = async () => p.$$eval('.cat__n', n=>n.map(x=>x.textContent.trim()).slice(0,4));
+console.log('categorias:', await ordem());
+await p.evaluate(()=>document.querySelector('.cats').scrollIntoView({block:'center'}));
+await p.waitForTimeout(500);
+const pega = await p.$('.cat__pega');
+const a = await pega.boundingBox();
+const terceiro = (await p.$$('.cat'))[2];
+const c = await terceiro.boundingBox();
+await p.mouse.move(a.x+a.width/2, a.y+a.height/2);
+await p.mouse.down();
+for (let i=1;i<=10;i++){ await p.mouse.move(a.x+a.width/2, a.y + (c.y+c.height-a.y)*i/10); await p.waitForTimeout(30); }
+await p.mouse.up(); await p.waitForTimeout(700);
+console.log('depois de arrastar a 1ª:', await ordem());
+await p.click('.nav__item[data-view="hoje"]'); await p.waitForTimeout(700);
+console.log('ordem no check-in:', await p.$$eval('.entry__label', n=>n.map(x=>x.textContent).slice(0,4)));
+console.log('erros:', errs.length?errs:'nenhum');
+await b.close();

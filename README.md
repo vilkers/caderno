@@ -451,11 +451,18 @@ js/views/revisao.js     o ritual de fechar a semana
 js/graficos.js          anéis, barras, colunas, malhas e trilhas (sem lib)
 js/views/agenda.js      o mês pontual: contas, cartões, NF, eventos
 js/views/agendaform.js  a caixa que cria e edita um compromisso
-tools/test-agenda.mjs   calendário e dinheiro do mês — node tools/test-agenda.mjs
-tools/test-dias.mjs     cadência por dia da semana e tarefa com data
-tools/test-merge.mjs    teste da junção — node tools/test-merge.mjs
-tools/test-contraste.mjs contraste WCAG de todas as paletas
+CLAUDE.md               o mapa pra quem for mexer no código depois
+tools/testar.sh         roda a bateria inteira — tools/testar.sh [tudo|<nome>]
+tools/test-*.mjs        lógica pura, sem navegador (junção, migração, agenda,
+                        dias da semana, contraste WCAG das paletas, sprites)
+tools/browser/*.mjs     19 testes de navegador (Playwright): fluxo completo,
+                        navegação, calendário, agenda, arrastar, retrospectiva,
+                        sincronia contra API falsa, tipografia, alvos de toque
+tools/browser/audit.mjs varredura de layout em 360, 393 e 440px
 ```
+
+Não há passo de build: `python3 -m http.server 8899 --bind 127.0.0.1` e abrir.
+Antes de publicar, `tools/testar.sh`.
 
 ## Design
 
