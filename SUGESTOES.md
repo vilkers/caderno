@@ -25,6 +25,102 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 15 — a dívida da sequência, o rosto na tranca, e Pessoal v2
+
+Três frentes: fechar o item 10 (a sequência que não sabia contar terças), pôr
+Face ID na tranca, e refazer os três módulos de Pessoal que tinham crescido
+por acumulação.
+
+### A sequência agora anda por ocorrência
+
+`currentStreak` andava dia a dia: terapia toda terça marcava 1 na terça e
+voltava a 0 na quarta. Agora, quando a categoria tem `dias`, o passo pra trás
+é a **ocorrência anterior** — cinco terças seguidas contam 5. `bestStreak`
+pula os dias que a categoria não cobra (não contam nem quebram), e a unidade
+é escrita: `↑ 5 ter`, não `↑ 5d`.
+
+As conquistas acompanharam: numa categoria de dia certo, 7 e 30 "dias" seriam
+sete meses até a primeira medalha. A régua vira 4 e 12 ocorrências — o mesmo
+mês e o mesmo trimestre em calendário.
+
+E os dias certos passaram a aparecer onde faltavam: a grade da Semana marca
+com traço pontilhado o dia que a categoria não cobra (seis faltas e uma
+presença era o que a terapia parecia antes), e Metas mostra o rótulo `ter`.
+
+### A gaveta do "não é hoje"
+
+Terapia da terça aparecia na quinta, apagada, no meio da fila. Nove cartões
+dos quais três eram fantasmas — era isso que fazia o check-in parecer
+poluído. Agora eles saem da fila e vão pra uma gaveta de uma linha ("3 fora
+do dia · 🛋️ Terapia · 🏃 Corrida"), que abre com um toque e devolve os cartões
+inteiros. Remarcar consulta continua sendo um toque e meio.
+
+A tela também trocou de ordem: os avisos (semana pendente, dias em branco) e
+o painel de metas da semana desceram pra **depois** dos cartões. A pergunta
+da página é "o que falta marcar hoje", e ler duas cobranças antes do primeiro
+cartão empurrava o trabalho pra baixo da dobra.
+
+### Os seletores
+
+- **Horas** ganharam −/+ de meia hora ao lado da leitura. Mira de dedo em
+  trilho de 3px não acerta 7,5h; a régua dá a ordem de grandeza, os botões
+  dão o ajuste fino.
+- **Escala e medidor** ficam em fio fino enquanto não há resposta. Onze
+  caixas contornadas liam como código de barras vazio.
+- **"1 passeios"** virou "1 passeio": unidade no plural só a partir de 2. E o
+  app parou de escrever "1 extra(s) marcada(s)" — linguagem de formulário
+  numa tela que sabe o número.
+- Saiu código morto do contador (pintava chips que nunca existiram ali).
+
+### Tracking virou escala
+
+Eram treze valores de `letter-spacing` (-.05 a .2em) escolhidos um a um em
+cada componente — a mesma doença que os corpos e os espaços já tinham curado.
+Agora são seis tokens (`--tk-display` a `--tk-largo`), e `tools/browser/tipo.mjs`
+reprova quem inventar um sétimo. De quebra, o teste de alvo de toque virou um
+teste de verdade: ele imprimia "errou" e a bateria seguia dizendo "ok".
+
+### Face ID na tranca
+
+WebAuthn com a extensão PRF. O cofre continua sendo PBKDF2 + AES-GCM com a
+sua senha; o que se guarda a mais é **uma cópia da senha cifrada por uma chave
+que só sai do Secure Enclave depois que o rosto confere**. Sem o aparelho o
+blob é ruído, sem o rosto o aparelho não devolve a chave, e trocar a senha
+desarma o Face ID em vez de deixar um atalho que não abre mais.
+
+Está desligado por padrão, em Ajustes, e a tela diz com todas as letras a
+troca que você está fazendo: a partir daí, quem destranca o seu telefone
+destranca o caderno. Precisa de iOS 18 / Chrome recente (PRF); sem isso a
+linha explica por que não dá, em vez de fingir.
+
+### Pessoal v2
+
+As quatro abas tinham gramáticas diferentes e as três de dinheiro estavam
+repetindo informação.
+
+- **Tarefas.** A linha tinha 151px de texto num celular de 393 — o resto era
+  botão. Estrela e apagar saíram pra folha da tarefa (onde o texto ainda pode
+  ser editado com espaço pra ler), a alça encolheu e some nas ordens em que
+  arrastar não faz nada. O texto passou a 185px. Na ordem **por prazo** a
+  lista vira blocos — Atrasadas, Hoje, Próximos 7 dias, Sem dia marcado —, que
+  é justamente o que essa ordem foi escolhida pra responder. E a lista ganhou
+  **quatro ordens** (do meu jeito, por prazo, A–Z, mais novas), salvas nos
+  ajustes.
+- **Assinaturas.** Eram duas coisas dizendo a mesma: um gráfico de barras com
+  quatro nomes e valores, e a lista com os mesmos quatro nomes e valores.
+  Virou uma: a barra mora dentro da linha. E entrou a frase que faz cortar —
+  "a mais cara é o Adobe: R$ 189,00 por mês — R$ 2.268,00 por ano, 67% do que
+  você assina".
+- **Carteira.** O número parou de aparecer três vezes na mesma tela. "A pagar"
+  virou três montes — passou do dia (com a soma, em vermelho), o resto do mês,
+  e as assinaturas fechadas numa linha só, porque não há nada a fazer com
+  elas. "Já pagou?" saiu de todas as linhas: era a mesma pergunta nove vezes,
+  e a resposta é o quadradinho ao lado.
+- **Transversal.** Dinheiro em coluna sempre com duas casas (a vírgula parou
+  de dançar), os botões de "+ cadastrar" desceram pro fim e perderam o acento
+  — nesta tela o acento pertence ao número, não ao "+" —, e "todo mês" saiu
+  das linhas de Contas: só a exceção ("só este mês") merece tinta.
+
 ## Rodada 14 — o sistema por baixo, e o dia da semana
 
 Duas frentes ao mesmo tempo: fechar os seis pontos que a crítica visual da
@@ -558,11 +654,16 @@ Das seis ideias de app de rotina que levantei, você aprovou três. Estas.
 9. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.
-10. **Sequência por ocorrência.** É a dívida que a rodada 14 assumiu:
-    `currentStreak` anda dia a dia, então terapia toda terça nunca passa de 1.
-    Contando por ocorrência (quantas terças seguidas), a sequência volta a
-    dizer o que promete — e os dias certos passam a aparecer na grade da
-    Semana e em Metas.
+10. **Assinatura que debita sozinha, sozinha mesmo.** Hoje ela conta como
+    "paga" só se você marcar o quadradinho. Se ela debita sozinha, o app
+    devia dar por debitada quando o dia chega — e o quadradinho virava
+    exceção, não rotina.
+11. **Fechar o mês, como se fecha a semana.** O mês vira a página em silêncio.
+    O mesmo ritual da revisão semanal (quanto entrou, quanto saiu, o que ficou
+    atrasado) daria sentido ao histórico da Carteira.
+12. **Busca na lista de afazeres.** Com quatro ordens e blocos por prazo, a
+    lista aguenta crescer — e a partir de umas trinta tarefas, achar uma pelo
+    nome passa a ser o gesto mais frequente.
 
 Guardadas a seu pedido (as três que não entraram nesta rodada, se um dia
 fizerem sentido): **folga programada** — marcar o dia como folga pra não contar

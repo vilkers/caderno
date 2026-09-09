@@ -7,7 +7,7 @@
 
 import { state, listCategories, listTodos, hasEntry, getDay } from './store.js';
 import { lastNDays, todayKey, addDays } from './utils.js';
-import { currentStreak, bestStreak, logStreak, goalProgress, isReduce, weekOf, did } from './analysis.js';
+import { currentStreak, bestStreak, logStreak, goalProgress, isReduce, weekOf, did, diasCobrados, pluralStreak } from './analysis.js';
 
 /* ── A escada ──────────────────────────────────────────────── */
 export const LEVELS = [
@@ -135,17 +135,21 @@ function dinamicas() {
   const out = [];
   for (const cat of listCategories().filter(c => !c.archived && c.type !== 'text')) {
     const reduzir = isReduce(cat);
-    for (const n of [7, 30]) {
+    /* Categoria de dia certo conta por ocorrência, então 7 e 30 "dias" seriam
+       sete meses de terapia pra primeira medalha. Nela a régua é a mesma em
+       calendário — um mês e um trimestre —, medida em terças. */
+    const unidade = pluralStreak(cat);
+    for (const n of (diasCobrados(cat) ? [4, 12] : [7, 30])) {
       out.push({
         id: `${reduzir ? 'limpo' : 'seq'}-${cat.id}-${n}`,
         emoji: reduzir ? '🧊' : '🔥',
         name: reduzir
           ? `${cat.emoji || '•'} ${cat.label}: ${n} limpo`
           : `${cat.emoji || '•'} ${cat.label} × ${n}`,
-        desc: reduzir ? `${n} dias seguidos sem.` : `${n} dias seguidos.`,
+        desc: reduzir ? `${n} ${unidade} seguidos sem.` : `${n} ${unidade} seguidas.`,
         test: () => currentStreak(cat) >= n || bestStreak(cat) >= n,
         progress: () => Math.max(currentStreak(cat), bestStreak(cat)) / n,
-        hint: () => `${Math.max(currentStreak(cat), bestStreak(cat))}/${n} dias`,
+        hint: () => `${Math.max(currentStreak(cat), bestStreak(cat))}/${n} ${unidade}`,
       });
     }
   }

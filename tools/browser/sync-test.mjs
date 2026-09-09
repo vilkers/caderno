@@ -123,7 +123,8 @@ const tarefasA = await A.$$eval('.todo__txt', n => n.map(x => x.textContent));
 console.log('A: depois de puxar:', tarefasA);
 
 /* apagar em A propaga para B (lápide) */
-await A.hover('.todo'); await A.click('.todo .todo__x'); await A.waitForTimeout(900);
+await A.click('.todo .todo__mais'); await A.waitForTimeout(600);
+await A.click('#sheetBody .sheet__actions .btn--danger'); await A.waitForTimeout(900);
 await A.click('#menuBtn'); await A.waitForTimeout(350); await A.click('.menuitem:has-text(\"Ajustes\")'); await A.waitForTimeout(400);
 await A.click('button:has-text("sincronizar agora")'); await A.waitForTimeout(2200);
 await B.click('button:has-text("puxar do repositório")'); await B.waitForTimeout(2000);

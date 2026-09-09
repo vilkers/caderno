@@ -91,6 +91,9 @@ function renderWeek(view, ctx) {
     faixa.append(el('div.wgrid__cat', {}, [
       el('span.wgrid__emoji', { text: cat.emoji || '•' }),
       el('span.wgrid__label', { text: cat.label }),
+      store.rotuloDias(cat) ? el('span.wgrid__goal.wgrid__dias', {
+        title: 'só nesses dias da semana', text: store.rotuloDias(cat),
+      }) : null,
       gp ? el('span.wgrid__goal', {
         style: { color: gp.ok ? 'var(--accent)' : '' },
         text: `${nf(gp.done, gp.done % 1 ? 1 : 0)}/${gp.value}`,
@@ -146,10 +149,14 @@ function renderWeek(view, ctx) {
 
 /** Uma célula da grade: toque alterna; horas e texto abrem o controle cheio. */
 function batchCell(cat, k, futuro, ctx) {
-  const cell = el('button.batch__cell', {
+  /* Numa categoria de dia certo, os outros seis dias não são falha: são dias
+     em que ela não pergunta nada. A grade precisa dizer isso, senão a semana
+     da terapia parece seis faltas e uma presença. */
+  const foraDoDia = store.cadencia(cat) === 'diaria' && !store.cobraNoDia(cat, k);
+  const cell = el('button.batch__cell' + (foraDoDia ? '.is-fora' : ''), {
     type: 'button',
     disabled: futuro || null,
-    title: `${cat.label} · ${humanDay(k)}`,
+    title: foraDoDia ? `${cat.label} · ${humanDay(k)} — não é dia dela` : `${cat.label} · ${humanDay(k)}`,
     'aria-label': `${cat.label} em ${humanDay(k)}`,
   });
   const pinta = () => {

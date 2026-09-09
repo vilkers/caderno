@@ -60,4 +60,24 @@ const fora = await p.evaluate(() => {
   return [...new Set(achados)];
 });
 console.log('\nfora da escala:', fora.length ? fora.join('\n   ') : 'nenhum');
+
+/* Tracking: os mesmos seis degraus de --tk-*. O computed vem em px, então a
+   comparação é pela razão com o corpo — é assim que o em foi escrito. */
+const TK = [-0.045, -0.02, -0.01, 0, 0.06, 0.12, 0.2];
+const foraTk = await p.evaluate((TK) => {
+  const achados = [];
+  document.querySelectorAll('#main *, .topbar *, .nav *').forEach(n => {
+    if (!n.textContent.trim() || n.children.length) return;
+    const c = getComputedStyle(n);
+    const ls = c.letterSpacing;
+    if (ls === 'normal') return;
+    const em = parseFloat(ls) / parseFloat(c.fontSize);
+    if (TK.some(t => Math.abs(t - em) < 0.004)) return;
+    achados.push(`${em.toFixed(3)}em  ${(n.className||n.tagName)} "${n.textContent.trim().slice(0,20)}"`);
+  });
+  return [...new Set(achados)];
+}, TK);
+console.log('tracking fora dos tokens:', foraTk.length ? '\n   ' + foraTk.join('\n   ') : 'nenhum');
+const errs = fora.length + foraTk.length;
+console.log('erros:', errs ? `${errs} fora da escala` : 'nenhum');
 await b.close();

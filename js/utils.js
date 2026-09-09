@@ -46,6 +46,10 @@ export const todayKey = () => keyOf(new Date());
 export function addDays(k, n) { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOf(d); }
 export const diffDays = (a, b) => Math.round((parseKey(a) - parseKey(b)) / 86400000);
 
+/** "1 tarefa" / "3 tarefas". O app escrevia "1 tarefa(s)", que é linguagem de
+    formulário — a tela sabe o número, então sabe o plural. */
+export const plural = (n, um, muitos) => `${n} ${Math.abs(n) === 1 ? um : muitos}`;
+
 export const WD = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 export const WD_LONG = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 export const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',

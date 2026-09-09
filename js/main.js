@@ -3,6 +3,7 @@
 import { $, $$, todayKey, addDays, longDay, humanDay } from './utils.js';
 import * as store from './store.js';
 import * as vault from './vault.js';
+import * as biometria from './biometria.js';
 import * as sync from './sync.js';
 import * as badges from './badges.js';
 import * as lembrete from './lembrete.js';
@@ -110,6 +111,7 @@ function setupLock() {
 
   $('#lock').hidden = false;
   bindScramble($('#lock'));
+  prepararFaceId(isNew);
 
   $('#lockForm').onsubmit = async e => {
     e.preventDefault();
@@ -143,6 +145,38 @@ function setupLock() {
     } finally {
       btn.disabled = false;
       btn.querySelector('span').textContent = isNew ? 'CRIAR CADERNO' : 'ENTRAR';
+    }
+  };
+}
+
+/**
+ * O botão do rosto só aparece quando há cofre neste aparelho E ele foi
+ * armado nos ajustes. Nada de tentar sozinho ao abrir a tela: o Safari exige
+ * gesto do usuário pra pedir o rosto, e um pedido negado silenciosamente
+ * seria pior que botão nenhum.
+ */
+function prepararFaceId(isNew) {
+  const btn = $('#lockFace');
+  btn.hidden = isNew || !biometria.armada();
+  if (btn.hidden) return;
+  btn.onclick = async () => {
+    const err = $('#lockError');
+    err.textContent = '';
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'CONFERINDO…';
+    try {
+      await store.unlockVault(await biometria.entrar());
+      enterApp();
+    } catch (ex) {
+      err.textContent = {
+        cancelado: 'Face ID cancelado.',
+        prf: 'Este aparelho não devolveu a chave. Entre com a senha.',
+        selo: 'A senha mudou desde que o Face ID foi ligado. Entre com a senha e ligue de novo.',
+        senha: 'A senha guardada não abre mais o cofre. Entre com a senha.',
+      }[ex.name === 'NotAllowedError' ? 'cancelado' : ex.message] || 'Não consegui usar o Face ID.';
+    } finally {
+      btn.disabled = false;
+      btn.querySelector('span').textContent = 'ENTRAR COM FACE ID';
     }
   };
 }

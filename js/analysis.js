@@ -1,8 +1,8 @@
 /* analysis.js — leitura dos dados: sequências, metas, padrões,
    comparações entre categorias e sugestões em texto. Tudo local. */
 
-import { state, hasEntry, listCategories, listTodos, cobraNoDia, respondida, getReview } from './store.js';
-import { addDays, todayKey, parseKey, lastNDays, weekOfKey, weekKey, WD_LONG, nf } from './utils.js';
+import { state, hasEntry, listCategories, listTodos, cadencia, cobraNoDia, respondida, getReview } from './store.js';
+import { addDays, todayKey, parseKey, lastNDays, weekOfKey, weekKey, WD, WD_LONG, nf, plural } from './utils.js';
 
 /* ── Base ──────────────────────────────────────────────────── */
 
@@ -52,29 +52,73 @@ export function meanLogged(cat, days) {
 
 /* ── Sequências ────────────────────────────────────────────── */
 
-/** Sequência atual: dias seguidos fazendo (ou, em metas "max", sem fazer). */
+/**
+ * Os dias da semana que a categoria de fato cobra, ou `null` quando ela
+ * cobra todos. É o que faz a sequência andar por OCORRÊNCIA e não por dia
+ * do calendário: terapia toda terça tem que poder chegar a 5 — cinco terças
+ * seguidas —, e não voltar a 1 toda quarta-feira.
+ */
+export function diasCobrados(cat) {
+  if (cadencia(cat) !== 'diaria') return null;
+  const d = cat?.dias;
+  return Array.isArray(d) && d.length && d.length < 7 ? d : null;
+}
+
+/** O passo pra trás: um dia, ou a ocorrência anterior quando há dias certos. */
+function passoAtras(k, dias) {
+  let p = addDays(k, -1);
+  if (!dias) return p;
+  for (let i = 0; i < 7 && !dias.includes(parseKey(p).getDay()); i++) p = addDays(p, -1);
+  return p;
+}
+
+/** A última ocorrência da categoria em `k` ou antes dele. */
+function ocorrenciaAte(k, dias) {
+  if (!dias) return k;
+  for (let i = 0; i < 7 && !dias.includes(parseKey(k).getDay()); i++) k = addDays(k, -1);
+  return k;
+}
+
+/** Sequência atual: ocorrências seguidas fazendo (ou, em metas "max", sem fazer). */
 export function currentStreak(cat, from = todayKey()) {
   const reduce = isReduce(cat);
-  let k = from, n = 0;
-  // o dia de hoje só quebra a sequência de "fazer" depois de encerrado
-  if (!reduce && !did(cat, k)) k = addDays(k, -1);
+  const dias = diasCobrados(cat);
+  let k = ocorrenciaAte(from, dias), n = 0;
+  // a ocorrência de hoje só quebra a sequência de "fazer" depois de encerrada
+  if (!reduce && !did(cat, k)) k = passoAtras(k, dias);
   for (let i = 0; i < 400; i++) {
     const ok = reduce ? !did(cat, k) && hasEntry(k) : did(cat, k);
     if (!ok) break;
-    n++; k = addDays(k, -1);
+    n++; k = passoAtras(k, dias);
   }
   return n;
 }
 
 export function bestStreak(cat, days = 365) {
   const reduce = isReduce(cat);
+  const dias = diasCobrados(cat);
   let best = 0, run = 0;
   for (const k of lastNDays(days)) {
+    if (dias && !dias.includes(parseKey(k).getDay())) continue;   // dia que ela não cobra não conta nem quebra
     const ok = reduce ? !did(cat, k) && hasEntry(k) : did(cat, k);
     run = ok ? run + 1 : 0;
     if (run > best) best = run;
   }
   return best;
+}
+
+/** A unidade em que a sequência é contada — o app escreve '5 ter', não '5d'. */
+export function unidadeStreak(cat) {
+  const dias = diasCobrados(cat);
+  if (!dias) return 'd';
+  return dias.length === 1 ? WD[dias[0]] : 'x';
+}
+
+/** 'terças', 'vezes' ou 'dias' — o plural que a sequência dessa categoria usa. */
+export function pluralStreak(cat) {
+  const dias = diasCobrados(cat);
+  if (!dias) return 'dias';
+  return dias.length > 1 ? 'vezes' : WD_LONG[dias[0]] + 's';
 }
 
 /** Sequência de dias registrados (o hábito de usar o caderno). */
@@ -242,7 +286,7 @@ export function suggestions(limit = 7) {
         out.push({ kind: 'meta', title: `${cat.emoji} ${cat.label}`, weight: falta > gp.left ? 8 : 6,
           text: falta > gp.left
             ? `Faltam <b>${nf(falta)}</b> para a meta da semana e só restam <b>${gp.left}</b> dias. Dá pra ajustar a meta em Ajustes se ela não bate com a vida real.`
-            : `<b>${nf(gp.done)}/${nf(gp.value)}</b> na semana. Faltam ${nf(falta)} em ${gp.left} dia(s) — ainda dá.` });
+            : `<b>${nf(gp.done)}/${nf(gp.value)}</b> na semana. Faltam ${nf(falta)} em ${plural(gp.left, 'dia', 'dias')} — ainda dá.` });
       }
       if (gp.mode === 'max' && gp.done > gp.value) {
         out.push({ kind: 'meta', title: `${cat.emoji} ${cat.label}`, weight: 8,
@@ -303,7 +347,7 @@ export function suggestions(limit = 7) {
   const velhas = listTodos().filter(t => !t.done && Date.now() - t.createdAt > 12 * 864e5);
   if (velhas.length) {
     out.push({ kind: 'lista', title: 'Lista de afazeres', weight: 5,
-      text: `<b>${velhas.length} tarefa(s)</b> abertas há mais de 12 dias. Se não vai fazer, apagar também é decidir.` });
+      text: `<b>${plural(velhas.length, 'tarefa aberta', 'tarefas abertas')}</b> há mais de 12 dias. Se não vai fazer, apagar também é decidir.` });
   }
 
   const seen = new Set();
