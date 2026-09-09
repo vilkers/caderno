@@ -25,6 +25,55 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 16 — o mês fecha, a assinatura debita sozinha, e a lista tem busca
+
+Os três primeiros itens da lista da rodada 15, na ordem em que eles se
+pagam.
+
+### Assinatura debita sozinha — sozinha mesmo
+
+O app escrevia "debita sozinha" na tela e mesmo assim exigia que você
+marcasse o quadradinho todo mês pra ela contar como paga. Cobrança de
+trabalho manual pra registrar uma coisa automática.
+
+Agora, passado o dia dela, está debitada. **A marca explícita continua
+vencendo, nas duas direções** — inclusive o `false`, pro mês em que você
+cancelou ou o cartão recusou —, e a tela distingue as duas: o visto do
+relógio fica em contorno, o seu fica preenchido. Quem soma dinheiro
+(`contasDoMes`) passou a enxergar isso sem mudar de fórmula.
+
+### Fechar o mês
+
+A semana tinha ritual; o mês virava a página em silêncio. `views/fechames.js`
+é o mesmo desenho da revisão semanal, um andar acima: quanto sobrou (contra o
+mês anterior), quantos dias a rotina registrou, categoria a categoria com a
+variação, e **o que ficou sem resolver**.
+
+Duas decisões que mudaram a tela depois de vê-la pronta: entrada não recebida
+**não soma** com conta não paga (são dívidas de direções opostas, e só uma é
+sua — o cabeçalho escreve as duas separadas), e a variação de categoria não é
+verde por ser positiva: numa categoria de teto, subir é piorar, então a cor
+segue a direção certa, não o sinal.
+
+O convite mora nas abas de dinheiro de Pessoal, não no check-in: o check-in é
+sobre hoje, e ele já tinha aviso demais em cima dos cartões.
+
+### Busca na lista
+
+Aparece a partir de oito tarefas na aba (antes disso seria mais um campo
+pedindo atenção numa tela de cinco linhas), acha sem acento — "cafe" acha
+"café" —, conta o que sobrou ("2 de 9") e é de sessão, não de ajuste.
+Procurando, a lista fica plana: o agrupamento por prazo atrapalha quem já
+sabe o nome do que quer.
+
+### O que o teste de toque achou de quebra
+
+Ao pôr o aviso do mês na Carteira, o `toque.mjs` passou a errar o check da
+agenda — e estava certo em errar: o item tinha ido parar **debaixo da barra
+de baixo**, que é fixa. O navegador considera visível o que está atrás dela.
+Agora as âncoras têm `scroll-margin-bottom` além do `scroll-margin-top`, e o
+teste rola pro centro em vez de "se precisar".
+
 ## Rodada 15 — a dívida da sequência, o rosto na tranca, e Pessoal v2
 
 Três frentes: fechar o item 10 (a sequência que não sabia contar terças), pôr
@@ -654,16 +703,16 @@ Das seis ideias de app de rotina que levantei, você aprovou três. Estas.
 9. **Resolver conflito com aviso.** Hoje a junção é automática e silenciosa
    (o mais novo vence). Num caso raro de edição simultânea nos dois aparelhos
    valeria mostrar o que foi substituído.
-10. **Assinatura que debita sozinha, sozinha mesmo.** Hoje ela conta como
-    "paga" só se você marcar o quadradinho. Se ela debita sozinha, o app
-    devia dar por debitada quando o dia chega — e o quadradinho virava
-    exceção, não rotina.
-11. **Fechar o mês, como se fecha a semana.** O mês vira a página em silêncio.
-    O mesmo ritual da revisão semanal (quanto entrou, quanto saiu, o que ficou
-    atrasado) daria sentido ao histórico da Carteira.
-12. **Busca na lista de afazeres.** Com quatro ordens e blocos por prazo, a
-    lista aguenta crescer — e a partir de umas trinta tarefas, achar uma pelo
-    nome passa a ser o gesto mais frequente.
+10. **O ano, na Carteira.** Agora que o mês fecha e fica gravado, doze
+    fechamentos são uma série histórica: quanto você gasta num mês típico,
+    qual mês sempre estoura, se a assinatura cresceu sem você ver.
+11. **Levar o pendurado pro mês seguinte.** Fechar o mês mostra o que ficou
+    sem resolver, mas ainda não oferece o gesto óbvio: "empurra pro mês que
+    vem". Precisa decidir se vira compromisso único no mês novo ou se a marca
+    é que viaja.
+12. **Etiqueta na tarefa.** Com busca e quatro ordens, o próximo eixo é
+    assunto — casa, trabalho, Estojo. Uma etiqueta só por tarefa, senão vira
+    projeto de gerenciador.
 
 Guardadas a seu pedido (as três que não entraram nesta rodada, se um dia
 fizerem sentido): **folga programada** — marcar o dia como folga pra não contar

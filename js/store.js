@@ -583,13 +583,36 @@ export function agendaDoMes(mes = monthKey(), { tipos, fluxo } = {}) {
     .sort((a, b) => (a.dia || 99) - (b.dia || 99) || (a.order ?? 0) - (b.order ?? 0));
 }
 
-/** Feito nesse mês? (pago, emitido, recebido — depende do tipo.) */
-export const agendaFeito = (item, mes = monthKey()) => !!item?.marcas?.[mes]?.feito;
+/**
+ * Feito nesse mês? (pago, emitido, recebido — depende do tipo.)
+ *
+ * Assinatura é o caso especial e o motivo desta função ter deixado de ser
+ * uma linha: ela **debita sozinha**. O app dizia isso na tela e mesmo assim
+ * exigia que você marcasse o quadradinho todo mês pra ela contar como paga —
+ * cobrança de trabalho manual pra registrar uma coisa automática. Agora,
+ * passado o dia dela, está debitada. Marcar continua valendo, nas duas
+ * direções: uma marca explícita (inclusive `false`, pro mês em que você
+ * cancelou ou o cartão recusou) vence a automática, sempre.
+ */
+export const agendaFeito = (item, mes = monthKey()) => {
+  const marca = item?.marcas?.[mes];
+  if (marca) return !!marca.feito;
+  if (item?.tipo !== 'assinatura') return false;
+  const data = item.data && item.data.startsWith(mes) ? item.data : dataNoMes(item, mes);
+  return !!data && data <= todayKey();
+};
+
+/** A marca foi você ou foi o relógio? A tela escreve diferente pra cada uma. */
+export const agendaAutomatica = (item, mes = monthKey()) =>
+  item?.tipo === 'assinatura' && !item?.marcas?.[mes] && agendaFeito(item, mes);
 
 export function marcarAgenda(id, mes, feito = true) {
   const a = state.agenda.find(x => x.id === id);
   if (!a) return;
   if (!a.marcas) a.marcas = {};
+  /* Desmarcar uma assinatura que o relógio deu por debitada precisa gravar o
+     `false`: sem ele, apagar a marca devolveria a automática e o toque não
+     faria nada. */
   a.marcas[mes] = { feito: !!feito, em: now() };
   a.updatedAt = now();
   emit('agenda');

@@ -348,8 +348,13 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
   padding:var(--pad) max(var(--pad),var(--sar)) calc(var(--navbar) + var(--sab) + var(--s-8) + var(--s-2)) max(var(--pad),var(--sal));
   max-width:1180px;margin-inline:auto;
 }
-/* âncoras não somem atrás da barra de cima */
-.entry,.meta,.section{scroll-margin-top:calc(var(--topbar) + var(--sat) + var(--s-4))}
+/* âncoras não somem atrás da barra de cima — nem da de baixo, que é fixa e
+   cobre os 64px finais: rolar até um cartão e ele parar embaixo dela é o
+   mesmo que não ter rolado. */
+.entry,.meta,.section,.agitem,.todo,.assin{
+  scroll-margin-top:calc(var(--topbar) + var(--sat) + var(--s-4));
+  scroll-margin-bottom:calc(var(--navbar) + var(--sab) + var(--s-4));
+}
 
 /* ── 8. Cabeçalho de vista + wipe ──────────────────────────── */
 .view{animation:viewIn .4s var(--ease) both}
@@ -870,6 +875,35 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
 }
 .rowbtn.is-on .rowbtn__m{background:var(--accent);border-color:var(--accent)}
 .rowbtn.is-on .row__t{color:var(--accent-txt)}
+
+/* categoria a categoria, no fechamento do mês */
+.mesl{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
+.mesl__r{display:flex;align-items:center;gap:var(--s-3);background:var(--bg);padding:var(--s-3) var(--s-4);min-height:44px}
+.mesl__e{flex:none;font-size:var(--t-item)}
+.mesl__n{flex:1;min-width:0;font-size:var(--t-corpo);letter-spacing:var(--tk-texto);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mesl__v{flex:none;font-size:var(--t-mini)}
+.mesl__d{flex:none;min-width:4.5ch;text-align:right;color:var(--dim)}
+.mesl__d.is-bom{color:var(--ok)}
+.mesl__d.is-ruim{color:var(--dim)}
+
+/* busca na lista de afazeres */
+.busca{
+  display:flex;align-items:center;gap:var(--s-3);margin:var(--s-3) 0;
+  padding:0 var(--s-3);min-height:44px;
+  border:1px solid var(--line);border-radius:var(--r-ctrl);background:var(--bg);
+  transition:border-color .25s var(--ease);
+}
+.busca:focus-within{border-color:var(--accent)}
+.busca__l{display:grid;place-items:center;flex:none;color:var(--dim)}
+.busca__i{
+  flex:1;min-width:0;background:transparent;border:0;padding:var(--s-2) 0;
+  font-size:var(--t-corpo);color:var(--fg);
+}
+.busca__i::-webkit-search-cancel-button{display:none}
+.busca__i:focus{outline:none}
+.busca__x{flex:none;min-height:44px;display:grid;place-items:center;color:var(--dim);white-space:nowrap}
+.busca__x:hover{color:var(--fg)}
 
 /* a ordem em vigor, acima da lista */
 .ordemlinha{display:flex;align-items:center;gap:var(--s-3);margin:var(--s-3) 0 var(--s-2)}
@@ -1462,6 +1496,10 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 .assin{display:flex;align-items:center;gap:var(--s-3);background:var(--bg);padding:var(--s-3) var(--s-4);transition:background .25s var(--ease)}
 .assin:hover{background:var(--surface)}
 .assin.is-feito{opacity:.6}
+/* debitou sozinha: o visto é do relógio, não seu — fica em contorno, não
+   preenchido, pra não parecer que você marcou. */
+.assin.is-sozinha{opacity:.8}
+.assin.is-sozinha .assin__check{background:transparent;border-color:var(--line-2);color:var(--dim)}
 .assin__l{
   flex:1;min-width:0;text-align:left;
   display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:var(--s-2) var(--s-3);

@@ -5,6 +5,8 @@
    não passa por navegador: importa o store direto e mexe no estado. */
 
 import * as store from '../js/store.js';
+import { todayKey, monthKey, parseKey, keyOf } from '../js/utils.js';
+import { mesPendente } from '../js/analysis.js';
 
 let falhas = 0;
 const ok = (cond, nome) => {
@@ -21,6 +23,11 @@ globalThis.localStorage ??= {
 };
 
 const limpar = () => { store.state.agenda.length = 0; };
+
+/* Um mês inteiro no futuro. Desde que assinatura debita sozinha, teste com
+   mês fixo passaria ou falharia conforme o dia em que roda — o que é a pior
+   espécie de teste. */
+const mesDaqui = n => { const d = parseKey(todayKey()); d.setDate(1); d.setMonth(d.getMonth() + n); return monthKey(keyOf(d)); };
 
 console.log('dia do mês');
 {
@@ -78,7 +85,8 @@ console.log('\ndinheiro');
   store.addAgenda({ label: 'Emitir NF', dia: 1, tipo: 'nf' });                  // sem valor
   store.addAgenda({ label: 'Agência', dia: 10, tipo: 'renda', valor: 5000 });
 
-  let c = store.contasDoMes('2026-09');
+  const MES = mesDaqui(2), SEGUINTE = mesDaqui(3);
+  let c = store.contasDoMes(MES);
   ok(Math.abs(c.totalSaida - 3521.9) < 0.001, 'soma tudo que sai, assinatura incluída');
   ok(c.totalEntrada === 5000, 'soma o que entra');
   ok(Math.abs(c.saldo - 1478.1) < 0.001, 'o saldo é entrada menos saída');
@@ -86,12 +94,59 @@ console.log('\ndinheiro');
   ok(c.pago === 0 && Math.abs(c.aPagar - 3521.9) < 0.001, 'nada pago ainda');
   ok(c.itens.length === 5 && c.pendentes.length === 5, 'compromisso sem valor conta como item');
 
-  store.marcarAgenda(cartao.id, '2026-09', true);
-  c = store.contasDoMes('2026-09');
+  store.marcarAgenda(cartao.id, MES, true);
+  c = store.contasDoMes(MES);
   ok(c.pago === 1200 && Math.abs(c.aPagar - 2321.9) < 0.001, 'marcar move de "a pagar" pra "pago"');
   ok(c.feitos.length === 1 && c.pendentes.length === 4, 'e a contagem acompanha');
 
-  ok(store.contasDoMes('2026-10').pago === 0, 'no mês seguinte o pago zera sozinho');
+  ok(store.contasDoMes(SEGUINTE).pago === 0, 'no mês seguinte o pago zera sozinho');
+}
+
+console.log('\nassinatura debita sozinha');
+{
+  /* Ela debita sozinha e mesmo assim exigia que você marcasse o quadradinho
+     todo mês pra contar como paga. Agora o relógio marca — e você continua
+     podendo desmentir, que é o único caso em que há o que dizer. */
+  limpar();
+  const hoje = todayKey();
+  const ontem = keyOf(new Date(parseKey(hoje).getTime() - 864e5));
+  const spot = store.addAgenda({ label: 'Spotify', dia: Number(ontem.slice(8)), tipo: 'assinatura', valor: 21.9 });
+  const luz = store.addAgenda({ label: 'Luz', dia: Number(ontem.slice(8)), tipo: 'conta', valor: 200 });
+  const mes = monthKey(ontem);
+
+  const doMes = t => store.agendaDoMes(mes).find(a => a.id === t.id);
+  ok(store.agendaFeito(doMes(spot), mes), 'passado o dia, a assinatura está debitada sem ninguém marcar');
+  ok(store.agendaAutomatica(doMes(spot), mes), 'e o app sabe que foi o relógio, não você');
+  ok(!store.agendaFeito(doMes(luz), mes), 'conta comum não: essa é você que paga');
+
+  store.marcarAgenda(spot.id, mes, false);
+  ok(!store.agendaFeito(doMes(spot), mes), 'desmentir funciona — cancelei, o cartão recusou');
+  ok(!store.agendaAutomatica(doMes(spot), mes), 'e a partir daí a marca é sua');
+  store.marcarAgenda(spot.id, mes, true);
+  ok(store.agendaFeito(doMes(spot), mes), 'e dá pra voltar atrás');
+
+  const futuro = mesDaqui(2);
+  ok(!store.agendaFeito(store.agendaDoMes(futuro).find(a => a.id === spot.id), futuro),
+    'no mês que ainda não chegou, ela ainda não debitou');
+}
+
+console.log('\nmês pedindo fechamento');
+{
+  limpar();
+  store.state.reviews = {};
+  store.state.days = {};
+  const passado = mesDaqui(-1);
+  ok(!mesPendente(), 'mês vazio não cobra fechamento nenhum');
+
+  store.addAgenda({ label: 'Aluguel', dia: 5, tipo: 'aluguel', valor: 2300 });
+  ok(mesPendente() === passado, 'com conta lá dentro, o mês que acabou pede pra ser fechado');
+
+  store.saveReview(passado, { fechadoEm: Date.now() });
+  ok(!mesPendente(), 'fechado, para de cobrar');
+
+  store.saveReview(passado, { fechadoEm: 0 });
+  ok(mesPendente() === passado, 'e reabrir volta a cobrar');
+  store.state.reviews = {};
 }
 
 console.log('\nlápide');

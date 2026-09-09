@@ -5,7 +5,7 @@
    anterior — e você sai daqui tendo ajustado as metas da próxima. É o único
    lugar do app que pede uma decisão em vez de um registro. */
 
-import { el, nf, weekKey, weekOfKey, addDays, todayKey, parseKey, MONTHS } from '../utils.js';
+import { el, nf, plural, weekKey, weekOfKey, addDays, todayKey, parseKey, MONTHS } from '../utils.js';
 import * as store from '../store.js';
 import { goalProgress, loggedDays, did, num, isReduce, semanaPendente } from '../analysis.js';
 import { iconBtn } from './today.js';
@@ -165,7 +165,7 @@ function linha(cat, gp, dias, anterior, ctx) {
 
 const comparar = (agora, antes) => {
   if (!antes && !agora) return 'SEM COMPARAÇÃO';
-  if (agora > antes) return `+${agora - antes} DIA(S)`;
-  if (agora < antes) return `${agora - antes} DIA(S)`;
-  return 'MESMO RITMO';
+  if (agora === antes) return 'MESMO RITMO';
+  const d = agora - antes;
+  return `${d > 0 ? '+' : '−'}${plural(Math.abs(d), 'DIA', 'DIAS')}`.toUpperCase();
 };

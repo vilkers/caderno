@@ -18,8 +18,10 @@ const checa = (nome, cond, extra = '') => {
 };
 
 const tocarPerto = async (sel, dy) => {
-  await p.locator(sel).first().scrollIntoViewIfNeeded();
-  await p.waitForTimeout(250);
+  /* Ao centro, não "se precisar": a barra de baixo é fixa e o navegador
+     considera visível o que está debaixo dela — o toque ia parar na barra. */
+  await p.locator(sel).first().evaluate(n => n.scrollIntoView({ block: 'center' }));
+  await p.waitForTimeout(350);
   const box = await p.locator(sel).first().boundingBox();
   await p.mouse.click(box.x + box.width/2, dy < 0 ? box.y + dy : box.y + box.height + dy);
   await p.waitForTimeout(400);

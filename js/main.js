@@ -21,13 +21,14 @@ import * as viewMetas from './views/metas.js';
 import * as viewPerfil from './views/perfil.js';
 import * as viewResumo from './views/resumo.js';
 import * as viewRevisao from './views/revisao.js';
+import * as viewFechaMes from './views/fechames.js';
 import * as viewSettings from './views/settings.js';
 import { abrirPaleta } from './views/paleta.js';
 
 const VIEWS = {
   hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
   insights: viewInsights, ajustes: viewSettings, perfil: viewPerfil,
-  resumo: viewResumo, revisao: viewRevisao,
+  resumo: viewResumo, revisao: viewRevisao, fechames: viewFechaMes,
 };
 /* embaixo fica a rotina; o resto se alcança pelo topo e pelo menu */
 /* Metas saiu da barra e Insights entrou. Meta se ajusta uma vez por semana —
@@ -427,6 +428,7 @@ function menuSheet() {
       grupo('LEITURA', [
         item('estrela', 'Retrospectiva', () => ir('resumo')),
         item('revisao', 'Revisão da semana', () => ir('revisao')),
+        item('balanco', 'Fechar o mês', () => ir('fechames')),
       ]),
       grupo('COBRANÇA', [
         item('metas', 'Metas e cobrança', () => ir('metas')),

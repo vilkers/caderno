@@ -52,7 +52,7 @@ js/vault.js              cofre WebCrypto
 js/biometria.js          Face ID / Touch ID (WebAuthn + PRF) — opcional
 js/ui.js                 folha (sheet), toast, stagger, fundo vivo, interruptor
 js/graficos.js           anel, barras, colunas, malha, trilha (SVG/CSS, sem lib)
-js/views/*.js            uma tela por arquivo
+js/views/*.js            uma tela por arquivo (revisao = semana, fechames = mês)
 css/app.css              a folha única, com os tokens no topo
 sw.js                    service worker
 ```
@@ -136,6 +136,13 @@ resposta, não conquista. Um controle por pergunta.
   fora deles; `tools/browser/tipo.mjs` reprova.
 - **Dinheiro em coluna tem duas casas.** `moeda(v, { cents: 2 })` onde os
   valores se empilham; em texto corrido, natural.
+- **Assinatura debita sozinha.** `agendaFeito` dá por debitada a assinatura
+  cujo dia já passou; marca explícita (inclusive `false`) vence sempre.
+  `agendaAutomatica` diz se foi o relógio ou você.
+- **Entrada e saída não se somam.** Onde o app mostra o que ficou pendente,
+  "não pago" e "não caiu" são duas contas separadas.
+- **Âncora tem `scroll-margin` em cima e embaixo.** A barra de baixo é fixa;
+  sem a margem, rolar até um item o deixa atrás dela.
 
 ## Pendência conhecida
 

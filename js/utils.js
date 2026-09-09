@@ -50,6 +50,9 @@ export const diffDays = (a, b) => Math.round((parseKey(a) - parseKey(b)) / 86400
     formulário — a tela sabe o número, então sabe o plural. */
 export const plural = (n, um, muitos) => `${n} ${Math.abs(n) === 1 ? um : muitos}`;
 
+/** Texto comparável: sem acento, em caixa baixa. "cafe" acha "café". */
+export const semAcento = t => String(t).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
 export const WD = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 export const WD_LONG = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 export const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
