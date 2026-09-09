@@ -5,7 +5,7 @@
    máximo Y de bebida"). Aqui tudo está numa tela só: cadência, modo, valor
    e período, com o quanto já foi feito nesta semana ao lado. */
 
-import { el, nf } from '../utils.js';
+import { el, nf, plural } from '../utils.js';
 import * as store from '../store.js';
 import { CADENCIAS } from '../store.js';
 import { weekGoals, goalProgress } from '../analysis.js';
@@ -39,7 +39,7 @@ export function render(ctx) {
           el('p.micro', { text: 'ESTA SEMANA' }),
           el('p.status__t', {
             text: abertas
-              ? `${abertas} meta(s) em aberto, ${semana.length - abertas} batida(s)`
+              ? `${plural(abertas, 'meta em aberto', 'metas em aberto')}, ${semana.length - abertas} batida${semana.length - abertas === 1 ? '' : 's'}`
               : 'Semana fechada — todas as metas batidas',
           }),
         ]),
@@ -130,6 +130,12 @@ function linhaMeta(cat, ctx) {
     el('div.meta__cab', {}, [
       el('span.meta__e', { text: cat.emoji || '•' }),
       el('span.meta__n', { text: cat.label }),
+      /* Sem isto, "cobra todo dia" e "cobra toda terça" liam igual aqui —
+         e a meta da terapia parecia mal calibrada quando o que faltava era
+         a informação de que ela só pergunta uma vez por semana. */
+      store.rotuloDias(cat)
+        ? el('span.micro.meta__dias', { title: 'só nesses dias da semana', text: store.rotuloDias(cat) })
+        : null,
       progresso,
     ]),
     el('div.meta__ctl', {}, [

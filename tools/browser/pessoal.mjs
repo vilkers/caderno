@@ -20,12 +20,12 @@ for (const nome of ['Spotify','Netflix','Claude']) { await p.click(`#sheetBody .
 await p.click('#sheetBody .btn--solid'); await p.waitForTimeout(700);
 // valores
 for (const [nome, val] of [['Spotify','21,90'],['Netflix','44,90'],['Claude','120']]) {
-  await p.click(`.agitem:has-text("${nome}") .agitem__l`); await p.waitForTimeout(500);
+  await p.click(`.assin:has-text("${nome}") .assin__l`); await p.waitForTimeout(500);
   await p.fill('#sheetBody input[aria-label="Valor"]', val);
   await p.click('#sheetBody .btn--solid'); await p.waitForTimeout(600);
 }
 console.log('total de assinatura:', await p.$eval('.totalzao__n', n=>n.textContent));
-console.log('barras:', await p.$$eval('.g-barra', n=>n.length));
+console.log('linhas com barra embutida:', await p.$$eval('.assin__bar', n=>n.length));
 await p.screenshot({path:SHOT+'/p1-assinaturas.png', fullPage:true});
 
 // carteira

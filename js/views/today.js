@@ -4,9 +4,9 @@
    A faixa de dias no topo existe pro caso mais comum de esquecimento:
    voltar dois, três dias e preencher o que ficou em branco. */
 
-import { el, humanDay, longDay, todayKey, addDays, clamp, nf, keyOf, parseKey, weekKey, monthKey, moeda, WD } from '../utils.js';
+import { el, humanDay, longDay, todayKey, addDays, clamp, nf, plural, keyOf, parseKey, weekKey, monthKey, moeda, WD } from '../utils.js';
 import * as store from '../store.js';
-import { currentStreak, goalProgress, isReduce, dayStatus, weekGoals, semanaPendente } from '../analysis.js';
+import { currentStreak, unidadeStreak, goalProgress, isReduce, dayStatus, weekGoals, semanaPendente } from '../analysis.js';
 import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
 import { summary as badgeSummary } from '../badges.js';
 
@@ -45,12 +45,19 @@ export function render(ctx) {
   /* ── faixa dos últimos dias ── */
   view.append(dayStrip(day, ctx));
 
+  /* ── avisos ──
+     Eles não abrem mais a tela. A pergunta desta página é "o que falta
+     marcar hoje", e ler duas cobranças antes do primeiro cartão empurrava o
+     trabalho pra baixo da dobra. Agora vão depois dos cartões, onde continuam
+     visíveis sem disputar com eles. */
+  const avisos = [];
+
   /* ── convite pra fechar a semana ── */
   const inicioSemana = store.state.settings.weekStart ?? 1;
   const pendente = semanaPendente(todayKey(), inicioSemana);
   if (pendente) {
     const daSemanaPassada = pendente !== weekKey(todayKey(), inicioSemana);
-    view.append(el('button.alert', {
+    avisos.push(el('button.alert', {
       type: 'button',
       onclick: () => { ctx.revisaoSemana = pendente; ctx.go('revisao'); },
       html: daSemanaPassada
@@ -65,7 +72,7 @@ export function render(ctx) {
   const buracos = ultimosDias(14).filter(k => k !== todayKey() && !store.hasEntry(k));
   const recentes = buracos.filter(k => k >= addDays(todayKey(), -7));
   if (recentes.length >= 2) {
-    view.append(el('button.alert', {
+    avisos.push(el('button.alert', {
       type: 'button',
       onclick: () => { ctx.monthMode = 'semana'; ctx.go('mes'); },
       html: `<span class="micro">EM BRANCO</span>
@@ -130,7 +137,7 @@ export function render(ctx) {
 
     const sub = [];
     if (!st.vazio) sub.push(`${st.feitas.length}/${st.total} obrigatórias`);
-    if (st.extras.length) sub.push(`${st.extras.length} extra(s) marcada(s)`);
+    if (st.extras.length) sub.push(plural(st.extras.length, 'extra marcada', 'extras marcadas'));
     if (sub.length) painel.append(el('p.micro.status__sub', { text: sub.join(' · ').toUpperCase() }));
 
     // o fio de aviso dos cartões acompanha
@@ -183,7 +190,7 @@ export function render(ctx) {
   ]);
   requestAnimationFrame(() => { xpBar.style.width = `${Math.round(b.level.pct * 100)}%`; });
 
-  view.append(painel, semana, linhaNivel);
+  view.append(painel);
 
   /* ── o que o mês cobra hoje ── */
   const doDia = compromissosDoDia(day, ctx);
@@ -202,7 +209,16 @@ export function render(ctx) {
         [el('span', { text: 'Abrir ajustes' })]),
     ]));
   }
-  cats.forEach(cat => entries.append(entryCard(cat, day, ctx)));
+  /* Categoria de dia certo, num dia que não é o dela, sai da fila principal:
+     terapia da terça não tem o que dizer numa quinta, e nove cartões dos
+     quais três são fantasmas é o que fazia esta tela parecer poluída.
+     Continua a um toque de distância — remarcar consulta é comum —, e volta
+     sozinha pra lista assim que é respondida. */
+  const naGaveta = cat => store.cadencia(cat) === 'diaria'
+    && !store.cobraNoDia(cat, day) && !store.respondida(cat, day);
+  const guardadas = cats.filter(naGaveta);
+  cats.filter(c => !naGaveta(c)).forEach(cat => entries.append(entryCard(cat, day, ctx)));
+  if (guardadas.length) entries.append(gaveta(guardadas, day, ctx));
 
   /* ── nota do dia ── */
   const note = el('textarea.note', { placeholder: 'Como foi o dia? (opcional)', rows: 3 });
@@ -219,7 +235,7 @@ export function render(ctx) {
     ]),
     el('div.entry__ctl', {}, [note]),
   ]));
-  view.append(entries);
+  view.append(entries, semana, linhaNivel, ...avisos);
 
   /* ── afazeres em aberto ──
      Ordem: as marcadas pra hoje, depois as que passaram do dia, depois as
@@ -385,6 +401,32 @@ function repetirDiaAnterior(day, ctx) {
   } else aplicar();
 }
 
+/* ── A gaveta do "não é hoje" ──────────────────────────────── */
+/* Some da fila, não do app: uma linha diz quantas são e que dias são os
+   delas, e abrir mostra os cartões inteiros, marcáveis como qualquer outro. */
+function gaveta(cats, day, ctx) {
+  const caixa = el('div.gaveta');
+  const lista = el('div.gaveta__l', { hidden: true });
+  cats.forEach(c => lista.append(entryCard(c, day, ctx)));
+
+  const nomes = cats.map(c => `${c.emoji || '•'} ${c.label}`).join(' · ');
+  const btn = el('button.gaveta__b', {
+    type: 'button', 'aria-expanded': 'false',
+    onclick: () => {
+      const abrir = lista.hidden;
+      lista.hidden = !abrir;
+      btn.setAttribute('aria-expanded', String(abrir));
+      caixa.classList.toggle('is-aberta', abrir);
+      rotulo.textContent = abrir ? 'esconder' : `${cats.length} fora do dia`;
+      if (abrir) stagger(lista, ':scope > .entry');
+    },
+  });
+  const rotulo = el('span.gaveta__n.micro', { text: `${cats.length} fora do dia` });
+  btn.append(rotulo, el('span.gaveta__q', { text: nomes }), el('span.gaveta__s', { text: '+' }));
+  caixa.append(btn, lista);
+  return caixa;
+}
+
 /* ── Cartão de uma categoria ───────────────────────────────── */
 function entryCard(cat, day, ctx) {
   const val = store.getVal(day, cat.id);
@@ -403,7 +445,10 @@ function entryCard(cat, day, ctx) {
   if (dias) meta.append(el('span.entry__dias.micro', { text: dias, title: 'só nesses dias da semana' }));
   if (store.state.settings.showStreaks) {
     const s = currentStreak(cat, day);
-    if (s > 1) meta.append(el('span.entry__streak', { text: (isReduce(cat) ? '∅ ' : '↑ ') + s + 'd' }));
+    if (s > 1) meta.append(el('span.entry__streak', {
+      title: `${s} ${store.rotuloDias(cat) ? 'ocorrências' : 'dias'} seguidas`,
+      text: (isReduce(cat) ? '∅ ' : '↑ ') + s + unidadeStreak(cat),
+    }));
   }
   const gp = goalProgress(cat, day);
   if (gp) {
@@ -455,6 +500,7 @@ export function control(cat, day, card, ctx) {
       lvlNote.classList.toggle('is-empty', !txt);
     };
     const valEl = el('span.step__val.num', { text: String(cur()) });
+    const unidade = el('span.step__unit', { text: unidadeDe(cat, cur()) });
     if (!cur()) valEl.classList.add('is-zero');
     const set = n => {
       const v = clamp(n, 0, cat.max || 99);
@@ -462,14 +508,14 @@ export function control(cat, day, card, ctx) {
       valEl.classList.toggle('is-zero', !v);
       valEl.classList.remove('pop'); void valEl.offsetWidth; valEl.classList.add('pop');
       card?.classList.toggle('is-on', v > 0);
-      wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('is-on', Number(c.dataset.v) === v));
+      unidade.textContent = unidadeDe(cat, v);
       pintaNota(v);
       save(v);
     };
     pintaNota(cur());
     wrap.append(el('div.step', {}, [
       el('button.step__btn', { type: 'button', 'aria-label': 'Menos', onclick: () => set(cur() - 1), text: '−' }),
-      el('span', {}, [valEl, el('span.step__unit', { text: cat.unit || '' })]),
+      el('span.step__leitura', {}, [valEl, unidade]),
       el('button.step__btn', { type: 'button', 'aria-label': 'Mais', onclick: () => set(cur() + 1), text: '+' }),
     ]));
     if (cat.levels) wrap.append(lvlNote);
@@ -494,7 +540,15 @@ export function control(cat, day, card, ctx) {
       save(v);
     };
     wrap.append(
-      el('div.leitura', {}, [valEl, el('span.leitura__u.micro', { text: cat.unit || 'h' })]),
+      el('div.leitura', {}, [
+        el('button.step__btn.step__btn--fino', {
+          type: 'button', 'aria-label': 'Meia hora a menos', onclick: () => set(cur() - 0.5), text: '−',
+        }),
+        el('span.leitura__v', {}, [valEl, el('span.leitura__u.micro', { text: cat.unit || 'h' })]),
+        el('button.step__btn.step__btn--fino', {
+          type: 'button', 'aria-label': 'Meia hora a mais', onclick: () => set(cur() + 0.5), text: '+',
+        }),
+      ]),
       slider,
       el('div.regua', {}, [
         el('span.micro', { text: '0' }),
@@ -591,6 +645,13 @@ export function control(cat, day, card, ctx) {
 
 /* ── Peças ─────────────────────────────────────────────────── */
 export const fmtH = v => (v % 1 ? v.toFixed(1).replace('.', ',') : String(v));
+
+/** "1 passeios" era o que a tela escrevia. Unidade no plural só a partir de 2. */
+export function unidadeDe(cat, v) {
+  const u = cat.unit || '';
+  if (Math.abs(Number(v)) !== 1 || !u.endsWith('s')) return u;
+  return u.replace(/es$/, '').replace(/s$/, '');
+}
 
 export function check() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

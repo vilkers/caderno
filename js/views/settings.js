@@ -6,6 +6,7 @@ import { el, WD, WD_LONG } from '../utils.js';
 import * as store from '../store.js';
 import { TYPES, CADENCIAS } from '../store.js';
 import * as vault from '../vault.js';
+import * as biometria from '../biometria.js';
 import * as sync from '../sync.js';
 import * as lembrete from '../lembrete.js';
 import { PALETTES } from '../palettes.js';
@@ -85,6 +86,7 @@ export function render(ctx) {
   /* ── Senha ── */
   const meta = vault.readMeta();
   view.append(section('SENHA E PRIVACIDADE', el('div', {}, [
+    faceRow(ctx),
     row('Trocar a senha', 'Os dados são recifrados na hora. Sem recuperação: se esquecer, acabou.',
       el('button.btn.btn--sm', { type: 'button', onclick: () => changePass(ctx) }, [el('span', { text: 'trocar' })])),
     row('Dica da senha', meta.hint ? `Atual: "${meta.hint}"` : 'Aparece na tela de entrada. Não escreva a senha aqui.',
@@ -531,6 +533,81 @@ function editCategory(cat, ctx) {
 }
 
 /* ── Senha ─────────────────────────────────────────────────── */
+/* ── Face ID / Touch ID ────────────────────────────────────── */
+/* Uma linha que muda de texto conforme o aparelho: sem leitor, ela explica
+   por que não dá; com leitor, liga e desliga. */
+function faceRow(ctx) {
+  const armada = biometria.armada();
+  const btn = el('button.btn.btn--sm' + (armada ? '' : '.btn--solid'), {
+    type: 'button', disabled: true,
+    onclick: () => (armada ? desligarFace(ctx) : ligarFace(ctx)),
+  }, [el('span', { text: armada ? 'desligar' : 'ligar' })]);
+  const linha = row(
+    'Entrar com Face ID',
+    armada
+      ? 'Ligado neste aparelho. A senha continua valendo — o rosto é só um atalho.'
+      : 'Conferindo se este aparelho tem leitor…',
+    btn);
+  biometria.disponivel().then(ok => {
+    btn.disabled = !ok;
+    if (!ok) {
+      linha.querySelector('.row__d').textContent =
+        'Este aparelho (ou navegador) não tem leitor de rosto/digital ligado ao site. Só senha.';
+    } else if (!armada) {
+      linha.querySelector('.row__d').textContent =
+        'Guarda a senha cifrada por uma chave que só sai do aparelho depois do seu rosto.';
+    }
+  });
+  return linha;
+}
+
+function ligarFace(ctx) {
+  openSheet('Entrar com Face ID', close => {
+    const campo = field('SUA SENHA', el('input', { type: 'password', autocomplete: 'current-password' }));
+    const err = el('p.lock__error.micro');
+    return [
+      el('p.muted', { style: { fontSize: 'var(--t-corpo)', lineHeight: '1.6' },
+        text: 'A senha fica guardada neste aparelho, cifrada por uma chave que só o Face ID libera. '
+          + 'Vale dizer com todas as letras: a partir daí, quem destranca o seu telefone destranca o caderno. '
+          + 'A senha continua sendo a única forma de abrir o cofre em qualquer outro aparelho.' }),
+      campo, err,
+      el('div.sheet__actions', {}, [
+        el('button.btn', { type: 'button', onclick: close }, [el('span', { text: 'cancelar' })]),
+        el('button.btn.btn--solid', {
+          type: 'button',
+          onclick: async e => {
+            const senha = campo.querySelector('input').value;
+            const b = e.currentTarget;
+            err.textContent = '';
+            try { await vault.unlock(senha); }
+            catch { return void (err.textContent = 'Senha incorreta.'); }
+            b.disabled = true; b.querySelector('span').textContent = 'confirmando…';
+            try {
+              await biometria.armar(senha, store.state.profile?.nome || 'Caderno');
+              close(); toast('Face ID ligado'); ctx.rerender();
+            } catch (ex) {
+              err.textContent = {
+                prf: 'Este aparelho não sabe derivar chave por biometria (precisa de iOS 18, ou Chrome/Edge recente).',
+                cancelado: 'Cancelado.',
+              }[ex.name === 'NotAllowedError' ? 'cancelado' : ex.message] || 'Não consegui ligar o Face ID aqui.';
+              b.disabled = false; b.querySelector('span').textContent = 'ligar';
+            }
+          },
+        }, [el('span', { text: 'ligar' })]),
+      ]),
+    ];
+  });
+}
+
+function desligarFace(ctx) {
+  confirmSheet({
+    title: 'Desligar o Face ID?',
+    text: 'A cópia cifrada da senha some deste aparelho. Você volta a entrar digitando a senha.',
+    ok: 'Desligar',
+    onOk: () => { biometria.desarmar(); toast('Face ID desligado'); ctx.rerender(); },
+  });
+}
+
 function changePass(ctx) {
   openSheet('Trocar a senha', close => {
     const atual = field('SENHA ATUAL', el('input', { type: 'password', autocomplete: 'current-password' }));
@@ -553,7 +630,12 @@ function changePass(ctx) {
             try { await vault.unlock(a); }
             catch { return void (err.textContent = 'Senha atual incorreta.'); }
             await store.setPassword(n, vault.readMeta().hint);
-            close(); toast('senha trocada');
+            /* O selo do Face ID guarda a senha ANTIGA: sem isto o botão do
+               rosto abriria a tela e falharia na senha, que é o pior dos
+               dois mundos. Desarma e avisa. */
+            const tinhaFace = biometria.armada();
+            if (tinhaFace) biometria.desarmar();
+            close(); toast(tinhaFace ? 'senha trocada — ligue o Face ID de novo' : 'senha trocada');
             if (sync.configured()) sync.syncNow().catch(() => {});
           },
         }, [el('span', { text: 'trocar' })]),

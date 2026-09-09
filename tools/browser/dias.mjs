@@ -49,9 +49,26 @@ await p.waitForTimeout(700);
 const cartao = await p.evaluate(()=>{
   const c=[...document.querySelectorAll('.entry')].find(n=>n.textContent.includes('Terapia'));
   if(!c) return null;
-  return { fora:c.classList.contains('fora-do-dia'), dias:c.querySelector('.entry__dias')?.textContent||'—' };
+  return {
+    fora: c.classList.contains('fora-do-dia'),
+    dias: c.querySelector('.entry__dias')?.textContent||'—',
+    naGaveta: !!c.closest('.gaveta'),
+    gavetaFechada: document.querySelector('.gaveta__l')?.hidden ?? null,
+    rotuloGaveta: document.querySelector('.gaveta__n')?.textContent || '—',
+  };
 });
+const ehTerca = new Date().getDay() === 2;
 console.log('cartão de terapia hoje:', JSON.stringify(cartao));
+console.log('terça hoje?', ehTerca, '| na gaveta:', cartao?.naGaveta,
+            '| certo:', cartao?.naGaveta === !ehTerca ? 'sim' : 'NÃO');
+if (cartao?.naGaveta !== !ehTerca) erros.push('a gaveta não guardou (ou guardou demais) a terapia');
+// abrir a gaveta traz o cartão de volta, marcável
+if (cartao?.naGaveta) {
+  await p.click('.gaveta__b'); await p.waitForTimeout(500);
+  const aberta = await p.$eval('.gaveta__l', n=>!n.hidden);
+  console.log('a gaveta abre:', aberta);
+  if (!aberta) erros.push('a gaveta não abriu');
+}
 
 // ── chips de dia no editor de categoria
 await p.click('#menuBtn'); await p.waitForTimeout(350);

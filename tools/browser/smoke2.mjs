@@ -49,7 +49,8 @@ console.log('dia fechado pela grade:', await p.$eval('.wgrid__row--close .batch_
 // desfazer ao apagar tarefa
 await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(600);
 await p.fill('.todoadd input','tarefa de teste'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
-await p.hover('.todo'); await p.click('.todo .todo__x'); await p.waitForTimeout(700);
+await p.click('.todo .todo__mais'); await p.waitForTimeout(600);
+await p.click('#sheetBody .sheet__actions .btn--danger'); await p.waitForTimeout(900);
 await p.click('.toast__act'); await p.waitForTimeout(600);
 console.log('tarefa restaurada:', await p.$$eval('.todo', n=>n.length));
 

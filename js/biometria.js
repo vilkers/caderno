@@ -1,0 +1,136 @@
+/* biometria.js — entrar com Face ID / Touch ID (WebAuthn + extensão PRF).
+
+   O cofre continua sendo o de sempre: PBKDF2 + AES-GCM com a SUA senha.
+   O que este arquivo faz é guardar uma cópia da senha cifrada por uma chave
+   que só existe dentro do Secure Enclave do aparelho — e que só sai de lá
+   depois que o rosto (ou o dedo) confere. Sem o aparelho, o blob é ruído;
+   sem o rosto, o aparelho não devolve a chave.
+
+   O que isso significa na prática, e está escrito na tela antes de ligar:
+   quem destranca o seu telefone passa a destrancar o caderno. É a mesma
+   troca de qualquer app de banco — conveniência por um fator que já é o
+   seu telefone. Desligar apaga o blob e volta tudo a ser só senha.
+
+   Precisa de PRF (iOS 18 / Safari 18, Chrome 132+). Sem PRF não há material
+   de chave nenhum pra derivar, e aí o app diz isso em vez de fingir. */
+
+const CHAVE = 'caderno.face.v1';
+const INFO = new TextEncoder().encode('caderno-face-v1');
+
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+/* ── Cripto (sem WebAuthn no meio, pra poder testar em node) ── */
+
+/** A saída do PRF vira chave AES-GCM por HKDF, com sal próprio do aparelho. */
+export async function chaveDePrf(prf, salt) {
+  const base = await crypto.subtle.importKey('raw', prf, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt, info: INFO },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+export async function selar(chave, texto) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, chave, enc.encode(texto));
+  return { iv: b64(iv), ct: b64(ct) };
+}
+
+export async function abrirSelo(chave, blob) {
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: unb64(blob.iv) }, chave, unb64(blob.ct));
+  return dec.decode(plain);
+}
+
+/* ── Estado guardado neste aparelho ─────────────────────────── */
+
+function ler() {
+  try { return JSON.parse(localStorage.getItem(CHAVE)) || null; }
+  catch { return null; }
+}
+export const armada = () => !!ler();
+export function desarmar() { localStorage.removeItem(CHAVE); }
+
+/* ── WebAuthn ───────────────────────────────────────────────── */
+
+/** O aparelho tem leitor de rosto/digital ligado a este navegador? */
+export async function disponivel() {
+  if (!globalThis.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) return false;
+  try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch { return false; }
+}
+
+const aleatorio = n => crypto.getRandomValues(new Uint8Array(n));
+
+/**
+ * Liga o Face ID: cria a credencial, colhe o PRF e guarda a senha selada.
+ * Lança Error('prf') quando o aparelho não sabe fazer PRF — que é o único
+ * caso em que a coisa toda não tem como funcionar.
+ */
+export async function armar(senha, nome = 'Caderno') {
+  const prfSalt = aleatorio(32);
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge: aleatorio(32),
+      rp: { name: 'Caderno' },
+      user: { id: aleatorio(16), name: nome, displayName: nome },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required',
+        residentKey: 'preferred',
+      },
+      timeout: 60000,
+      attestation: 'none',
+      extensions: { prf: { eval: { first: prfSalt } } },
+    },
+  });
+  if (!cred) throw new Error('cancelado');
+  const ext = cred.getClientExtensionResults?.() || {};
+  if (!ext.prf?.enabled && !ext.prf?.results?.first) throw new Error('prf');
+
+  const id = new Uint8Array(cred.rawId);
+  /* Nem todo aparelho devolve o PRF já na criação; quando não devolve, uma
+     segunda conferência (a que o app faz todo dia pra entrar) colhe. */
+  const prf = ext.prf?.results?.first || await colher(id, prfSalt);
+  const hkdfSalt = aleatorio(16);
+  const chave = await chaveDePrf(new Uint8Array(prf), hkdfSalt);
+  const selo = await selar(chave, senha);
+  localStorage.setItem(CHAVE, JSON.stringify({
+    v: 1, id: b64(id), prfSalt: b64(prfSalt), hkdfSalt: b64(hkdfSalt), ...selo, armadaEm: Date.now(),
+  }));
+  return true;
+}
+
+/** Pede o rosto e devolve a senha. Lança Error('cancelado') se você desistir. */
+export async function entrar() {
+  const guardado = ler();
+  if (!guardado) throw new Error('desarmada');
+  const prf = await colher(unb64(guardado.id), unb64(guardado.prfSalt));
+  const chave = await chaveDePrf(new Uint8Array(prf), unb64(guardado.hkdfSalt));
+  try { return await abrirSelo(chave, guardado); }
+  catch { throw new Error('selo'); }
+}
+
+/** Uma conferência de rosto/digital que devolve o segredo do PRF. */
+async function colher(id, prfSalt) {
+  const asrt = await navigator.credentials.get({
+    publicKey: {
+      challenge: aleatorio(32),
+      allowCredentials: [{ type: 'public-key', id, transports: ['internal'] }],
+      userVerification: 'required',
+      timeout: 60000,
+      extensions: { prf: { eval: { first: prfSalt } } },
+    },
+  });
+  if (!asrt) throw new Error('cancelado');
+  const first = asrt.getClientExtensionResults?.().prf?.results?.first;
+  if (!first) throw new Error('prf');
+  return first;
+}

@@ -77,6 +77,35 @@ export const DEFAULT_CATEGORIES = () => ([
     levels: { 1: 'no fundo do poço', 2: 'mal', 3: 'normal', 4: 'bem', 5: 'dia ótimo' } },
 ].map((c, i) => ({ id: uid(), order: i, updatedAt: now(), ...c })));
 
+/* Como a lista de afazeres pode se ordenar. O texto de cada uma é o que a
+   folha de escolha mostra — a regra e a explicação moram no mesmo lugar. */
+export const ORDENS_TODO = {
+  manual:   { label: 'Do meu jeito', hint: 'A ordem em que você arrastou. Quem tem dia marcado e já chegou sobe.' },
+  prazo:    { label: 'Por prazo',    hint: 'Atrasadas primeiro, depois as com data mais próxima. Sem data vai pro fim.' },
+  alfabetica: { label: 'A–Z',        hint: 'Alfabética. Boa pra achar uma tarefa que você sabe o nome.' },
+  recentes: { label: 'Mais novas',   hint: 'A última que você escreveu no topo.' },
+};
+
+/**
+ * Ordena a lista de afazeres. Concluída sempre desce — a lista é sobre o que
+ * falta —, e entre elas a mais recentemente feita vem primeiro.
+ */
+export function ordenarTodos(lista, ordem = state.settings.todoOrder, hoje = todayKey()) {
+  const urgencia = t => (t.due ? (t.due <= hoje ? 0 : 1) : 2);
+  const porOrdem = {
+    manual: (a, b) => urgencia(a) - urgencia(b) || (a.due || '').localeCompare(b.due || '')
+      || (a.order ?? 0) - (b.order ?? 0),
+    prazo: (a, b) => (a.due ? 0 : 1) - (b.due ? 0 : 1)
+      || (a.due || '').localeCompare(b.due || '') || (a.order ?? 0) - (b.order ?? 0),
+    alfabetica: (a, b) => a.text.localeCompare(b.text, 'pt-BR', { sensitivity: 'base' }),
+    recentes: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+  }[ordem] || porOrdemPadrao;
+  return [...lista].sort((a, b) =>
+    (a.done ? 1 : 0) - (b.done ? 1 : 0)
+    || (a.done ? (b.doneAt || 0) - (a.doneAt || 0) : porOrdem(a, b)));
+}
+const porOrdemPadrao = (a, b) => (a.order ?? 0) - (b.order ?? 0);
+
 /* ── Agenda do mês ─────────────────────────────────────────────
    Contas, cartões, aluguel, nota fiscal, assinaturas e o que entra:
    tudo é o mesmo objeto — um compromisso com um dia do mês. O que muda é
@@ -132,6 +161,10 @@ export const AGENDA_PRESETS = [
 
 export const blankSettings = () => ({
   palette: 'noir', motion: true, autolock: 15, showStreaks: true, weekStart: 1,
+  /* Como a lista de afazeres se ordena. 'manual' é o arrasto, e é o padrão
+     porque foi o que sempre valeu — chave nova nasce reproduzindo o que já
+     acontecia, então não há migração a fazer. */
+  todoOrder: 'manual',
   updatedAt: now(),
   sync: { enabled: false, owner: '', repo: '', branch: 'main', path: 'dados/caderno.enc.json', token: '', lastSync: 0, lastSha: '' },
 });

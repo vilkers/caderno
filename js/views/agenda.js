@@ -70,8 +70,8 @@ export function painelContas(ctx, mes) {
   });
   view.append(lista);
 
-  view.append(el('div.wrap', { style: { marginTop: '1.4rem' } }, [
-    el('button.btn.btn--sm.btn--solid', {
+  view.append(el('div.wrap', { style: { marginTop: 'var(--s-6)' } }, [
+    el('button.btn.btn--sm', {
       type: 'button',
       onclick: () => editarCompromisso(null, () => ctx.rerender()),
     }, [el('span', { text: '+ novo compromisso' })]),
@@ -88,14 +88,14 @@ export function painelContas(ctx, mes) {
   view.append(el('button.linhatudo', {
     type: 'button',
     onclick: () => listaCompleta(ctx),
+    title: 'Inclui pausados e de outros meses',
   }, [
-    el('span', { text: `todos os compromissos (${todos.length})` }),
-    el('span.linhatudo__s.micro', { text: 'INCLUI PAUSADOS E DE OUTROS MESES' }),
+    el('span', { text: 'todos os compromissos' }),
+    el('span.linhatudo__s.micro', { text: String(todos.length) }),
   ]));
 
   view.append(el('p.nota-pe', {
-    html: 'O que você marca aqui vale só pra este mês — no mês que vem tudo volta em aberto.'
-      + (c.assinaturas ? '<br>Assinatura debita sozinha: fica na aba ao lado e conta no dinheiro do mês.' : ''),
+    text: 'O que você marca aqui vale só pra este mês — no mês que vem tudo volta em aberto.',
   }));
 
   stagger(lista, '.agitem');
@@ -143,10 +143,12 @@ function linhaAgenda(item, mes, hoje, ctx) {
         el('span.agitem__e', { text: item.emoji || '•' }),
         el('span', { text: item.label }),
       ]),
+      /* "todo mês" em toda linha é o padrão escrito nove vezes. Só a exceção
+         merece tinta: o que vale só neste mês. */
       el('span.micro.agitem__d', {
         text: [
           store.AGENDA_TIPOS[item.tipo]?.label || item.tipo,
-          item.repete === 'unico' ? 'só este mês' : 'todo mês',
+          item.repete === 'unico' ? 'só este mês' : '',
           item.nota,
         ].filter(Boolean).join(' · '),
       }),

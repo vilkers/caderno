@@ -4,7 +4,7 @@
 import { el, lastNDays, nf, WD } from '../utils.js';
 import * as store from '../store.js';
 import {
-  num, did, isReduce, loggedDays, logStreak, currentStreak, bestStreak,
+  num, did, isReduce, loggedDays, logStreak, currentStreak, bestStreak, unidadeStreak,
   meanLogged, weekdayProfile, goalProgress, suggestions,
 } from '../analysis.js';
 import { countUp, stagger, openSheet } from '../ui.js';
@@ -75,7 +75,7 @@ export function render(ctx) {
     bars.append(el('div', {}, [
       el('div.bar__top', {}, [
         el('span.bar__name', {}, [`${cat.emoji || '•'} ${cat.label}`,
-          streak > 1 ? el('span.micro', { text: (isReduce(cat) ? '∅' : '↑') + streak + 'd · rec ' + bestStreak(cat) }) : null]),
+          streak > 1 ? el('span.micro', { text: (isReduce(cat) ? '∅' : '↑') + streak + unidadeStreak(cat) + ' · rec ' + bestStreak(cat) }) : null]),
         el('span.bar__v', { text: val }),
       ]),
       el('div.bar__track', {}, [fill]),

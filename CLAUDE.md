@@ -49,6 +49,7 @@ js/analysis.js           dayStatus, sequências, metas, cruzamentos
 js/merge.js              junção CRDT-ish entre aparelhos
 js/sync.js               GitHub Contents API
 js/vault.js              cofre WebCrypto
+js/biometria.js          Face ID / Touch ID (WebAuthn + PRF) — opcional
 js/ui.js                 folha (sheet), toast, stagger, fundo vivo, interruptor
 js/graficos.js           anel, barras, colunas, malha, trilha (SVG/CSS, sem lib)
 js/views/*.js            uma tela por arquivo
@@ -123,9 +124,20 @@ resposta, não conquista. Um controle por pergunta.
 - `SUGESTOES.md` — o histórico de decisões por rodada, o que ficou de fora de
   propósito, e a lista do que eu faria em seguida.
 
+### Coisas que já foram resolvidas e não devem voltar
+
+- **Sequência anda por ocorrência.** Categoria com `dias` conta ocorrências,
+  não dias de calendário: cinco terças seguidas são 5. Quem mexer em
+  `currentStreak`/`bestStreak` precisa manter `diasCobrados()` no caminho.
+- **Cartão fora do dia mora na gaveta.** Categoria de dia certo, num dia que
+  não é o dela e ainda sem resposta, sai da fila do check-in e vai pra
+  `gaveta()`. Continua marcável — remarcar consulta é comum.
+- **Tracking é token.** Seis valores (`--tk-display` … `--tk-largo`) e nada
+  fora deles; `tools/browser/tipo.mjs` reprova.
+- **Dinheiro em coluna tem duas casas.** `moeda(v, { cents: 2 })` onde os
+  valores se empilham; em texto corrido, natural.
+
 ## Pendência conhecida
 
-`currentStreak` anda dia a dia, então categoria com `dias` (terapia toda
-terça) nunca passa de sequência 1. O conserto é contar por ocorrência — e
-fazer os dias certos aparecerem na grade da Semana e em Metas. Está anotado
-como item 10 em `SUGESTOES.md`.
+Nenhuma aberta. A lista do que eu faria em seguida está no fim de
+`SUGESTOES.md`.
