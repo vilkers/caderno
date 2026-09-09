@@ -8,7 +8,7 @@
    metas: dinheiro não é hábito, e transformar conta em pontuação seria
    converter uma coisa chata numa coisa chata e barulhenta. */
 
-import { el, humanDay, todayKey, addDays, monthKey, monthLabel, moeda, nf, plural, parseKey, keyOf } from '../utils.js';
+import { el, humanDay, todayKey, addDays, monthKey, monthLabel, moeda, nf, plural, semAcento, parseKey, keyOf } from '../utils.js';
 import * as store from '../store.js';
 import { toast, stagger, confirmSheet, openSheet, interruptor } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
@@ -16,6 +16,7 @@ import { barras, barraProgresso } from '../graficos.js';
 import { check, iconBtn } from './today.js';
 import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
 import { painelContas } from './agenda.js';
+import { mesPendente } from '../analysis.js';
 
 const ABAS = [
   ['tarefas', 'Tarefas'],
@@ -69,6 +70,19 @@ export function render(ctx) {
 
   if (aba !== 'tarefas') view.append(navMes(ctx, mes));
 
+  /* O convite pra fechar o mês mora aqui, e não no check-in: o check-in é
+     sobre hoje, e a tela já tinha aviso demais em cima dos cartões. Aqui é
+     onde o mês vive. */
+  const pendente = aba !== 'tarefas' ? mesPendente() : null;
+  if (pendente) {
+    view.append(el('button.alert', {
+      type: 'button',
+      onclick: () => { ctx.fechaMes = pendente; ctx.go('fechames'); },
+      html: `<span class="micro">${monthLabel(pendente).toUpperCase()} ACABOU</span>
+             <span>Ficou sem fechar. <b>Ver quanto sobrou e o que ficou pendurado</b> →</span>`,
+    }));
+  }
+
   view.append(
     aba === 'tarefas' ? painelTarefas(ctx)
       : aba === 'contas' ? painelContas(ctx, mes)
@@ -119,12 +133,15 @@ function painelAssinaturas(ctx, mes) {
     return view;
   }
 
+  const jaSaiu = itens.filter(a => store.agendaFeito(a, mes))
+    .reduce((s, a) => s + (Number(a.valor) || 0), 0);
   view.append(el('div.totalzao', {}, [
     el('p.micro', { text: 'TODO MÊS SAI, EM ASSINATURA' }),
     el('p.totalzao__n.num', { text: moeda(total) }),
     el('p.nota-pe', {
       text: total
         ? `${moeda(total * 12)} por ano, em ${plural(itens.length, 'assinatura', 'assinaturas')}.`
+          + (jaSaiu ? ` Neste mês já saíram ${moeda(jaSaiu, { cents: 2 })}.` : '')
         : `${plural(itens.length, 'assinatura ainda sem valor escrito', 'assinaturas ainda sem valor escrito')}.`,
     }),
   ]));
@@ -148,17 +165,21 @@ function painelAssinaturas(ctx, mes) {
   const teto = Math.max(1, ...itens.map(a => Number(a.valor) || 0));
   itens.forEach(item => {
     const feito = store.agendaFeito(item, mes);
-    const linha = el('div.assin' + (feito ? '.is-feito' : ''));
+    const sozinha = store.agendaAutomatica(item, mes);
+    const linha = el('div.assin' + (feito ? '.is-feito' : '') + (sozinha ? '.is-sozinha' : ''));
     const preenche = el('i', { style: { width: '0%' } });
     linha.append(
-      /* debita sozinha, então marcar é opcional — o quadradinho fica, mas
-         pequeno e sem pergunta escrita em cima dele. */
+      /* Ela debita sozinha, então passado o dia o app já dá por debitada — o
+         quadradinho existe só pra desmentir (cancelei, o cartão recusou). */
       el('button.agitem__check.assin__check', {
         type: 'button', 'aria-pressed': String(feito),
-        'aria-label': `${feito ? 'Desmarcar' : 'Marcar'} ${item.label} como debitada`,
+        'aria-label': sozinha
+          ? `${item.label} debitou sozinha. Marcar que não debitou`
+          : `${feito ? 'Desmarcar' : 'Marcar'} ${item.label} como debitada`,
+        title: sozinha ? 'debitou sozinha — toque se não debitou' : '',
         onclick: () => {
           store.marcarAgenda(item.id, mes, !feito);
-          toast(feito ? 'desmarcado' : 'debitou ✓');
+          toast(feito ? 'marcada como não debitada' : 'debitou ✓');
           ctx.rerender();
         },
       }, [el('span', { text: feito ? '✓' : '' })]),
@@ -176,7 +197,10 @@ function painelAssinaturas(ctx, mes) {
         el('span.assin__meta', {}, [
           el('span.assin__bar', {}, [preenche]),
           el('span.micro.assin__d', {
-            text: [item.dia ? `dia ${item.dia}` : 'sem dia', feito ? 'debitou ✓' : ''].filter(Boolean).join(' · '),
+            text: [
+              item.dia ? `dia ${item.dia}` : 'sem dia',
+              sozinha ? 'debitou sozinha' : feito ? 'debitou ✓' : item.data && item.data > todayKey() ? 'ainda vem' : '',
+            ].filter(Boolean).join(' · '),
           }),
         ]),
       ]),
@@ -283,7 +307,10 @@ function painelCarteira(ctx, mes) {
         type: 'button',
         onclick: () => { ctx.pessoalAba = 'assinaturas'; ctx.rerender(); },
       }, [
-        el('span', { text: `${plural(assinaturas.length, 'assinatura', 'assinaturas')} · debitam sozinhas` }),
+        el('span', {
+          text: `${plural(assinaturas.length, 'assinatura', 'assinaturas')} · `
+            + `${assinaturas.filter(a => store.agendaFeito(a, mes)).length} já debitou`,
+        }),
         el('span.linhatudo__s.num', { text: moeda(c.assinaturas, { cents: 2 }) }),
       ]));
     }
@@ -411,11 +438,22 @@ function painelTarefas(ctx) {
 
 
   /* lista */
-  const list = tab === 'abertas' ? abertas : tab === 'feitas' ? feitas : todos;
+  const daAba = tab === 'abertas' ? abertas : tab === 'feitas' ? feitas : todos;
+  /* A busca não some sozinha ao trocar de aba — quem digitou "vet" quer ver
+     o vet em qualquer uma delas —, mas é de sessão: fechar o app limpa. */
+  const busca = (ctx.todoBusca || '').trim();
+  const alvo = semAcento(busca);
+  const list = busca ? daAba.filter(t => semAcento(t.text).includes(alvo)) : daAba;
+  if (busca || daAba.length >= 8) view.append(campoBusca(ctx, busca, list.length, daAba.length));
+
   if (!list.length) {
     view.append(el('div.empty', {}, [
-      el('b', { text: tab === 'feitas' ? 'Nada concluído ainda' : 'Lista vazia' }),
-      el('p', { text: tab === 'feitas' ? 'O que você marcar como feito aparece aqui.' : 'Escreva ali em cima e aperte Enter.' }),
+      el('b', { text: busca ? `Nada com "${busca}"` : tab === 'feitas' ? 'Nada concluído ainda' : 'Lista vazia' }),
+      el('p', {
+        text: busca ? 'Tente outro pedaço do nome, ou olhe na aba "todas".'
+          : tab === 'feitas' ? 'O que você marcar como feito aparece aqui.'
+          : 'Escreva ali em cima e aperte Enter.',
+      }),
     ]));
     return view;
   }
@@ -509,7 +547,7 @@ function painelTarefas(ctx) {
      Nas outras ordens a lista é contínua: agrupar por data ali seria
      desmanchar a ordem que você pediu. */
   const listas = [];
-  if (ordem === 'prazo') {
+  if (ordem === 'prazo' && !busca) {
     const fimSemana = addDays(hoje, 7);
     const faixas = [
       ['ATRASADAS', t => !t.done && t.due && t.due < hoje],
@@ -576,6 +614,42 @@ function painelTarefas(ctx) {
 
   return view;
 }
+
+/**
+ * A busca só nasce quando a lista fica grande o bastante pra perder coisa
+ * dentro (oito), ou quando já tem alguém digitando. Antes disso ela seria
+ * mais um campo pedindo atenção numa tela de cinco linhas.
+ */
+function campoBusca(ctx, valor, achadas, total) {
+  const input = el('input.busca__i', {
+    type: 'search', value: valor, placeholder: 'achar na lista…',
+    'aria-label': 'Buscar tarefa', autocomplete: 'off', enterkeyhint: 'search', spellcheck: 'false',
+  });
+  let t;
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      ctx.todoBusca = input.value;
+      ctx.rerender();
+      const novo = document.querySelector('.busca__i');
+      if (novo) { novo.focus(); novo.setSelectionRange(novo.value.length, novo.value.length); }
+    }, 220);
+  });
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') { ctx.todoBusca = ''; ctx.rerender(); } });
+  return el('div.busca', {}, [
+    el('span.busca__l', { html: LUPA_SVG }),
+    input,
+    valor
+      ? el('button.busca__x', {
+          type: 'button', 'aria-label': 'Limpar busca',
+          onclick: () => { ctx.todoBusca = ''; ctx.rerender(); },
+        }, [el('span.micro', { text: `${achadas} de ${total} ✕` })])
+      : null,
+  ].filter(Boolean));
+}
+
+const LUPA_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '
+  + 'stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>';
 
 /**
  * A folha de uma tarefa: o que não cabia na linha sem espremer o texto.

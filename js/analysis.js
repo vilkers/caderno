@@ -1,7 +1,7 @@
 /* analysis.js — leitura dos dados: sequências, metas, padrões,
    comparações entre categorias e sugestões em texto. Tudo local. */
 
-import { state, hasEntry, listCategories, listTodos, cadencia, cobraNoDia, respondida, getReview } from './store.js';
+import { state, hasEntry, listCategories, listAgenda, listTodos, cadencia, cobraNoDia, respondida, getReview } from './store.js';
 import { addDays, todayKey, parseKey, lastNDays, weekOfKey, weekKey, WD, WD_LONG, nf, plural } from './utils.js';
 
 /* ── Base ──────────────────────────────────────────────────── */
@@ -29,6 +29,24 @@ export function semanaPendente(hoje = todayKey(), inicioSemana = 1) {
   if (aberta(passada)) return passada;
   if (hoje >= weekOfKey(atual, inicioSemana)[6] && aberta(atual)) return atual;
   return null;
+}
+
+/**
+ * Qual mês está pedindo fechamento — o que terminou e ninguém fechou.
+ * Mesma regra da semana: só cobra mês que teve alguma coisa dentro, e só o
+ * imediatamente anterior, então a cobrança dura no máximo trinta dias e some
+ * sozinha. Sem isso o app cobraria um ano inteiro de meses de quem instalou
+ * ontem.
+ */
+export function mesPendente(hoje = todayKey()) {
+  const d = parseKey(hoje);
+  d.setDate(1); d.setMonth(d.getMonth() - 1);
+  const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  if (getReview(mes)?.fechadoEm) return null;
+  const teveDia = Object.keys(state.days || {}).some(k => k.startsWith(mes) && hasEntry(k));
+  const teveConta = listAgenda().some(a => !a.pausado
+    && (a.repete === 'unico' ? (a.data || '').startsWith(mes) : true));
+  return teveDia || teveConta ? mes : null;
 }
 
 /** Categorias que a gente quer manter em baixa (meta "no máximo"). */

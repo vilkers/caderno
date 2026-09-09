@@ -11,7 +11,7 @@ const SHELL = [
   './js/ui.js', './js/palettes.js', './js/analysis.js',
   './js/merge.js', './js/sync.js', './js/badges.js', './js/icons.js', './js/avatar.js', './js/idb.js', './js/lembrete.js', './js/arrastar.js', './js/resumo.js', './js/graficos.js',
   './js/views/today.js', './js/views/month.js', './js/views/todos.js',
-  './js/views/insights.js', './js/views/settings.js', './js/views/metas.js', './js/views/perfil.js', './js/views/resumo.js', './js/views/revisao.js', './js/views/agenda.js', './js/views/agendaform.js', './js/views/paleta.js',
+  './js/views/insights.js', './js/views/settings.js', './js/views/metas.js', './js/views/perfil.js', './js/views/fechames.js', './js/views/resumo.js', './js/views/revisao.js', './js/views/agenda.js', './js/views/agendaform.js', './js/views/paleta.js',
   './assets/icon.svg',
 ];
 

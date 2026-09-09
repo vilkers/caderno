@@ -77,5 +77,37 @@ await p.fill('#lockPass','senha1234'); await p.click('#lockBtn');
 await p.waitForSelector('#app:not([hidden])'); await p.waitForTimeout(1400);
 console.log('atalho antigo cai no dia:', await p.$eval('.vhead h2', n=>n.textContent), '| sem caixa aberta:', await p.$eval('#sheet', n=>n.hidden));
 
+/* ── fechar o mês: o mesmo ritual da semana, um andar acima ── */
+await p.evaluate(async () => {
+  const s = await import('./js/store.js');
+  s.addAgenda({ emoji:'🏠', label:'Aluguel', tipo:'aluguel', dia:5, valor:2300 });
+  s.addAgenda({ emoji:'💰', label:'Agência', tipo:'renda', dia:5, valor:9000 });
+  s.emit('replace');
+});
+await p.waitForTimeout(1200);
+for (let i=0;i<3;i++){ if (await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300); }
+await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(700);
+await p.click('.aba:has-text("Carteira")'); await p.waitForTimeout(800);
+const aviso = await p.$eval('.alert', n=>n.textContent.replace(/\s+/g,' ').trim()).catch(()=>null);
+console.log('aviso de fechar o mês:', aviso || 'nenhum');
+if (!aviso) errs.push('o mês que acabou não convidou a fechar');
+else {
+  await p.click('.alert'); await p.waitForTimeout(1000);
+  console.log('tela do mês:', await p.$eval('.vhead h2', n=>n.textContent),
+              '|', await p.$eval('.totalzao .micro', n=>n.textContent),
+              '| pendentes:', await p.$$eval('.agitem', n=>n.length));
+  /* entrada não somada com saída: são dívidas de direções opostas */
+  const cabeca = await p.$eval('.grupoh__n', n=>n.textContent).catch(()=>'');
+  console.log('o que ficou sem resolver:', cabeca);
+  if (cabeca && !/não pago/.test(cabeca)) errs.push('o cabeçalho do pendente não separa pagar de receber');
+  await p.click('#main .btn--solid'); await p.waitForTimeout(900);
+  console.log('depois de fechar:', await p.$eval('.vhead h2', n=>n.textContent));
+  const gravado = await p.evaluate(async()=>{const s=await import('./js/store.js');
+    const r=Object.entries(s.state.reviews).find(([k])=>/^\d{4}-\d{2}$/.test(k));
+    return r ? `${r[0]} · sobra ${r[1].sobra}` : 'nada';});
+  console.log('gravado no cofre:', gravado);
+  if (gravado === 'nada') errs.push('fechar o mês não gravou nada');
+}
+
 console.log('erros:', errs.length?errs:'nenhum');
 await b.close();
