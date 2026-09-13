@@ -92,10 +92,27 @@
 
   --lift:-2px;       /* o levantar do hover — um só, não três */
 
+  /* Movimento. Eram dois easings pra tudo — entrada, saída, microfeedback e
+     troca de tela usavam a mesma curva, e por isso nada tinha peso próprio.
+     Agora a curva diz o que a coisa é:
+
+       --ease      o repouso: entra e desacelera (o que já era)
+       --ease-io   o que vai e volta
+       --mola      o que tem massa: aparece passando um pouco do ponto e
+                   assenta. É uma curva linear() de verdade, não um
+                   cubic-bezier fingindo mola — dá pra ver a diferença no
+                   número que pula e no visto que cai. */
   --ease:cubic-bezier(.16,1,.3,1);
   --ease-io:cubic-bezier(.65,0,.35,1);
+  --mola:linear(
+    0, .0033 2%, .0187 4.5%, .0776 9.2%, .3132 20%, .6079 30.5%,
+    .8221 39.5%, .9515 48.5%, 1.0181 57%, 1.0345 62.5%, 1.0311 68%,
+    1.0106 78%, .9981 87%, 1
+  );
   --dur:.55s;
   --dur-fast:.25s;
+  --dur-micro:.16s;   /* o que responde ao dedo: não pode ter latência visível */
+  --dur-tela:.42s;    /* a troca de tela inteira */
 
   --pad:clamp(1rem,4vw,2.5rem);
   --rail:0px;
@@ -356,11 +373,67 @@ body.em-secundaria .ident__txt .micro{display:none}   /* sem segunda linha: o no
   scroll-margin-bottom:calc(var(--navbar) + var(--sab) + var(--s-4));
 }
 
-/* ── 8. Cabeçalho de vista + wipe ──────────────────────────── */
+/* ── 8. Cabeçalho de vista + troca de tela ─────────────────── */
+/* O wipe de sempre, pra quem não tem View Transitions (e pro primeiro
+   desenho, que não é troca de nada). */
 .view{animation:viewIn .4s var(--ease) both}
 @keyframes viewIn{
   from{opacity:0;clip-path:inset(0 0 100% 0);transform:translateY(10px)}
   to{opacity:1;clip-path:inset(0 0 0 0);transform:none}
+}
+
+/* ── Troca de tela com View Transitions ──────────────────────
+   O app trocava de tela apagando tudo e desenhando de novo com um wipe: o
+   movimento não dizia PARA ONDE você foi. Agora o navegador fotografa a tela
+   velha e a nova e faz a transição entre as duas — e a direção carrega a
+   informação: Hoje→Mês anda pra esquerda, voltar anda pra direita, entrar
+   numa tela secundária afunda, sair dela sobe.
+
+   As barras fixas (topo, baixo, fundo vivo) ganham nome próprio pra saírem
+   do retrato do miolo: sem isso elas deslizariam junto com o conteúdo, que é
+   exatamente o que não pode acontecer com uma barra fixa. */
+.topbar{view-transition-name:barra-topo}
+.nav{view-transition-name:barra-baixo}
+.fundo{view-transition-name:fundo-vivo}
+.toast{view-transition-name:aviso}
+/* o título da tela atravessa a troca: ele é o mesmo objeto, com outro texto */
+.vhead__l .display{view-transition-name:titulo-da-tela}
+
+html[data-vt] .view{animation:none}          /* uma animação só por troca */
+
+::view-transition-group(root){animation-duration:var(--dur-tela)}
+::view-transition-old(root),::view-transition-new(root){
+  animation-duration:var(--dur-tela);animation-timing-function:var(--ease);
+  mix-blend-mode:normal;
+}
+::view-transition-old(titulo-da-tela),::view-transition-new(titulo-da-tela){
+  animation-duration:var(--dur-tela);animation-timing-function:var(--ease);
+  height:100%;object-fit:none;object-position:left top;
+}
+
+@keyframes vt-sai-esq{to{opacity:0;transform:translateX(-4%)}}
+@keyframes vt-vem-dir{from{opacity:0;transform:translateX(4%)}}
+@keyframes vt-sai-dir{to{opacity:0;transform:translateX(4%)}}
+@keyframes vt-vem-esq{from{opacity:0;transform:translateX(-4%)}}
+@keyframes vt-afunda{to{opacity:0;transform:scale(.97)}}
+@keyframes vt-vem-de-fora{from{opacity:0;transform:scale(1.03)}}
+@keyframes vt-sobe{to{opacity:0;transform:scale(1.03)}}
+@keyframes vt-vem-de-dentro{from{opacity:0;transform:scale(.97)}}
+
+html[data-vt="esquerda"]::view-transition-old(root){animation-name:vt-sai-esq}
+html[data-vt="esquerda"]::view-transition-new(root){animation-name:vt-vem-dir}
+html[data-vt="direita"]::view-transition-old(root){animation-name:vt-sai-dir}
+html[data-vt="direita"]::view-transition-new(root){animation-name:vt-vem-esq}
+html[data-vt="fundo"]::view-transition-old(root){animation-name:vt-afunda}
+html[data-vt="fundo"]::view-transition-new(root){animation-name:vt-vem-de-fora}
+html[data-vt="topo"]::view-transition-old(root){animation-name:vt-sobe}
+html[data-vt="topo"]::view-transition-new(root){animation-name:vt-vem-de-dentro}
+
+/* quem pediu menos movimento no sistema não ganha tela deslizando */
+@media (prefers-reduced-motion:reduce){
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){
+    animation-duration:.01ms!important;
+  }
 }
 .vhead{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s-4);flex-wrap:wrap;margin-bottom:var(--s-7)}
 .vhead__l{min-width:0}

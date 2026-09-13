@@ -42,32 +42,44 @@ export function listaArrastavel(lista, { itemSel, pegaSel, aoSoltar }) {
       pega.setPointerCapture(e.pointerId);
 
       const ordemInicial = ids();
-      const y0 = e.clientY;
-      const alturaOriginal = item.getBoundingClientRect().height;
-      let dy = 0;
+      /* Onde, dentro do item, o dedo encostou. É a única coisa que não muda
+         durante o arrasto — e é por isso que ela é a âncora.
+
+         Antes o deslocamento era medido a partir do ponto de partida do dedo
+         (`ev.clientY - y0`). Só que a cada troca de lugar o item pula uma
+         linha inteira no layout, e o deslocamento continuava contando do
+         zero antigo: o retângulo corria na frente do dedo, disparava a troca
+         seguinte sozinho, e um item arrastado três posições ia parar no fim
+         da lista. Havia um `reancorar()` pra corrigir isso, mas o `mover`
+         seguinte recalculava do zero velho e jogava a correção fora.
+
+         Agora a posição é sempre derivada de onde o item ESTÁ, não de onde
+         ele estava — o que também acerta lista de linhas com alturas
+         diferentes, que é o caso de uma tarefa de três linhas no meio de
+         tarefas de uma. */
+      const pegadaNoItem = e.clientY - item.getBoundingClientRect().top;
 
       item.classList.add('arrastando');
       lista.classList.add('arrastando-lista');
       document.body.style.userSelect = 'none';
 
+      /* põe o item sob o dedo, medindo a posição real (sem a máscara) */
+      const posicionar = y => {
+        item.style.transform = '';
+        const base = item.getBoundingClientRect().top;
+        item.style.transform = `translateY(${y - pegadaNoItem - base}px)`;
+      };
+
       const mover = ev => {
-        dy = ev.clientY - y0;
-        item.style.transform = `translateY(${dy}px)`;
+        posicionar(ev.clientY);
         const centro = meio(item);
         for (const outro of itens()) {
           if (outro === item) continue;
           const m = meio(outro);
-          const antes = outro.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING;
-          if (antes && centro < m) { lista.insertBefore(item, outro); reancorar(ev); break; }
-          if (!antes && centro > m) { lista.insertBefore(outro, item); reancorar(ev); break; }
+          const estaDepois = outro.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING;
+          if (estaDepois && centro < m) { lista.insertBefore(item, outro); posicionar(ev.clientY); break; }
+          if (!estaDepois && centro > m) { lista.insertBefore(outro, item); posicionar(ev.clientY); break; }
         }
-      };
-      /* depois de trocar de lugar, o zero do arrasto muda junto */
-      const reancorar = ev => {
-        item.style.transform = '';
-        const novo = item.getBoundingClientRect();
-        dy = ev.clientY - (novo.top + alturaOriginal / 2);
-        item.style.transform = `translateY(${dy}px)`;
       };
 
       const soltar = () => {
