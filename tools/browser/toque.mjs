@@ -42,22 +42,26 @@ await tocarPerto('.todo__box', -5);
 const c2 = await p.evaluate(async()=>{const s=await import('./js/store.js');return !!s.listTodos()[0].done;});
 checa('caixa 5px acima', c1 !== c2);
 
-// medidor 0–10: a coluna mais curta tem 23px de desenho e 44px de alvo
+// roleta 0–10: cada valor tem a largura inteira dele como alvo, e o mostrador
+// tem 56px de altura — o medidor de barrinhas de 23px saiu justamente por isso
 await p.click('.nav__item[data-view="hoje"]'); await p.waitForTimeout(700);
-const alvoMedidor = await p.evaluate(()=>{
-  const m=document.querySelector('.meter'); if(!m) return null;
-  const s=m.children[0], r=s.getBoundingClientRect();
-  const a=getComputedStyle(s,'::after');
-  return { desenho: Math.round(r.height), alvo: parseFloat(a.height) };
+const alvoRoleta = await p.evaluate(()=>{
+  const v = document.querySelector('.roleta__v'); if(!v) return null;
+  const r = v.getBoundingClientRect();
+  return { largura: Math.round(r.width), altura: Math.round(r.height) };
 });
-checa('medidor tem 44px de alvo', alvoMedidor?.alvo >= 44,
-      ` (desenho ${alvoMedidor?.desenho}px | alvo ${alvoMedidor?.alvo}px)`);
-// o degrau 6 é o mais curto que ainda acende: tocar acima dele prova o alvo
-const m1 = await p.evaluate(()=>document.querySelectorAll('.meter__s.is-on').length);
-await tocarPerto('.meter__s:nth-child(7)', -5);
-await p.waitForTimeout(400);
-const m2 = await p.evaluate(()=>document.querySelectorAll('.meter__s.is-on').length);
-checa('medidor 5px acima do desenho', m1 !== m2, ` (${m1}→${m2})`);
+checa('cada valor da roleta tem 44px de alvo', alvoRoleta && alvoRoleta.largura >= 44 && alvoRoleta.altura >= 44,
+      ` (${alvoRoleta?.largura}×${alvoRoleta?.altura}px)`);
+// tocar num vizinho centraliza ele e grava
+const antesRoleta = await p.evaluate(()=>document.querySelector('.roleta__v.is-centro')?.textContent);
+await p.evaluate(()=>{
+  const vs = [...document.querySelectorAll('.roleta__v')];
+  const i = vs.findIndex(v=>v.classList.contains('is-centro'));
+  vs[i+2]?.click();
+});
+await p.waitForTimeout(900);
+const depoisRoleta = await p.evaluate(()=>document.querySelector('.roleta__v.is-centro')?.textContent);
+checa('tocar num valor vizinho traz ele pro centro', antesRoleta !== depoisRoleta, ` (${antesRoleta}→${depoisRoleta})`);
 
 // data da tarefa: 32px de desenho, 44 de alvo
 await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(700);

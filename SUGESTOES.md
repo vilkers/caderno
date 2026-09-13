@@ -25,6 +25,60 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 17 — o mostrador, o número que respira, e a tela que anda
+
+Dois bugs de uso diário e a virada visual que veio de referência de fora.
+
+### O arrasto corria na frente do dedo
+
+Reportado e reproduzido: arrastar uma tarefa três posições jogava ela no fim
+da lista. O deslocamento era medido a partir de onde o dedo largou, mas a
+cada troca de lugar o item pula uma linha no layout — a conta continuava no
+zero velho e o retângulo disparava a troca seguinte sozinho. Agora a posição
+é derivada de onde o item **está**, a cada quadro. O teste de arrasto nunca
+teria pego: ele imprimia e nunca reprovava. Agora reprova.
+
+### Face ID não funcionava no iPhone, e dá pra ver por quê
+
+Duas causas, as duas fatais no Safari: a senha era conferida ANTES do
+WebAuthn (PBKDF2 leva mais de um segundo e a ativação do toque expira), e
+quando a criação não devolve o PRF — que é o caso do iPhone — o código pedia
+um segundo `get()` no mesmo gesto. Agora são dois toques, cada um com a sua
+ativação, e o erro real vai pra tela com um botão de diagnóstico do aparelho.
+
+### A roleta
+
+Veio de um painel de câmera (KEIRIN/VWFNDR, via Are.na): valor grande no
+centro, vizinhos rebaixando pras bordas, fio marcando o agora. Substitui o
+trilho de 3px das horas — que errava meia hora com facilidade — e as onze
+barrinhas da escala longa, que liam como código de barras vazio.
+
+O que move é **rolagem nativa com snap**: a inércia e o encaixe são os do
+iPhone, de graça, e melhores que qualquer arrasto escrito à mão. Duas
+armadilhas apareceram e viraram regra: ela gravava um valor só de abrir a
+tela (a rolagem de montagem dispara `scroll`), e o espaçador de 50% dentro de
+um flex de largura automática esticava a página inteira — a mesma armadilha
+do `1fr` que sumiu com o domingo do calendário.
+
+### A tela passou a dizer para onde vai
+
+View Transitions com direção: entre as abas é lateral na ordem da barra,
+entrar numa secundária afunda, voltar sobe, e andar no tempo anda pro lado do
+dedo. O título da tela atravessa a troca. Barras fixas ganharam nome próprio
+pra não deslizarem junto. Sem suporte, a troca é seca como era.
+
+### O símbolo cedeu a vez
+
+`R$` pequeno e apagado, os dígitos grandes. Num número de 32px o símbolo no
+mesmo corpo disputava a leitura com a quantia — e quem lê já sabe que é
+dinheiro.
+
+### Sobre GSAP
+
+Perguntado, e a resposta é não: o app tem zero dependência em produção e não
+tem build. As ideias entraram nativas — `Flip` virou View Transitions, mola
+virou `linear()`, stagger já existia.
+
 ## Rodada 16 — o mês fecha, a assinatura debita sozinha, e a lista tem busca
 
 Os três primeiros itens da lista da rodada 15, na ordem em que eles se

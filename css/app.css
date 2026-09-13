@@ -455,7 +455,12 @@ html[data-vt="topo"]::view-transition-new(root){animation-name:vt-vem-de-dentro}
 }
 .daynav__label{font-family:var(--font-mono);font-size:var(--t-mini);letter-spacing:var(--tk-micro);text-transform:uppercase;min-width:9ch;text-align:center}
 
-.entries{display:grid;gap:var(--s-3)}
+/* minmax(0,1fr), nunca auto: com coluna automática a célula não desce abaixo
+   do max-content do conteúdo, e a roleta — que é um trilho de 2000px com
+   rolagem própria — esticava a página inteira. É a mesma regra que sumiu com
+   o domingo do calendário. */
+.entries{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s-3)}
+.entry{min-width:0}
 /* dia que não é o dela: sai da fila e vai pra gaveta logo abaixo. Some do
    app seria pior — remarcar terapia pra segunda é comum —, então ela fica
    a um toque, e aberta é um cartão igual aos outros. */
@@ -572,6 +577,56 @@ html[data-vt="topo"]::view-transition-new(root){animation-name:vt-vem-de-dentro}
 }
 .slider::-moz-range-thumb{width:22px;height:22px;border:3px solid var(--bg);border-radius:50%;background:var(--accent);cursor:grab}
 .slider:active::-webkit-slider-thumb{transform:scale(1.2)}
+
+/* ── Roleta ──────────────────────────────────────────────────
+   O mostrador. A máscara nas bordas é o que faz o objeto parecer um cilindro
+   girando em vez de uma fileira que acabou: o valor não some, ele se afasta. */
+/* Largura explícita nos dois: o espaçador é 50% do trilho, e um flex que se
+   mede pelo conteúdo faria esse 50% crescer com o próprio conteúdo. É a mesma
+   armadilha do `1fr` da grade — percentual precisa de um pai com largura
+   resolvida, senão a página inteira estica. */
+.roleta{position:relative;padding-top:var(--s-2);width:100%;min-width:0}
+.roleta__t{
+  width:100%;min-width:0;
+  display:flex;align-items:center;gap:var(--s-2);
+  overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
+  scroll-snap-type:x mandatory;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);
+}
+.roleta__t::-webkit-scrollbar{display:none}
+.roleta__ponta{flex:0 0 calc(50% - var(--roleta-item)/2 - var(--s-1))}
+.roleta{--roleta-item:56px}
+.roleta__v{
+  flex:0 0 var(--roleta-item);scroll-snap-align:center;
+  height:56px;display:grid;place-items:center;border-radius:var(--r-ctrl);
+  font-family:var(--font-mono);font-variant-numeric:tabular-nums;
+  font-size:var(--t-mini);color:var(--dim);opacity:.45;
+  transition:opacity var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),
+             font-size var(--dur-fast) var(--ease),transform var(--dur-fast) var(--mola);
+}
+.roleta__v.is-perto{opacity:.8}
+.roleta__v.is-centro{
+  opacity:1;color:var(--accent-txt);font-size:var(--t-num);transform:scale(1.04);
+}
+/* zero escolhido continua sendo o centro, sem ser a coisa mais forte da tela */
+.roleta__v.is-centro.is-zero{color:var(--fg)}
+.roleta .lvl.is-zero{color:var(--fg);font-weight:var(--peso-normal)}
+/* sem resposta o mostrador não finge que tem uma: o centro fica em branco */
+.roleta.is-vazio .roleta__v.is-centro{color:var(--fg)}
+.roleta.is-vazio .roleta__fio{opacity:.3}
+/* o fio do centro — onde o valor vale */
+.roleta__fio{
+  position:absolute;left:50%;top:var(--s-2);width:var(--roleta-item);height:56px;
+  transform:translateX(-50%);border:1px solid var(--line-2);border-radius:var(--r-ctrl);
+  pointer-events:none;transition:border-color var(--dur-fast) var(--ease);
+}
+.roleta:focus-within .roleta__fio{border-color:var(--accent)}
+.roleta__u{
+  position:absolute;left:50%;top:calc(var(--s-2) + 56px + 2px);transform:translateX(calc(-50% + 0px));
+  color:var(--dim);pointer-events:none;
+}
+.roleta .lvl{text-align:center;margin-top:var(--s-5)}
 
 /* escala 1–5 */
 .scale{display:grid;grid-auto-flow:column;gap:var(--s-2)}
@@ -1611,6 +1666,8 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 .carteirabloco{margin:var(--s-7) 0 var(--s-3);display:grid;gap:var(--s-2)}
 .mesnav{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin-bottom:var(--s-5)}
 .totalzao__n.is-neg{color:var(--erro)}
+/* o símbolo cede a vez pro valor: quem lê já sabe que é dinheiro */
+.cifra{font-size:.46em;color:var(--dim);margin-right:.22em;vertical-align:.34em;letter-spacing:var(--tk-mono)}
 
 .hojeagenda{border:1px solid var(--line-2);border-radius:var(--r-card);padding:var(--s-4);margin-bottom:var(--s-6);display:grid;gap:var(--s-2)}
 .hojeagenda>*{min-width:0}   /* item de grade não encolhe sozinho */

@@ -115,6 +115,21 @@ export const monthLabel = (mk) => {
 export const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
 
 /** Dinheiro em real. Sem centavos quando são zero — a tela fica mais limpa. */
+/**
+ * O mesmo valor, com o símbolo rebaixado: `R$` pequeno e apagado, os dígitos
+ * grandes. Num número-herói de 32px o "R$" no mesmo corpo disputa a leitura
+ * com a quantia — e quem lê já sabe que é dinheiro. Só pros números grandes;
+ * em texto corrido `moeda()` continua servindo.
+ */
+export const cifra = (v, opts) => {
+  const t = moeda(v, opts);
+  const i = t.indexOf(' ');
+  return [
+    el('span.cifra', { text: t.slice(0, i) }),
+    el('span', { text: t.slice(i + 1) }),
+  ];
+};
+
 export const moeda = (v, { cents } = {}) => {
   const n = Number(v) || 0;
   const dec = cents ?? (Math.abs(n % 1) > 0.001 ? 2 : 0);

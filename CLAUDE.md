@@ -149,6 +149,11 @@ resposta, não conquista. Um controle por pergunta.
   Safari recusa. Por isso ligar o Face ID tem dois toques.
 - **Troca de tela usa View Transitions** (`paint({ rumo })`). Barras fixas têm
   `view-transition-name` próprio pra não deslizarem junto.
+- **Horas e escala longa são roleta** (`roleta()` em `views/today.js`): rolagem
+  nativa com snap, sem arrasto escrito à mão. Ela NÃO grava na montagem — a
+  trava `montando` existe pra isso, e tirá-la faz o app responder por você.
+- **Grade da entrada é `minmax(0,1fr)`.** A roleta é um trilho de 2000px com
+  rolagem própria; com coluna `auto` ela estica a página inteira.
 - **Âncora tem `scroll-margin` em cima e embaixo.** A barra de baixo é fixa;
   sem a margem, rolar até um item o deixa atrás dela.
 
@@ -158,6 +163,6 @@ resposta, não conquista. Um controle por pergunta.
   corrigidas (ativação de usuário consumida pelo PBKDF2, e dois pedidos de
   biometria num toque só). Falta um teste no aparelho de verdade — a folha
   tem um botão de diagnóstico que diz o que o aparelho responde.
-- **A bateria inteira não rodou na última rodada.** Passaram arrastar, face,
-  nav, nav2 e smoke2. Rode `tools/testar.sh` antes do próximo commit. A lista do que eu faria em seguida está no fim de
+- **Seletor de período tipográfico** (ano grande, meses em lista, sem grade)
+  para a navegação de mês da Carteira — proposto, não construído. A lista do que eu faria em seguida está no fim de
 `SUGESTOES.md`.

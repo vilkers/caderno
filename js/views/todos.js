@@ -8,7 +8,7 @@
    metas: dinheiro não é hábito, e transformar conta em pontuação seria
    converter uma coisa chata numa coisa chata e barulhenta. */
 
-import { el, humanDay, todayKey, addDays, monthKey, monthLabel, moeda, nf, plural, semAcento, parseKey, keyOf } from '../utils.js';
+import { el, humanDay, todayKey, addDays, monthKey, monthLabel, moeda, cifra, nf, plural, semAcento, parseKey, keyOf } from '../utils.js';
 import * as store from '../store.js';
 import { toast, stagger, confirmSheet, openSheet, interruptor } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
@@ -137,7 +137,7 @@ function painelAssinaturas(ctx, mes) {
     .reduce((s, a) => s + (Number(a.valor) || 0), 0);
   view.append(el('div.totalzao', {}, [
     el('p.micro', { text: 'TODO MÊS SAI, EM ASSINATURA' }),
-    el('p.totalzao__n.num', { text: moeda(total) }),
+    el('p.totalzao__n.num', {}, cifra(total)),
     el('p.nota-pe', {
       text: total
         ? `${moeda(total * 12)} por ano, em ${plural(itens.length, 'assinatura', 'assinaturas')}.`
@@ -264,7 +264,7 @@ function painelCarteira(ctx, mes) {
   const sobra = c.totalEntrada - c.totalSaida;
   view.append(el('div.totalzao', {}, [
     el('p.micro', { text: sobra >= 0 ? 'SOBRA PREVISTA NO MÊS' : 'FALTA PRA FECHAR O MÊS' }),
-    el('p.totalzao__n.num' + (sobra < 0 ? '.is-neg' : ''), { text: moeda(Math.abs(sobra)) }),
+    el('p.totalzao__n.num' + (sobra < 0 ? '.is-neg' : ''), {}, cifra(Math.abs(sobra))),
     el('p.nota-pe', { text: `${moeda(c.totalEntrada)} a receber · ${moeda(c.totalSaida)} a pagar` }),
     barras([
       { label: 'entra', valor: c.totalEntrada, texto: moeda(c.totalEntrada, { cents: 2 }), destaque: sobra >= 0 },

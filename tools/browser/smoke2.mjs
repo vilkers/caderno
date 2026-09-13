@@ -36,7 +36,7 @@ await conta[0].click(); await conta[0].click(); await p.waitForTimeout(250);
 const escala = await p.$$('.wgrid__row:nth-child(3) .batch__cell');
 await escala[0].click(); await p.waitForTimeout(600);
 console.log('escala longa abre a caixa:', await p.$eval('#sheet', n=>!n.hidden));
-await p.click('.sheet__body .meter__s[data-v="6"]'); await p.waitForTimeout(300);
+await p.click('.sheet__body .roleta__v[data-v="6"]'); await p.waitForTimeout(700);
 console.log('rótulo escolhido na caixa:', await p.$eval('.sheet__body .lvl', n=>n.textContent));
 await p.click('.sheet__scrim'); await p.waitForTimeout(600);
 console.log('células preenchidas:', await p.$$eval('.batch__cell.is-on', n=>n.map(x=>x.textContent)));

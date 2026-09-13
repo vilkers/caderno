@@ -524,39 +524,14 @@ export function control(cat, day, card, ctx) {
 
   if (cat.type === 'hours') {
     const max = cat.max || 16;
-    const cur = () => Number(store.getVal(day, cat.id) || 0);
-    const wrap = el('div');
-    const valEl = el('span.leitura__n.num', { text: fmtH(cur()) });
-    if (!cur()) valEl.classList.add('is-zero');
-    const slider = el('input.slider', {
-      type: 'range', min: 0, max, step: 0.5, value: cur(), 'aria-label': cat.label,
+    const valores = Array.from({ length: max * 2 + 1 }, (_, i) => i / 2);
+    return roleta({
+      valores, cat, card,
+      atual: () => Number(store.getVal(day, cat.id) || 0),
+      escrever: fmtH,
+      unidade: cat.unit || 'h',
+      aoEscolher: v => { store.setVal(day, cat.id, v); ctx.softRefresh?.(); },
     });
-    const set = n => {
-      const v = clamp(Math.round(n * 2) / 2, 0, max);
-      valEl.textContent = fmtH(v);
-      valEl.classList.toggle('is-zero', !v);
-      slider.value = v;
-      card?.classList.toggle('is-on', v > 0);
-      save(v);
-    };
-    wrap.append(
-      el('div.leitura', {}, [
-        el('button.step__btn.step__btn--fino', {
-          type: 'button', 'aria-label': 'Meia hora a menos', onclick: () => set(cur() - 0.5), text: '−',
-        }),
-        el('span.leitura__v', {}, [valEl, el('span.leitura__u.micro', { text: cat.unit || 'h' })]),
-        el('button.step__btn.step__btn--fino', {
-          type: 'button', 'aria-label': 'Meia hora a mais', onclick: () => set(cur() + 0.5), text: '+',
-        }),
-      ]),
-      slider,
-      el('div.regua', {}, [
-        el('span.micro', { text: '0' }),
-        el('span.micro', { text: `${max}${cat.unit || 'h'}` }),
-      ]),
-    );
-    slider.addEventListener('input', () => set(Number(slider.value)));
-    return wrap;
   }
 
   if (cat.type === 'scale') {
@@ -569,8 +544,22 @@ export function control(cat, day, card, ctx) {
       return v === undefined || v === '' ? null : Number(v);
     };
 
+    if (largo) {
+      /* Onze barrinhas de 23px liam como código de barras vazio, e acertar a
+         do meio com o polegar era mira de dardo. Vira mostrador: o valor fica
+         grande no centro, os vizinhos rebaixam pras bordas, e a rolagem é a
+         do sistema — com a inércia do iPhone de graça. */
+      return roleta({
+        valores: niveis, cat, card,
+        atual: () => { const v = store.getVal(day, cat.id); return v === undefined || v === '' ? null : Number(v); },
+        escrever: String,
+        legenda: v => store.levelLabel(cat, v),
+        aoEscolher: v => { save(v, { keepZero: min === 0 }); },
+      });
+    }
+
     const wrap = el('div');
-    const box = el('div' + (largo ? '.meter' : '.scale'));
+    const box = el('div.scale');
     const nota = el('p.lvl');
 
     const pinta = () => {
@@ -580,10 +569,7 @@ export function control(cat, day, card, ctx) {
       box.querySelectorAll('[data-v]').forEach(b => {
         const n = Number(b.dataset.v);
         const escolhido = n === v;
-        /* No medidor longo o preenchimento vai até o valor — é um medidor,
-           não onze escolhas soltas. Na escala curta continua marcando um. */
-        b.classList.toggle('is-on', largo ? (v !== null && n <= v && n > 0) : escolhido);
-        b.classList.toggle('is-topo', largo && escolhido);
+        b.classList.toggle('is-on', escolhido);
         b.classList.toggle('is-zero', escolhido && n === 0);
       });
       wrap.querySelectorAll('.refs__r').forEach(r =>
@@ -597,9 +583,9 @@ export function control(cat, day, card, ctx) {
     };
 
     niveis.forEach(n => {
-      const b = el('button' + (largo ? '.meter__s' : '.scale__dot'), {
+      const b = el('button.scale__dot', {
         type: 'button', 'data-v': n,
-        text: largo ? '' : String(n),
+        text: String(n),
         'aria-label': `${n}${store.levelLabel(cat, n) ? ` — ${store.levelLabel(cat, n)}` : ''}`,
         title: store.levelLabel(cat, n) || `nível ${n}`,
       });
@@ -641,6 +627,95 @@ export function control(cat, day, card, ctx) {
     t = setTimeout(() => { save(ta.value.trim()); card?.classList.toggle('is-on', !!ta.value.trim()); }, 400);
   });
   return ta;
+}
+
+/* ── Roleta ──────────────────────────────────────────────────
+   Mostrador de instrumento: o valor escolhido grande no centro, os vizinhos
+   rebaixando pras bordas, um fio marcando onde é o agora. Veio de painel de
+   câmera — velocidade e ISO — porque é o mesmo problema: escolher um valor
+   numa série contínua, com o polegar, sem errar o vizinho.
+
+   O que move é **rolagem nativa com snap**. Não há arrasto escrito à mão
+   aqui: a inércia, o atrito e o encaixe são os do sistema, que no iPhone são
+   melhores do que qualquer coisa que eu escreveria — e de graça. O trilho de
+   3px com bolinha que existia antes errava meia hora com facilidade; aqui o
+   alvo de cada valor é a largura inteira dele. */
+export function roleta({ valores, cat, card, atual, escrever, legenda, unidade, aoEscolher }) {
+  const wrap = el('div.roleta');
+  const trilho = el('div.roleta__t', {
+    role: 'group', 'aria-label': cat?.label || 'Escolher valor', tabindex: '-1',
+  });
+  const nota = el('p.lvl');
+  const partida = atual();
+  let vazio = partida === null || partida === undefined;
+  let i = Math.max(0, valores.indexOf(vazio ? valores[Math.floor(valores.length / 2)] : partida));
+  if (vazio && valores.includes(0)) i = valores.indexOf(0);
+
+  const botoes = valores.map((v, n) => {
+    const b = el('button.roleta__v', {
+      type: 'button', 'data-v': String(v), text: escrever(v),
+      'aria-label': `${escrever(v)}${unidade ? ` ${unidade}` : ''}${legenda?.(v) ? ` — ${legenda(v)}` : ''}`,
+    });
+    b.addEventListener('click', () => irPara(n, true));
+    return b;
+  });
+  trilho.append(el('i.roleta__ponta'), ...botoes, el('i.roleta__ponta'));
+  wrap.append(el('span.roleta__fio', { 'aria-hidden': 'true' }), trilho, nota);
+  if (unidade) wrap.append(el('span.micro.roleta__u', { text: unidade }));
+
+  const passo = () => (botoes[1] ? botoes[1].offsetLeft - botoes[0].offsetLeft : 1);
+  const irPara = (n, escolhendo) => {
+    trilho.scrollTo({ left: n * passo(), behavior: escolhendo ? 'smooth' : 'auto' });
+    if (escolhendo) fixar(n);
+  };
+
+  const pintar = n => {
+    botoes.forEach((b, k) => {
+      b.classList.toggle('is-centro', k === n);
+      /* Zero é resposta, não conquista: o pixel mais saturado da tela não
+         pode estar dizendo "não fiz". Vale a mesma lei da escala curta. */
+      b.classList.toggle('is-zero', k === n && Number(valores[k]) === 0);
+      /* dois de cada lado ainda se leem; o resto é contexto e some na máscara */
+      b.classList.toggle('is-perto', Math.abs(k - n) === 1);
+    });
+    wrap.classList.toggle('is-vazio', vazio);
+    const v = valores[n];
+    const txt = legenda?.(v);
+    nota.replaceChildren(...(vazio
+      ? [el('span', { text: 'sem resposta' })]
+      : [txt ? el('span', { text: txt }) : null].filter(Boolean)));
+    nota.classList.toggle('is-empty', vazio || !txt);
+    nota.classList.toggle('is-zero', !vazio && Number(v) === 0);
+    card?.classList.toggle('is-on', !vazio && Number(v) > 0);
+  };
+
+  const fixar = n => {
+    vazio = false;
+    pintar(n);
+    aoEscolher(valores[n]);
+  };
+
+  let t;
+  /* A rolagem de montagem também dispara `scroll`. Sem esta trava, abrir a
+     tela gravava um valor em toda categoria que ainda não tinha resposta —
+     o app respondia por você, que é o oposto do que ele existe pra fazer. */
+  let montando = true;
+  trilho.addEventListener('scroll', () => {
+    const n = Math.max(0, Math.min(valores.length - 1, Math.round(trilho.scrollLeft / passo())));
+    pintar(n);
+    if (montando) return;
+    clearTimeout(t);
+    /* grava quando a rolagem assenta: gravar a cada quadro escreveria trinta
+       valores no cofre pra uma única escolha */
+    t = setTimeout(() => fixar(n), 180);
+  }, { passive: true });
+
+  pintar(i);
+  requestAnimationFrame(() => {
+    irPara(i, false);
+    requestAnimationFrame(() => { montando = false; });
+  });
+  return wrap;
 }
 
 /* ── Peças ─────────────────────────────────────────────────── */
