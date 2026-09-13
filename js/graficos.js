@@ -142,9 +142,9 @@ export function trilha(n, { max = 21, atraso = 0 } = {}) {
 }
 
 /* ── Barra de progresso simples ────────────────────────────── */
-export function barraProgresso(pct, { atraso = 0, tom = null } = {}) {
+export function barraProgresso(pct, { atraso = 0, tom = null, acesa = false } = {}) {
   const p = `${Math.max(0, Math.min(100, pct * 100))}%`;
-  const fill = el('span.g-prog__fill', { style: { width: motionOn() ? '0%' : p, background: tom } });
+  const fill = el('span.g-prog__fill' + (acesa ? '.acesa' : ''), { style: { width: motionOn() ? '0%' : p, background: tom } });
   if (motionOn()) {
     fill.style.transition = `width 1s cubic-bezier(.16,1,.3,1) ${atraso}ms`;
     noProximoQuadro(() => { fill.style.width = p; });
@@ -154,19 +154,35 @@ export function barraProgresso(pct, { atraso = 0, tom = null } = {}) {
 
 /* ── Linha (sparkline) ─────────────────────────────────────── */
 /** Série pequena desenhada como traço contínuo, que entra se desenhando. */
-export function linha(valores = [], { largura = 280, altura = 60, atraso = 0 } = {}) {
+export function linha(valores = [], { largura = 280, altura = 60, atraso = 0, acesa = false } = {}) {
   if (valores.length < 2) return el('div');
   const teto = Math.max(1, ...valores);
   const passoX = largura / (valores.length - 1);
   const pontos = valores.map((v, i) => [i * passoX, altura - (v / teto) * (altura - 4) - 2]);
   const d = pontos.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
 
-  const svg = svgEl('svg', { viewBox: `0 0 ${largura} ${altura}`, class: 'g-linha', preserveAspectRatio: 'none' });
-  const area = svgEl('path', {
-    d: `${d} L${largura} ${altura} L0 ${altura} Z`, fill: 'var(--accent)', opacity: '.12',
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${largura} ${altura}`, class: 'g-linha' + (acesa ? ' acesa' : ''),
+    preserveAspectRatio: 'none',
   });
-  const traco = svgEl('path', { d, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
-  svg.append(area, traco);
+
+  /* A área desmaia até sumir em vez de ser uma chapa translúcida: o que dá
+     profundidade é o degradê morrendo no fundo, não a opacidade baixa. */
+  const id = `gl${Math.random().toString(36).slice(2, 8)}`;
+  const grad = svgEl('linearGradient', { id, x1: '0', y1: '0', x2: '0', y2: '1' });
+  grad.append(
+    svgEl('stop', { offset: '0', 'stop-color': 'var(--accent)', 'stop-opacity': acesa ? '.34' : '.2' }),
+    svgEl('stop', { offset: '1', 'stop-color': 'var(--accent)', 'stop-opacity': '0' }),
+  );
+  const defs = svgEl('defs');
+  defs.append(grad);
+
+  const area = svgEl('path', { d: `${d} L${largura} ${altura} L0 ${altura} Z`, fill: `url(#${id})` });
+  const traco = svgEl('path', {
+    d, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2,
+    'stroke-linejoin': 'round', 'stroke-linecap': 'round', class: 'g-linha__traco',
+  });
+  svg.append(defs, area, traco);
 
   if (motionOn()) {
     const comp = traco.getTotalLength?.() || largura * 1.4;
@@ -175,7 +191,7 @@ export function linha(valores = [], { largura = 280, altura = 60, atraso = 0 } =
     traco.style.transition = `stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1) ${atraso}ms`;
     area.style.opacity = '0';
     area.style.transition = `opacity .8s ease ${atraso + 400}ms`;
-    noProximoQuadro(() => { traco.style.strokeDashoffset = '0'; area.style.opacity = '.12'; });
+    noProximoQuadro(() => { traco.style.strokeDashoffset = '0'; area.style.opacity = '1'; });
   }
   return svg;
 }

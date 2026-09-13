@@ -38,6 +38,15 @@ const periodoEmTexto = dias => {
  * Monta os cartões. Devolve [{ id, olho, linhas, numero, sufixo, nota }]
  * `linhas` é o texto grande, quebrado do jeito que deve aparecer.
  */
+/** A palavra gigante do pôster: o mês, ou os dois que o período atravessa. */
+function palavraDoPeriodo(dias) {
+  const meses = [...new Set(dias.map(k => parseKey(k).getMonth()))];
+  if (meses.length === 1) return MONTHS[meses[0]].toUpperCase();
+  const a = MONTHS[meses[0]].slice(0, 3).toUpperCase();
+  const b = MONTHS[meses[meses.length - 1]].slice(0, 3).toUpperCase();
+  return `${a}—${b}`;
+}
+
 export function cartoes(periodo = 'tudo') {
   const dias = diasDoPeriodo(periodo);
   const registrados = loggedDays(dias);
@@ -66,6 +75,41 @@ export function cartoes(periodo = 'tudo') {
   });
 
   if (!registrados) return out;
+
+  /* ── O pôster do período ──
+     A retrospectiva sempre foi cartão de história; faltava a peça que vale
+     printar e mandar pra alguém. Veio de um calendário de pôster: o mês
+     escrito como TEXTO CORRIDO — número do dia com a inicial do dia da
+     semana em sobrescrito — com uma palavra gigante segurando a composição.
+     Sem grade, sem tabela: a informação toda está na tipografia.
+
+     Só até 45 dias. Trezentos e sessenta e cinco números em texto corrido
+     não é pôster, é parede de números. */
+  if (dias.length <= 45) {
+    const hoje = todayKey();
+    out.push({
+      id: 'poster', poster: true,
+      olho: periodoEmTexto(dias),
+      palavra: palavraDoPeriodo(dias),
+      g: {
+        tipo: 'calendario',
+        itens: dias.map(k => {
+          const d = parseKey(k);
+          const rec = state.days[k];
+          return {
+            k,
+            dia: d.getDate(),
+            wd: WD[d.getDay()][0].toUpperCase(),
+            domingo: d.getDay() === 0,
+            cheio: hasEntry(k),
+            fechado: !!rec?.closed,
+            hoje: k === hoje,
+          };
+        }),
+      },
+      nota: `${registrados} de ${dias.length} dias registrados · o círculo é dia fechado`,
+    });
+  }
 
   out.push({
     id: 'dias', olho: 'VOCÊ APARECEU',
