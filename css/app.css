@@ -99,8 +99,9 @@
      REGRA: **uma coisa acesa por tela**, e ela é a coisa que você foi ali
      ver. Espalhar brilho é como se chega no vidro fosco sem perceber. Por
      isso é classe (`.acesa`), nunca padrão de componente. */
-  --luz:0 0 10px color-mix(in srgb,var(--accent) 55%,transparent),
-        0 0 28px color-mix(in srgb,var(--accent) 20%,transparent);
+  --luz:0 0 8px color-mix(in srgb,var(--accent) 85%,transparent),
+        0 0 22px color-mix(in srgb,var(--accent) 45%,transparent),
+        0 0 48px color-mix(in srgb,var(--accent) 18%,transparent);
   --luz-svg:drop-shadow(0 0 5px color-mix(in srgb,var(--accent) 65%,transparent))
             drop-shadow(0 0 14px color-mix(in srgb,var(--accent) 28%,transparent));
 
@@ -740,11 +741,14 @@ html[data-vt="topo"]::view-transition-new(root){animation-name:vt-vem-de-dentro}
 .mini[data-sit="apertado"] .mini__b i,.mini[data-sit="estourou"] .mini__b i{background:var(--accent)}
 .mini[data-sit="apertado"] .mini__v,.mini[data-sit="estourou"] .mini__v{color:var(--accent-txt)}
 .mini[data-sit="batida"] .mini__b i{background:var(--ok)}
-.progress{position:relative;height:3px;background:var(--line);border-radius:var(--r-fio);flex:1;min-width:120px;overflow:hidden}
+/* `overflow:hidden` aqui recortava a sombra do preenchimento — o brilho
+   existia no CSS e era cortado fora. O arredondamento agora é do próprio
+   preenchimento, que é quem precisa dele. */
+.progress{position:relative;height:3px;background:var(--line);border-radius:var(--r-fio);flex:1;min-width:120px}
 /* A barra do dia é a coisa acesa do check-in — a única. É pra ela que você
    olha pra saber se o dia está em ordem. */
 .progress__bar{
-  position:absolute;inset:0 auto 0 0;background:var(--accent);width:0;
+  position:absolute;inset:0 auto 0 0;background:var(--accent);width:0;border-radius:var(--r-fio);
   transition:width .7s var(--ease),box-shadow .7s var(--ease);box-shadow:var(--luz);
 }
 .status.is-ok .progress__bar{box-shadow:var(--luz),0 0 44px color-mix(in srgb,var(--accent) 18%,transparent)}
@@ -1602,7 +1606,7 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 @keyframes eloAcende{from{opacity:0;transform:translateY(8px) scaleY(.5)}to{opacity:1;transform:none}}
 .g-elo__mais{color:var(--dim);margin-left:var(--s-1)}
 
-.g-prog{display:block;height:8px;border-radius:var(--r-pill);background:var(--line);overflow:hidden;width:100%}
+.g-prog{display:block;height:8px;border-radius:var(--r-pill);background:var(--line);width:100%}
 .g-prog__fill{display:block;height:100%;border-radius:var(--r-pill);background:var(--accent)}
 .g-linha{width:100%;height:auto;display:block;overflow:visible}
 .g-linha.acesa .g-linha__traco{filter:var(--luz-svg)}
