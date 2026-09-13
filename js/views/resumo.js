@@ -89,7 +89,8 @@ export function render(ctx) {
 
 /* ── Um cartão ─────────────────────────────────────────────── */
 function cartao(c, indice) {
-  const caixa = el('div.card' + (c.capa ? '.card--capa' : '') + (c.fim ? '.card--fim' : ''), {
+  const caixa = el('div.card' + (c.capa ? '.card--capa' : '') + (c.fim ? '.card--fim' : '')
+    + (c.poster ? '.card--poster' : ''), {
     style: { '--tom': String(indice % 5) },
   });
 
@@ -99,6 +100,12 @@ function cartao(c, indice) {
     const n = el('span.card__num.num', { text: '0' });
     caixa.append(el('p.card__numlinha', {}, [n, el('span.card__suf', { text: c.sufixo || '' })]));
     countUp(n, c.numero, { ms: 1100 });
+  }
+
+  /* A palavra do pôster entra inteira, não quebrada em palavras: ela é um
+     objeto só, do tamanho da largura da tela. */
+  if (c.palavra) {
+    caixa.append(el('h2.card__palavra.display', { text: c.palavra }));
   }
 
   const texto = el('h2.card__t.display');
@@ -151,6 +158,25 @@ function grafico(g) {
     caixa.append(malha(g.itens, { atraso: espera }));
     const feitos = g.itens.filter(i => i.on).length;
     caixa.append(el('p.micro', { text: `${feitos} DE ${g.itens.length} QUADRADINHOS` }));
+  } else if (g.tipo === 'calendario') {
+    /* Cada dia é um número com a inicial do dia da semana em sobrescrito.
+       Registrado fica branco, vazio fica apagado, fechado ganha o círculo,
+       domingo recua — a hierarquia toda em cor e peso, sem uma linha de
+       grade. É o que faz caber em texto corrido. */
+    const lista = el('p.g-cal');
+    g.itens.forEach((it, n) => {
+      const d = el('span.g-cal__d'
+        + (it.cheio ? '.is-cheio' : '')
+        + (it.fechado ? '.is-fechado' : '')
+        + (it.domingo ? '.is-dom' : '')
+        + (it.hoje ? '.is-hoje' : ''), { title: it.k }, [
+        el('span', { text: String(it.dia) }),
+        el('sup', { text: it.wd }),
+      ]);
+      if (motionOn()) d.style.animation = `calEntra .5s cubic-bezier(.16,1,.3,1) ${espera + n * 22}ms both`;
+      lista.append(d);
+    });
+    caixa.append(lista);
   } else if (g.tipo === 'trilha') {
     caixa.append(trilha(g.n, { max: 21, atraso: espera }));
   } else if (g.tipo === 'escada') {

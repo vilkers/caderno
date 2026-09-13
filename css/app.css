@@ -92,6 +92,18 @@
 
   --lift:-2px;       /* o levantar do hover — um só, não três */
 
+  /* Luz. O acento pintado diz "chegou até aqui"; o acento aceso diz "isto
+     está ligado". É o mesmo pixel com outro verbo, e em fundo quase preto a
+     diferença é toda.
+
+     REGRA: **uma coisa acesa por tela**, e ela é a coisa que você foi ali
+     ver. Espalhar brilho é como se chega no vidro fosco sem perceber. Por
+     isso é classe (`.acesa`), nunca padrão de componente. */
+  --luz:0 0 10px color-mix(in srgb,var(--accent) 55%,transparent),
+        0 0 28px color-mix(in srgb,var(--accent) 20%,transparent);
+  --luz-svg:drop-shadow(0 0 5px color-mix(in srgb,var(--accent) 65%,transparent))
+            drop-shadow(0 0 14px color-mix(in srgb,var(--accent) 28%,transparent));
+
   /* Movimento. Eram dois easings pra tudo — entrada, saída, microfeedback e
      troca de tela usavam a mesma curva, e por isso nada tinha peso próprio.
      Agora a curva diz o que a coisa é:
@@ -729,7 +741,13 @@ html[data-vt="topo"]::view-transition-new(root){animation-name:vt-vem-de-dentro}
 .mini[data-sit="apertado"] .mini__v,.mini[data-sit="estourou"] .mini__v{color:var(--accent-txt)}
 .mini[data-sit="batida"] .mini__b i{background:var(--ok)}
 .progress{position:relative;height:3px;background:var(--line);border-radius:var(--r-fio);flex:1;min-width:120px;overflow:hidden}
-.progress__bar{position:absolute;inset:0 auto 0 0;background:var(--accent);width:0;transition:width .7s var(--ease)}
+/* A barra do dia é a coisa acesa do check-in — a única. É pra ela que você
+   olha pra saber se o dia está em ordem. */
+.progress__bar{
+  position:absolute;inset:0 auto 0 0;background:var(--accent);width:0;
+  transition:width .7s var(--ease),box-shadow .7s var(--ease);box-shadow:var(--luz);
+}
+.status.is-ok .progress__bar{box-shadow:var(--luz),0 0 44px color-mix(in srgb,var(--accent) 18%,transparent)}
 
 /* ── 11. Calendário ────────────────────────────────────────── */
 .cal__head{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:var(--s-2)}
@@ -1343,13 +1361,13 @@ body.modo-imersivo .main{padding:0;max-width:none}
 /* Cartão de gráfico em duas famílias, não em cinco pedaços soltos: o texto
    se agrupa no alto e o desenho + a frase flutuam juntos no que sobra. Com
    `space-between` cada elemento ia parar num canto e o cartão desmanchava. */
-.card:has(.card__g):not(.card--capa){
+.card:has(.card__g):not(.card--capa):not(.card--poster){
   display:flex;flex-direction:column;align-items:flex-start;
   gap:var(--s-3);padding:var(--s-5) 0 var(--s-6);
 }
-.card:has(.card__g):not(.card--capa) .card__t{margin-bottom:var(--s-2)}
-.card:has(.card__g):not(.card--capa) .card__g{margin-top:auto}
-.card:has(.card__g):not(.card--capa) .card__nota{margin-bottom:auto}
+.card:has(.card__g):not(.card--capa):not(.card--poster) .card__t{margin-bottom:var(--s-2)}
+.card:has(.card__g):not(.card--capa):not(.card--poster) .card__g{margin-top:auto}
+.card:has(.card__g):not(.card--capa):not(.card--poster) .card__nota{margin-bottom:auto}
 .card--fim{align-content:end}
 @keyframes cardEntra{from{opacity:0;transform:scale(1.04)}}
 .card__olho{color:var(--accent-txt);letter-spacing:var(--tk-largo)}
@@ -1406,6 +1424,42 @@ body.modo-imersivo .main{padding:0;max-width:none}
    capa também carrega um gráfico, e por isso o título dela nunca chegava a
    usar o degrau imersivo que existia justamente pra ela. */
 .card.card--capa .card__t{font-size:var(--d-imersivo)}
+
+/* ── O pôster do período ──────────────────────────────────────
+   Uma palavra segurando a composição e o mês escrito como texto corrido.
+   Veio de calendário de pôster: sem grade, sem tabela — a hierarquia toda
+   em cor, peso e um círculo. */
+/* A palavra e o calendário são UM bloco, não topo e rodapé. A regra geral
+   empurra o gráfico pro fim do cartão; aqui ela é desfeita de propósito —
+   pôster é composição, e composição não tem buraco no meio. */
+.card--poster{
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  gap:var(--s-5);padding:var(--s-5) 0 var(--s-6);
+}
+.card--poster .card__g{margin:0;width:100%}
+.card--poster .card__nota{margin:0;color:var(--dim);font-size:var(--t-corpo)}
+.card__palavra{
+  font-size:clamp(44px,15vw,96px);line-height:.82;font-weight:var(--peso-display);
+  letter-spacing:var(--tk-display);text-transform:uppercase;
+  margin:0;text-wrap:balance;
+}
+.g-cal{
+  display:flex;flex-wrap:wrap;gap:var(--s-3) var(--s-4);margin:0;
+  font-family:var(--font-mono);font-size:var(--t-item);font-variant-numeric:tabular-nums;
+  color:color-mix(in srgb,var(--dim) 65%,transparent);
+}
+.g-cal__d{position:relative;display:inline-flex;align-items:flex-start;line-height:1}
+.g-cal__d sup{font-size:.6em;margin-left:1px;opacity:.7}
+.g-cal__d.is-dom{opacity:.55}
+.g-cal__d.is-cheio{color:var(--fg)}
+/* dia fechado ganha o círculo — é a única marca desenhada do pôster */
+.g-cal__d.is-fechado::after{
+  content:"";position:absolute;inset:-5px -7px -4px -6px;
+  border:1px solid color-mix(in srgb,var(--fg) 45%,transparent);border-radius:var(--r-pill);
+}
+.g-cal__d.is-hoje{color:var(--accent-txt)}
+.g-cal__d.is-hoje::after{border-color:var(--accent)}
+@keyframes calEntra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .card--fim{justify-items:start}
 
 /* um tom diferente por cartão, sem sair da paleta */
@@ -1542,13 +1596,17 @@ body.modo-imersivo .fundo{opacity:0;transition:opacity .4s var(--ease)}
 @keyframes quadroEntra{from{opacity:0;transform:scale(.4)}to{opacity:inherit;transform:none}}
 
 .g-trilha{display:flex;flex-wrap:wrap;gap:var(--s-1);align-items:center}
-.g-elo{width:18px;height:34px;border-radius:var(--r-fio);background:var(--accent)}
+/* A sequência é a coisa acesa da retrospectiva — uma por tela, e é esta:
+   é o número que o cartão foi feito pra mostrar. */
+.g-elo{width:18px;height:34px;border-radius:var(--r-fio);background:var(--accent);box-shadow:var(--luz)}
 @keyframes eloAcende{from{opacity:0;transform:translateY(8px) scaleY(.5)}to{opacity:1;transform:none}}
 .g-elo__mais{color:var(--dim);margin-left:var(--s-1)}
 
 .g-prog{display:block;height:8px;border-radius:var(--r-pill);background:var(--line);overflow:hidden;width:100%}
 .g-prog__fill{display:block;height:100%;border-radius:var(--r-pill);background:var(--accent)}
 .g-linha{width:100%;height:auto;display:block;overflow:visible}
+.g-linha.acesa .g-linha__traco{filter:var(--luz-svg)}
+.g-prog__fill.acesa{box-shadow:var(--luz)}
 
 /* ── 29. Agenda do mês e organização pessoal ───────────────── */
 .abas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--s-2);margin-bottom:var(--s-6)}

@@ -154,6 +154,10 @@ resposta, não conquista. Um controle por pergunta.
   trava `montando` existe pra isso, e tirá-la faz o app responder por você.
 - **Grade da entrada é `minmax(0,1fr)`.** A roleta é um trilho de 2000px com
   rolagem própria; com coluna `auto` ela estica a página inteira.
+- **Luz é classe, não padrão.** `--luz` / `--luz-svg` existem, mas só entram
+  em `.acesa` e em dois lugares fixos (barra do dia, elo da sequência).
+  **Uma coisa acesa por tela** — espalhar brilho é como se chega no vidro
+  fosco sem perceber.
 - **Âncora tem `scroll-margin` em cima e embaixo.** A barra de baixo é fixa;
   sem a margem, rolar até um item o deixa atrás dela.
 
@@ -163,6 +167,7 @@ resposta, não conquista. Um controle por pergunta.
   corrigidas (ativação de usuário consumida pelo PBKDF2, e dois pedidos de
   biometria num toque só). Falta um teste no aparelho de verdade — a folha
   tem um botão de diagnóstico que diz o que o aparelho responde.
-- **Seletor de período tipográfico** (ano grande, meses em lista, sem grade)
-  para a navegação de mês da Carteira — proposto, não construído. A lista do que eu faria em seguida está no fim de
+- **Seletor de período tipográfico** na navegação de mês da Carteira —
+  proposto no estudo, não construído. O cartão-pôster da Retrospectiva já usa
+  a mesma gramática (`.g-cal`), então é reaproveitar. A lista do que eu faria em seguida está no fim de
 `SUGESTOES.md`.

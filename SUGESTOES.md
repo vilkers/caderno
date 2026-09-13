@@ -25,6 +25,45 @@ seguida — em ordem de quanto muda a sua vida por unidade de trabalho.
   limpar concluídas, repetir ontem — desfazer no rodapé por alguns segundos.
   Confirmação só onde desfazer não salva (apagar o caderno inteiro).
 
+## Rodada 18 — a luz e o pôster
+
+Vieram de duas imagens que o Vilker apontou numa leva de referência: um
+painel com brilho e um calendário de pôster com uma vaca e uma girafa.
+
+### A luz não é o vidro fosco
+
+O painel que ele gostou trazia as duas coisas juntas, e elas são separáveis.
+O que entrou foi **o acento como fonte de luz** — sombra colorida difusa por
+baixo, não mais saturação. Em fundo quase preto isso troca o verbo: deixa de
+ser "a faixa chegou até aqui" e vira "isto está ligado". O que ficou de fora
+foi o vidro fosco, o gradiente ondulado e a bolha cromada.
+
+A regra está no `CLAUDE.md` e é o que impede o escorregão: **uma coisa acesa
+por tela**, e ela é a coisa que você foi ali ver. Por isso `--luz` é classe
+(`.acesa`) e não padrão de componente. Acesos hoje: a barra do status do dia
+e o elo da sequência na retrospectiva.
+
+O gráfico de linha também mudou: a área virou degradê que morre no fundo, em
+vez de chapa translúcida. O que dá profundidade é o desmaio, não a opacidade.
+
+### O pôster do período
+
+A retrospectiva sempre foi cartão de história; faltava a peça que vale
+printar. O calendário da referência escreve o mês como **texto corrido** —
+número do dia com a inicial do dia da semana em sobrescrito, domingo
+rebaixado, dia fechado circulado — com uma palavra gigante segurando a
+composição. Sem grade, sem tabela: a hierarquia toda em cor, peso e um
+círculo.
+
+Entra só até 45 dias. Trezentos e sessenta e cinco números em texto corrido
+não é pôster, é parede de números.
+
+Uma briga de CSS no caminho vale registro: a regra geral do cartão empurra o
+gráfico pro fim com `margin-top:auto`, o que num pôster abre um buraco no
+meio da composição. O `:not(.card--poster)` nos seletores existentes resolveu
+melhor que um override — override de especificidade contra `:has()` é briga
+que se perde.
+
 ## Rodada 17 — o mostrador, o número que respira, e a tela que anda
 
 Dois bugs de uso diário e a virada visual que veio de referência de fora.
