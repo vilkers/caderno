@@ -528,7 +528,7 @@ function painelTarefas(ctx) {
 
     /* Na ordem que não é a manual, a alça não existe — arrastar ali não faria
        nada, e escondida com opacity ela ainda roubava 50px da linha. */
-    if (ordem === 'manual' && !t.done) {
+    if (ordem === 'manual' && !busca && !t.done) {
       row.append(el('button.todo__pega', {
         type: 'button', 'aria-label': `Mover: ${t.text}`, title: 'Arraste para ordenar (ou use ↑ ↓)',
         html: PEGA_SVG,
@@ -582,7 +582,9 @@ function painelTarefas(ctx) {
     stagger(ul, '.todo');
   }
 
-  if (tab !== 'feitas' && ordem === 'manual') {
+  /* Com busca ativa a lista na tela é um recorte: reordenar aqui gravaria
+     posições 0..n só pros visíveis e embaralharia os escondidos. */
+  if (tab !== 'feitas' && ordem === 'manual' && !busca) {
     listaArrastavel(primeira, {
       itemSel: '.todo:not(.is-done)',
       pegaSel: '.todo__pega',

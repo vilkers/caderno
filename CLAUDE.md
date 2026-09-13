@@ -141,10 +141,23 @@ resposta, não conquista. Um controle por pergunta.
   `agendaAutomatica` diz se foi o relógio ou você.
 - **Entrada e saída não se somam.** Onde o app mostra o que ficou pendente,
   "não pago" e "não caiu" são duas contas separadas.
+- **Arrasto ancora no dedo, não na largada.** `arrastar.js` deriva a posição
+  de onde o item ESTÁ a cada quadro. Medir a partir do ponto inicial fazia o
+  item correr na frente do dedo e ir parar no fim da lista.
+- **WebAuthn precisa de gesto fresco.** Nada de `await` lento antes de
+  `create()`/`get()`, e nunca dois pedidos de biometria no mesmo toque — o
+  Safari recusa. Por isso ligar o Face ID tem dois toques.
+- **Troca de tela usa View Transitions** (`paint({ rumo })`). Barras fixas têm
+  `view-transition-name` próprio pra não deslizarem junto.
 - **Âncora tem `scroll-margin` em cima e embaixo.** A barra de baixo é fixa;
   sem a margem, rolar até um item o deixa atrás dela.
 
 ## Pendência conhecida
 
-Nenhuma aberta. A lista do que eu faria em seguida está no fim de
+- **Face ID no iPhone ainda não confirmado.** Duas causas prováveis foram
+  corrigidas (ativação de usuário consumida pelo PBKDF2, e dois pedidos de
+  biometria num toque só). Falta um teste no aparelho de verdade — a folha
+  tem um botão de diagnóstico que diz o que o aparelho responde.
+- **A bateria inteira não rodou na última rodada.** Passaram arrastar, face,
+  nav, nav2 e smoke2. Rode `tools/testar.sh` antes do próximo commit. A lista do que eu faria em seguida está no fim de
 `SUGESTOES.md`.

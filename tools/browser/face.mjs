@@ -48,6 +48,13 @@ await p.click('#menuBtn'); await p.waitForTimeout(400);
 await p.click('.menuitem:has-text("Ajustes")'); await p.waitForTimeout(1000);
 const linha = p.locator('.row:has-text("Entrar com Face ID")');
 checa('a linha do Face ID existe em Ajustes', await linha.count() === 1);
+/* o diagnóstico existe pra quando falhar num aparelho que não temos aqui */
+const diag = await p.evaluate(async () => {
+  const bio = await import('./js/biometria.js');
+  return bio.diagnostico();
+});
+console.log('diagnóstico do aparelho:', Object.entries(diag).map(([k,v])=>`${k}=${v}`).join(' · '));
+checa('o diagnóstico responde', typeof diag.webauthn === 'boolean');
 await p.waitForTimeout(600);
 const ligavel = await linha.locator('button').isEnabled();
 checa('com leitor virtual, o botão fica habilitado', ligavel === temPrf, ` (leitor: ${temPrf})`);
@@ -58,11 +65,17 @@ if (!temPrf) {
   process.exit(0);
 }
 
-// ligar
+// ligar — em um ou dois toques, conforme o aparelho devolva o PRF na criação
 await linha.locator('button').click(); await p.waitForTimeout(600);
 await p.fill('#sheetBody input[type=password]', 'senha1234');
 await p.click('#sheetBody .sheet__actions .btn--solid');
 await p.waitForTimeout(2500);
+const pediuSegundo = await p.locator('#sheetBody .btn--solid:has-text("confirmar")').count();
+console.log('pediu segundo toque:', !!pediuSegundo);
+if (pediuSegundo) {
+  await p.click('#sheetBody .sheet__actions .btn--solid');
+  await p.waitForTimeout(2500);
+}
 const selo = await p.evaluate(() => localStorage.getItem('caderno.face.v1'));
 checa('ligar grava o selo neste aparelho', !!selo);
 checa('e a senha NÃO está em texto puro no selo', !!selo && !selo.includes('senha1234'));

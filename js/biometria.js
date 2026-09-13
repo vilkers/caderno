@@ -69,11 +69,23 @@ export async function disponivel() {
 const aleatorio = n => crypto.getRandomValues(new Uint8Array(n));
 
 /**
- * Liga o Face ID: cria a credencial, colhe o PRF e guarda a senha selada.
- * Lança Error('prf') quando o aparelho não sabe fazer PRF — que é o único
- * caso em que a coisa toda não tem como funcionar.
+ * Liga o Face ID — parte 1 de duas, e a divisão é o conserto.
+ *
+ * O Safari do iPhone só deixa chamar WebAuthn com **ativação de usuário
+ * fresca**: o toque que acabou de acontecer. A versão anterior fazia duas
+ * coisas que matavam isso, e por isso não funcionava no aparelho:
+ *
+ *   1. conferia a senha ANTES (PBKDF2, 310 mil voltas, um a dois segundos) —
+ *      quando o `create()` era chamado, a ativação já tinha expirado;
+ *   2. quando a criação não devolvia o PRF — que é o caso do Safari — chamava
+ *      um `get()` logo em seguida, **no mesmo toque**. O segundo pedido de
+ *      biometria num gesto só é recusado.
+ *
+ * Agora: o `create()` é a primeira coisa que acontece no toque, a senha é
+ * conferida depois, e quando falta o PRF a tela pede um segundo toque em vez
+ * de tentar por conta própria.
  */
-export async function armar(senha, nome = 'Caderno') {
+export async function criarCredencial(nome = 'Caderno') {
   const prfSalt = aleatorio(32);
   const cred = await navigator.credentials.create({
     publicKey: {
@@ -93,19 +105,47 @@ export async function armar(senha, nome = 'Caderno') {
   });
   if (!cred) throw new Error('cancelado');
   const ext = cred.getClientExtensionResults?.() || {};
-  if (!ext.prf?.enabled && !ext.prf?.results?.first) throw new Error('prf');
+  const prf = ext.prf?.results?.first || null;
+  if (!prf && !ext.prf?.enabled) throw new Error('prf');
+  return { id: new Uint8Array(cred.rawId), prfSalt, prf, precisaSegundoToque: !prf };
+}
 
-  const id = new Uint8Array(cred.rawId);
-  /* Nem todo aparelho devolve o PRF já na criação; quando não devolve, uma
-     segunda conferência (a que o app faz todo dia pra entrar) colhe. */
-  const prf = ext.prf?.results?.first || await colher(id, prfSalt);
+/** Parte 2: o segundo toque, quando a criação não devolveu o segredo. */
+export async function completarCredencial(cred) {
+  return { ...cred, prf: await colher(cred.id, cred.prfSalt), precisaSegundoToque: false };
+}
+
+/** Guarda a senha selada. Nada aqui pede biometria — já foi pedida. */
+export async function guardar(senha, cred) {
   const hkdfSalt = aleatorio(16);
-  const chave = await chaveDePrf(new Uint8Array(prf), hkdfSalt);
+  const chave = await chaveDePrf(new Uint8Array(cred.prf), hkdfSalt);
   const selo = await selar(chave, senha);
   localStorage.setItem(CHAVE, JSON.stringify({
-    v: 1, id: b64(id), prfSalt: b64(prfSalt), hkdfSalt: b64(hkdfSalt), ...selo, armadaEm: Date.now(),
+    v: 1, id: b64(cred.id), prfSalt: b64(cred.prfSalt), hkdfSalt: b64(hkdfSalt),
+    ...selo, armadaEm: Date.now(),
   }));
   return true;
+}
+
+/**
+ * O que este aparelho responde, em uma linha. Existe porque "não funcionou"
+ * não é diagnóstico: sem isto, um Face ID que falha no iPhone é indepurável
+ * daqui — e é o aparelho dele que tem a resposta.
+ */
+export async function diagnostico() {
+  const out = {
+    webauthn: !!globalThis.PublicKeyCredential,
+    https: location.protocol === 'https:' || location.hostname === 'localhost',
+    dominio: location.hostname,
+    leitor: await disponivel(),
+    prfConhecido: null,
+    armada: armada(),
+  };
+  try {
+    out.prfConhecido = await PublicKeyCredential.getClientCapabilities?.()
+      .then(c => c?.['extension:prf'] ?? null) ?? null;
+  } catch { /* navegador antigo não tem getClientCapabilities */ }
+  return out;
 }
 
 /** Pede o rosto e devolve a senha. Lança Error('cancelado') se você desistir. */

@@ -47,17 +47,24 @@ const ctx = {
   weekAnchor: null,
   go(v) {
     if (!VIEWS[v] || v === ctx.view) return;
+    const rumo = rumoEntre(ctx.view, v);
     history.pushState({ view: v }, '');
     ctx.view = v;
-    paint();
+    paint({ rumo });
   },
   /* volta pela pilha do navegador — o botão físico do Android também serve */
   voltar() {
     if (history.state?.view && history.state.view !== 'hoje') history.back();
-    else { ctx.view = PRIMARIAS[0]; history.replaceState({ view: PRIMARIAS[0] }, ''); paint(); }
+    else { ctx.view = PRIMARIAS[0]; history.replaceState({ view: PRIMARIAS[0] }, ''); paint({ rumo: 'topo' }); }
   },
   pintaTopo() { pintaIdentidade(); },
-  setDay(k) { ctx.day = k; if (ctx.view === 'hoje') paint(); },
+  /* Andar no tempo anda na tela: ontem entra pela esquerda, amanhã pela
+     direita. É a mesma direção do dedo que arrasta a faixa de dias. */
+  setDay(k) {
+    const rumo = k > ctx.day ? 'esquerda' : k < ctx.day ? 'direita' : null;
+    ctx.day = k;
+    if (ctx.view === 'hoje') paint({ rumo });
+  },
   rerender() { paint(); },
   lock() { doLock(); },
 };
@@ -65,7 +72,31 @@ const ctx = {
 let medirFundo = () => {};
 
 /* ── Pintura ───────────────────────────────────────────────── */
-function paint() {
+
+/**
+ * Para onde a tela vai. Entre as quatro de baixo é lateral, na ordem em que
+ * elas aparecem na barra; entrar numa tela secundária afunda e sair dela
+ * sobe. O movimento passa a dizer onde você está indo — antes toda troca era
+ * o mesmo wipe, que não informava nada.
+ */
+function rumoEntre(de, para) {
+  const a = PRIMARIAS.indexOf(de), b = PRIMARIAS.indexOf(para);
+  if (a >= 0 && b >= 0) return b > a ? 'esquerda' : 'direita';
+  return b < 0 ? 'fundo' : 'topo';
+}
+
+function paint(opts = {}) {
+  const trocar = () => pintarAgora();
+  const raiz = document.documentElement;
+  /* Sem suporte, sem rumo, ou com movimento desligado: troca seca, como era.
+     A transição é enfeite — a tela tem que aparecer de qualquer jeito. */
+  if (!opts.rumo || !document.startViewTransition || !motionOn()) return trocar();
+  raiz.dataset.vt = opts.rumo;
+  const t = document.startViewTransition(trocar);
+  t.finished.finally(() => { delete raiz.dataset.vt; }).catch(() => {});
+}
+
+function pintarAgora() {
   const main = $('#main');
   ctx.softRefresh = null;              // cada tela instala o seu, se quiser
   if (ctx.view !== 'resumo') document.body.classList.remove('modo-imersivo');
@@ -169,12 +200,15 @@ function prepararFaceId(isNew) {
       await store.unlockVault(await biometria.entrar());
       enterApp();
     } catch (ex) {
+      /* O nome do erro vai pra tela quando não é um caso conhecido: "não
+         consegui" não dá pra depurar de longe, e é o aparelho dele que sabe. */
       err.textContent = {
         cancelado: 'Face ID cancelado.',
         prf: 'Este aparelho não devolveu a chave. Entre com a senha.',
         selo: 'A senha mudou desde que o Face ID foi ligado. Entre com a senha e ligue de novo.',
         senha: 'A senha guardada não abre mais o cofre. Entre com a senha.',
-      }[ex.name === 'NotAllowedError' ? 'cancelado' : ex.message] || 'Não consegui usar o Face ID.';
+      }[ex.name === 'NotAllowedError' ? 'cancelado' : ex.message]
+        || `Face ID falhou: ${ex.name || ''} ${ex.message || ''}`.trim();
     } finally {
       btn.disabled = false;
       btn.querySelector('span').textContent = 'ENTRAR COM FACE ID';

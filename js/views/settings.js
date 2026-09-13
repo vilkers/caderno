@@ -562,39 +562,79 @@ function faceRow(ctx) {
 }
 
 function ligarFace(ctx) {
+  /* Dois toques, e cada um com a sua ativação de usuário: é o que o Safari
+     exige e é o que faltava. O primeiro cria a credencial, o segundo colhe o
+     segredo — quando a criação não o devolve, que é o caso do iPhone. */
+  let cred = null;
   openSheet('Entrar com Face ID', close => {
     const campo = field('SUA SENHA', el('input', { type: 'password', autocomplete: 'current-password' }));
     const err = el('p.lock__error.micro');
+    const passo = el('p.muted', {
+      style: { fontSize: 'var(--t-corpo)', lineHeight: '1.6' },
+      text: 'A senha fica guardada neste aparelho, cifrada por uma chave que só o Face ID libera. '
+        + 'Vale dizer com todas as letras: a partir daí, quem destranca o seu telefone destranca o caderno. '
+        + 'A senha continua sendo a única forma de abrir o cofre em qualquer outro aparelho.',
+    });
+    const botao = el('button.btn.btn--solid', { type: 'button' }, [el('span', { text: 'ligar' })]);
+
+    const falhou = ex => {
+      const nome = ex?.name === 'NotAllowedError' ? 'cancelado' : ex?.message;
+      err.textContent = {
+        prf: 'Este aparelho não sabe derivar chave por biometria (precisa de iOS 18, ou Chrome/Edge recente).',
+        cancelado: 'Cancelado — ou o aparelho recusou o pedido.',
+        senha: 'Senha incorreta.',
+      }[nome] || `Não consegui: ${ex?.name || ''} ${ex?.message || ''}`.trim();
+      botao.disabled = false;
+      botao.querySelector('span').textContent = cred ? 'confirmar com o Face ID' : 'ligar';
+    };
+
+    const fechar = async () => {
+      /* A senha é conferida DEPOIS da biometria: conferir antes consome o
+         toque (PBKDF2 leva mais de um segundo) e o Safari recusa o WebAuthn
+         que vem em seguida. */
+      const senha = campo.querySelector('input').value;
+      try { await vault.unlock(senha); }
+      catch { throw new Error('senha'); }
+      await biometria.guardar(senha, cred);
+      close(); toast('Face ID ligado'); ctx.rerender();
+    };
+
+    botao.addEventListener('click', async () => {
+      err.textContent = '';
+      botao.disabled = true;
+      try {
+        if (!cred) {
+          botao.querySelector('span').textContent = 'confirmando…';
+          cred = await biometria.criarCredencial(store.state.profile?.nome || 'Caderno');
+          if (cred.precisaSegundoToque) {
+            passo.textContent = 'Credencial criada. Agora toque de novo e confirme com o Face ID — '
+              + 'este aparelho só entrega a chave numa segunda conferência, e cada uma precisa do seu toque.';
+            botao.disabled = false;
+            botao.querySelector('span').textContent = 'confirmar com o Face ID';
+            return;
+          }
+        } else {
+          cred = await biometria.completarCredencial(cred);
+        }
+        botao.querySelector('span').textContent = 'guardando…';
+        await fechar();
+      } catch (ex) { falhou(ex); }
+    });
+
     return [
-      el('p.muted', { style: { fontSize: 'var(--t-corpo)', lineHeight: '1.6' },
-        text: 'A senha fica guardada neste aparelho, cifrada por uma chave que só o Face ID libera. '
-          + 'Vale dizer com todas as letras: a partir daí, quem destranca o seu telefone destranca o caderno. '
-          + 'A senha continua sendo a única forma de abrir o cofre em qualquer outro aparelho.' }),
-      campo, err,
+      passo, campo, err,
       el('div.sheet__actions', {}, [
         el('button.btn', { type: 'button', onclick: close }, [el('span', { text: 'cancelar' })]),
-        el('button.btn.btn--solid', {
-          type: 'button',
-          onclick: async e => {
-            const senha = campo.querySelector('input').value;
-            const b = e.currentTarget;
-            err.textContent = '';
-            try { await vault.unlock(senha); }
-            catch { return void (err.textContent = 'Senha incorreta.'); }
-            b.disabled = true; b.querySelector('span').textContent = 'confirmando…';
-            try {
-              await biometria.armar(senha, store.state.profile?.nome || 'Caderno');
-              close(); toast('Face ID ligado'); ctx.rerender();
-            } catch (ex) {
-              err.textContent = {
-                prf: 'Este aparelho não sabe derivar chave por biometria (precisa de iOS 18, ou Chrome/Edge recente).',
-                cancelado: 'Cancelado.',
-              }[ex.name === 'NotAllowedError' ? 'cancelado' : ex.message] || 'Não consegui ligar o Face ID aqui.';
-              b.disabled = false; b.querySelector('span').textContent = 'ligar';
-            }
-          },
-        }, [el('span', { text: 'ligar' })]),
+        botao,
       ]),
+      el('button.micro.reflink', {
+        type: 'button', style: { marginTop: 'var(--s-4)' },
+        onclick: async () => {
+          const d = await biometria.diagnostico();
+          err.textContent = `aparelho: ${Object.entries(d).map(([k, v]) => `${k}=${v}`).join(' · ')}`;
+        },
+        text: 'não funcionou? ver o que este aparelho responde',
+      }),
     ];
   });
 }
