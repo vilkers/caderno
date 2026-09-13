@@ -8,7 +8,7 @@
    mesma anotação, mesmo botão que fecha e reabre. Dois rituais parecidos são
    um ritual só, aprendido uma vez. */
 
-import { el, nf, moeda, monthKey, monthLabel, todayKey, parseKey, keyOf, daysInMonth, plural } from '../utils.js';
+import { el, nf, moeda, cifra, monthKey, monthLabel, todayKey, parseKey, keyOf, daysInMonth, plural } from '../utils.js';
 import * as store from '../store.js';
 import { num, did, isReduce, mesPendente } from '../analysis.js';
 import { iconBtn } from './today.js';
@@ -49,7 +49,7 @@ export function render(ctx) {
 
   view.append(el('div.totalzao', {}, [
     el('p.micro', { text: sobra >= 0 ? 'SOBROU NO MÊS' : 'FALTOU NO MÊS' }),
-    el('p.totalzao__n.num' + (sobra < 0 ? '.is-neg' : ''), { text: moeda(Math.abs(sobra)) }),
+    el('p.totalzao__n.num' + (sobra < 0 ? '.is-neg' : ''), {}, cifra(Math.abs(sobra))),
     el('p.nota-pe', {
       text: `${moeda(c.totalEntrada)} entrou · ${moeda(c.totalSaida)} saiu`
         + (cAntes.totalEntrada || cAntes.totalSaida
