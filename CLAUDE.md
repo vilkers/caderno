@@ -154,6 +154,9 @@ resposta, não conquista. Um controle por pergunta.
   trava `montando` existe pra isso, e tirá-la faz o app responder por você.
 - **Grade da entrada é `minmax(0,1fr)`.** A roleta é um trilho de 2000px com
   rolagem própria; com coluna `auto` ela estica a página inteira.
+- **Sombra não atravessa `overflow:hidden`.** A barra do dia acendia no CSS e
+  o container recortava a sombra fora — mudança publicada que não aparecia na
+  tela. O arredondamento é do preenchimento, não do trilho.
 - **Luz é classe, não padrão.** `--luz` / `--luz-svg` existem, mas só entram
   em `.acesa` e em dois lugares fixos (barra do dia, elo da sequência).
   **Uma coisa acesa por tela** — espalhar brilho é como se chega no vidro
