@@ -221,9 +221,34 @@ export function observarTopo() {
 }
 
 /* ── Swipe horizontal (troca de dia no celular) ────────────── */
+/**
+ * O gesto pertence a quem rola. Se o dedo encostou dentro de alguma coisa que
+ * rola de lado — a roleta, a faixa de dias, as pílulas de filtro —, arrastar
+ * pro lado é a rolagem dela, não a navegação da tela.
+ *
+ * Sem isto, arrastar a roleta do sono mudava o dia: o mesmo movimento
+ * disparava os dois. E não era só a roleta — hoje há cinco elementos com
+ * rolagem lateral por cima do `onSwipe`.
+ *
+ * `scrollWidth > clientWidth` pergunta se ele PODE rolar, não se ainda tem
+ * pra onde: arrastar um mostrador que já está no fim continua sendo o gesto
+ * do mostrador.
+ */
+const rolaDeLado = (alvo, limite) => {
+  for (let n = alvo; n && n !== limite.parentNode; n = n.parentElement) {
+    if (n.nodeType !== 1) continue;
+    if (n.scrollWidth > n.clientWidth + 2) {
+      const ov = getComputedStyle(n).overflowX;
+      if (ov === 'auto' || ov === 'scroll') return true;
+    }
+  }
+  return false;
+};
+
 export function onSwipe(node, { left, right, threshold = 70 } = {}) {
   let x0 = null, y0 = null;
   node.addEventListener('touchstart', e => {
+    if (rolaDeLado(e.target, node)) { x0 = y0 = null; return; }
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
   }, { passive: true });
   node.addEventListener('touchend', e => {

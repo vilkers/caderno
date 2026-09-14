@@ -157,6 +157,11 @@ resposta, não conquista. Um controle por pergunta.
 - **Sombra não atravessa `overflow:hidden`.** A barra do dia acendia no CSS e
   o container recortava a sombra fora — mudança publicada que não aparecia na
   tela. O arredondamento é do preenchimento, não do trilho.
+- **Quem rola de lado é dono do gesto.** `onSwipe` em `ui.js` ignora o toque
+  que começou dentro de um elemento com rolagem horizontal. Sem isso, arrastar
+  a roleta mudava o dia — e são cinco os elementos que rolam de lado por cima
+  do swipe (roleta, faixa de dias, chips, tabs, abas). `tools/browser/gestos.mjs`
+  confere os dois lados: o gesto não vaza, e continua funcionando no corpo.
 - **Luz é classe, não padrão.** `--luz` / `--luz-svg` existem, mas só entram
   em `.acesa` e em dois lugares fixos (barra do dia, elo da sequência).
   **Uma coisa acesa por tela** — espalhar brilho é como se chega no vidro
