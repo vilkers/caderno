@@ -168,4 +168,5 @@ function onReturn() {
 for (const event of ['pointerdown', 'keydown']) document.addEventListener(event, () => { lastActivity = Date.now(); });
 document.addEventListener('visibilitychange', onReturn);
 setInterval(onReturn, 60000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 login();
