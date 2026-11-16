@@ -19,6 +19,7 @@ import { painelContas } from './agenda.js';
 import { mesPendente } from '../analysis.js';
 import * as central from '../chatgpt.js';
 import * as vault from '../vault.js';
+import { FINANCE_ACCESS, TASK_EXPORT, makeTransfer } from '../companion-transfer.js';
 
 const ABAS = [
   ['tarefas', 'Tarefas'],
@@ -73,6 +74,14 @@ export function render(ctx) {
       el('span.micro.aba__n' + (resumo[id] === 'vazio' ? '.is-vazio' : ''), { text: resumo[id] }),
     ]))));
 
+  if (aba === 'carteira' || aba === 'tarefas') {
+    const finance = aba === 'carteira';
+    view.append(el('div.wrap', {}, [el('button.btn.btn--sm', {
+      type: 'button', text: finance ? 'Conectar app Financeiro' : 'Preparar migração de tarefas',
+      onclick: () => mostrarTransferencia(finance),
+    })]));
+  }
+
   if (aba !== 'tarefas' && !simpleWallet) view.append(navMes(ctx, mes));
 
   /* O convite pra fechar o mês mora aqui, e não no check-in: o check-in é
@@ -95,6 +104,35 @@ export function render(ctx) {
       : painelCarteira(ctx, mes),
   );
   return view;
+}
+
+function mostrarTransferencia(finance) {
+  const connection = central.config();
+  if (finance && !connection) { toast('Conecte a Central em Ajustes → Check-in com ChatGPT.'); return; }
+  const session = store.getSession();
+  const data = finance
+    ? { owner: connection.owner, repo: connection.repo, from: connection.from, token: connection.token }
+    : store.openTodos().map(({ id, text, due, star }) => ({ id, text, due, star }));
+  openSheet(finance ? 'Conectar app Financeiro' : 'Migrar tarefas abertas', () => {
+    const code = el('textarea', { readOnly: true, rows: '3', 'aria-label': 'Código cifrado' });
+    const status = el('p.micro', { role: 'status', text: 'Preparando código cifrado…' });
+    const copy = el('button.btn.btn--solid', { type: 'button', disabled: true, text: 'Copiar código', onclick: async () => {
+      try { await navigator.clipboard.writeText(code.value); status.textContent = 'Código copiado.'; }
+      catch { code.focus(); code.select(); status.textContent = 'Toque em Copiar na seleção.'; }
+    } });
+    makeTransfer(session, finance ? FINANCE_ACCESS : TASK_EXPORT, data).then(value => {
+      if (store.getSession() !== session || !code.isConnected) return;
+      code.value = value;
+      copy.disabled = false;
+      status.textContent = '';
+    }).catch(err => { status.textContent = err.message; });
+    return [
+      el('p.muted', { text: finance
+        ? 'Copie o código, abra o ícone Financeiro e cole junto com a senha do Caderno.'
+        : `${data.length} tarefas abertas. Cole o código e a senha do Caderno em Importar do Caderno, no app Tarefas. O histórico completo fica no cofre original.` }),
+      code, status, copy,
+    ];
+  });
 }
 
 const TITULOS = {

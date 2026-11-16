@@ -81,11 +81,16 @@ export async function readCentralWallet() {
   const session = store.getSession();
   if (!session) throw new Error('Destranque o Caderno.');
   if (!c) throw new Error('Conecte o repositório privado em Ajustes → Check-in com ChatGPT.');
+  const record = await readWalletForConnection(c);
+  if (config() !== c || store.getSession() !== session) throw new Error('A conexão mudou. Abra a Carteira e tente de novo.');
+  return record;
+}
+
+export async function readWalletForConnection(c) {
   const branch = await privateRepo(c);
   const res = await github(c, `/contents/${WALLET_PATH}?ref=${encodeURIComponent(branch)}`);
   if (!res.ok) throw new Error(res.status === 404 ? 'A Carteira ainda não foi preparada neste repositório privado.' : 'Não consegui consultar a Carteira na Central.');
   const file = await res.json();
-  if (config() !== c || store.getSession() !== session) throw new Error('A conexão mudou. Abra a Carteira e tente de novo.');
   const data = decodeDocument(file);
   store.centralWalletPlan(data);
   return { data, sha: file.sha, source: `${c.owner}/${c.repo}`.toLowerCase() };
