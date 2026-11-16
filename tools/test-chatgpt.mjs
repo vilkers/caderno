@@ -90,4 +90,13 @@ assert.equal(store.state.settings.sync.token, 'token-da-sincronia');
 assert.equal(chatGPT.config().token, 'token-de-teste');
 await store.flush();
 
+store.lockVault();
+queue(request('limpar', gym, null, true));
+assert.equal(await chatGPT.sync(), undefined);
+assert.equal(remote.requests.length, 1);
+await store.unlockVault('senha-de-teste');
+await chatGPT.sync();
+assert.equal(store.getVal(today, gym), undefined);
+assert.equal(remote.results.at(-1).status, 'applied');
+
 console.log('Check-in aprovado: privacidade, concorrência, conflitos, cofre e JSON sem credenciais.');

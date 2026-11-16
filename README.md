@@ -437,6 +437,7 @@ outra atualização. Cada pedido tem `id` único, `date` em `AAAA-MM-DD` e
 `changes` com objetos `category` (ID da categoria), `value` (novo valor) e
 `previous` (valor lido em `days[date].values`, ou `null` se vazio). Use números
 para horas, escalas e contagens, `true` para marcar e texto para campos livres.
+Para limpar uma marcação a pedido do usuário, envie `value: null`.
 O app aplica o pedido inteiro se os valores anteriores baterem. Depois remove
 o pedido da fila e informa `applied` ou `conflict` em `results`, com o mesmo ID.
 `applied` confirma a gravação. Um pedido ainda na fila aguarda o app abrir.

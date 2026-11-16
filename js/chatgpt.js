@@ -91,6 +91,7 @@ function snapshot(from, active) {
 }
 
 function validValue(cat, value) {
+  if (value === null) return true;
   if (cat.type === 'toggle') return value === true;
   if (cat.type === 'text') return typeof value === 'string' && value.trim().length > 0 && value.length <= 2000;
   if (!Number.isFinite(value) || value > store.scaleMax(cat)) return false;
