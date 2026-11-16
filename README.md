@@ -481,14 +481,15 @@ Instale pelo Safari com **Compartilhar → Adicionar à Tela de Início → Abri
 como App Web**. Abra os apps pelos novos ícones antes de configurar o acesso.
 
 - **Financeiro.** No Caderno instalado, abra **Pessoal → Carteira → Conectar
-  app Financeiro**. Copie o código cifrado e use-o com a senha do Caderno no
-  Financeiro. O código contém a conexão existente com a Central privada. O
+  app Financeiro**. Escolha uma senha para o novo app, gere o código cifrado
+  e use os dois no Financeiro. O Face ID pode destrancar o Caderno para gerar
+  o código. O código contém a conexão existente com a Central privada. O
   Financeiro consulta o mesmo `carteira.json` que Claude Code e ChatGPT Work
   atualizam. A atualização manual e a consulta ao voltar ao app já funcionam.
 - **Tarefas.** Autorize o Google Tasks com o ID OAuth de aplicativo web
   descrito acima. O app lê e edita as tarefas direto no Google Tasks. Para
   migrar, gere o código cifrado em **Pessoal → Tarefas → Preparar migração
-  de tarefas** e use **Importar do Caderno** no Tarefas. A prévia identifica
+  de tarefas** com uma senha para a migração e use **Importar do Caderno** no Tarefas. A prévia identifica
   os itens já vinculados. Os itens pendentes entram na lista **Caderno** com
   seus prazos e prioridades. O código contempla apenas tarefas abertas.
 

@@ -46,10 +46,10 @@ function login(forceSetup = false) {
   } }, [
     el('h2', { text: saved ? 'Destrancar Carteira' : 'Conectar à Central' }),
     ...(!saved ? [
-      el('p.muted', { text: 'No Caderno instalado, vá em Pessoal → Carteira → Conectar app Financeiro e copie o código cifrado.' }),
+      el('p.muted', { text: 'No Caderno instalado, vá em Pessoal → Carteira → Conectar app Financeiro, escolha uma senha e copie o código cifrado.' }),
       el('label', {}, ['Código do Caderno', code]),
     ] : []),
-    el('label', {}, ['Senha do Caderno', password]),
+    el('label', {}, [saved ? 'Senha do Financeiro' : 'Senha escolhida ao gerar o código', password]),
     el('div.actions', {}, [submit, saved ? el('button', { type: 'button', text: 'Usar outro código', onclick: () => login(true) }) : null]),
     status,
   ]);

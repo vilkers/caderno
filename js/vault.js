@@ -112,6 +112,12 @@ export async function seal(session, data) {
   };
 }
 
+export async function sealWithPassword(password, data) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await deriveKey(password, salt);
+  return seal({ key, salt, iters: ITER }, data);
+}
+
 /** Abre um blob cifrado com QUALQUER sal, usando a senha viva da sessão. */
 export async function open(blob, password = live) {
   if (!password) throw new Error('trancado');
