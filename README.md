@@ -488,10 +488,11 @@ como App Web**. Abra os apps pelos novos ícones antes de configurar o acesso.
   atualizam. A atualização manual e a consulta ao voltar ao app já funcionam.
 - **Tarefas.** Autorize o Google Tasks com o ID OAuth de aplicativo web
   descrito acima. O app lê e edita as tarefas direto no Google Tasks. Para
-  migrar, gere o código cifrado em **Pessoal → Tarefas → Preparar migração
-  de tarefas** com uma senha para a migração e use **Importar do Caderno** no Tarefas. A prévia identifica
-  os itens já vinculados. Os itens pendentes entram na lista **Caderno** com
-  seus prazos e prioridades. O código contempla apenas tarefas abertas.
+  migrar, abra **Pessoal → Tarefas → Migrar para Google Tasks** no Caderno e
+  confirme com **Autorizar e migrar**. Use o mesmo ID do cliente OAuth. A
+  migração envia as tarefas abertas para a lista **Caderno**, com prazos e
+  prioridades, e reutiliza os itens já vinculados. A tela inclui a opção
+  de gerar um código cifrado para transferência para o outro app.
 
 Confira os dois destinos no iPhone e guarde uma exportação cifrada do Caderno
 antes de concluir a troca de interface no app original.

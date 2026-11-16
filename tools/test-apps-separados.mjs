@@ -66,6 +66,8 @@ assert.equal(store.isUnlocked(), false);
 
 const records = [{ id: 'um', text: 'Primeira', due: today }, { id: 'dois', text: 'Segunda', due: null, star: true }];
 assert.equal(migrationPlan(records, []).length, 2);
+assert.equal(await importCaderno('google-ficticio', records, () => false), 0);
+assert.equal(googleBoards.length, 0);
 await assert.rejects(importCaderno('google-ficticio', records), /503/);
 assert.equal(googleItems.length, 1);
 assert.equal(await importCaderno('google-ficticio', records), 1);
