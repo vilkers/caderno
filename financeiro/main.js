@@ -3,10 +3,13 @@ import { centralWalletPlan } from '../js/store.js';
 import { readWalletForConnection } from '../js/chatgpt.js';
 import { FINANCE_ACCESS, openTransfer } from '../js/companion-transfer.js';
 
+import * as biometria from '../js/biometria.js';
+
 const KEY = 'caderno.financeiro.acesso.v1';
+const FACE_KEY = 'caderno.financeiro.face.v1';
 const app = document.querySelector('#app');
 const brl = cents => moeda(cents / 100, { cents: 2 });
-let access, revision, lastActivity = 0;
+let access, revision, facePassword, lastActivity = 0;
 
 function render(...content) {
   document.body.classList.remove('entry');
@@ -17,23 +20,28 @@ function render(...content) {
 function login(forceSetup = false) {
   access = null;
   revision = null;
+  facePassword = null;
   const saved = forceSetup ? null : localStorage.getItem(KEY);
   const password = el('input', { type: 'password', autocomplete: 'current-password', required: true });
   const code = el('textarea', { rows: 3, spellcheck: 'false', autocapitalize: 'none', required: true });
   const status = el('p.status', { role: 'status' });
   const submit = el('button.primary', { type: 'submit', text: saved ? 'Entrar' : 'Conectar Financeiro' });
-  const form = el('form.panel.stack', { onsubmit: async event => {
-    event.preventDefault();
+  async function unlock(useFace) {
     submit.disabled = true;
     status.classList.remove('error');
     status.textContent = 'Abrindo a Carteira…';
     try {
       const envelope = saved || code.value.trim();
-      const connection = await openTransfer(envelope, password.value, FINANCE_ACCESS);
+      const secret = useFace ? await biometria.entrar(FACE_KEY) : password.value;
+      const connection = await openTransfer(envelope, secret, FINANCE_ACCESS);
       const record = await readWalletForConnection(connection);
       const wallet = centralWalletPlan(record.data);
       if (!form.isConnected) return;
-      if (!saved) localStorage.setItem(KEY, envelope);
+      if (!saved) {
+        localStorage.setItem(KEY, envelope);
+        biometria.desarmar(FACE_KEY);
+      }
+      facePassword = biometria.armada(FACE_KEY) ? null : secret;
       password.value = '';
       code.value = '';
       access = connection;
@@ -42,19 +50,57 @@ function login(forceSetup = false) {
       showWallet(wallet);
     } catch (error) {
       status.classList.add('error');
-      status.textContent = error.message;
-    } finally { submit.disabled = false; }
-  } }, [
+      status.textContent = useFace && (['prf', 'selo', 'cancelado', 'desarmada'].includes(error.message) || ['NotAllowedError', 'NotSupportedError'].includes(error.name))
+        ? faceError(error) : error.message;
+    } finally { submit.disabled = face.disabled = false; }
+  }
+  const face = el('button.primary', { type: 'button', text: 'Entrar com Face ID', onclick: () => { face.disabled = true; unlock(true); } });
+  const canUnlockWithFace = Boolean(saved && biometria.armada(FACE_KEY));
+  const form = el('form.panel.stack', { onsubmit: event => { event.preventDefault(); face.disabled = true; unlock(false); } }, [
     ...(!saved ? [
       el('p.muted', { text: 'No Caderno instalado, vá em Pessoal → Carteira → Conectar app Financeiro, escolha uma senha e copie o código cifrado.' }),
       el('label', {}, ['Código do Caderno', code]),
     ] : []),
-    el('label', {}, [saved ? 'Senha do Financeiro' : 'Senha escolhida ao gerar o código', password]),
-    el('div.actions', {}, [submit, saved ? el('button', { type: 'button', text: 'Usar outro código', onclick: () => login(true) }) : null]),
+    canUnlockWithFace ? face : null,
+    el(canUnlockWithFace ? 'details.connection-settings' : 'div.stack', {}, [
+      canUnlockWithFace ? el('summary', { text: 'Usar senha' }) : null,
+      el('label', {}, [saved ? 'Senha do Financeiro' : 'Senha escolhida ao gerar o código', password]),
+      el('div.actions', {}, [submit, saved ? el('button', { type: 'button', text: 'Usar outro código', onclick: () => login(true) }) : null]),
+    ]),
     status,
   ]);
   render(form);
   document.body.classList.add('entry');
+}
+
+function faceError(error) {
+  if (error.message === 'prf' || error.name === 'NotSupportedError') return 'O Face ID não está disponível neste navegador. Use a senha do Grana.';
+  if (error.name === 'NotAllowedError' || error.message === 'cancelado') return 'Face ID cancelado. Toque para tentar novamente.';
+  return 'Não consegui abrir com Face ID. Entre com a senha do Grana.';
+}
+
+function faceSetupButton(status) {
+  const connection = access;
+  let pending;
+  const button = el('button', { type: 'button', text: 'Ativar Face ID', onclick: async () => {
+    button.disabled = true;
+    try {
+      const credential = pending ? await biometria.completarCredencial(pending) : await biometria.criarCredencial('Grana');
+      if (access !== connection || !facePassword) return;
+      if (credential.precisaSegundoToque) {
+        pending = credential;
+        button.textContent = 'Confirmar Face ID';
+        return;
+      }
+      await biometria.guardar(facePassword, credential, FACE_KEY);
+      if (access !== connection) return;
+      facePassword = null;
+      button.remove();
+      status.textContent = 'Face ID ativado.';
+    } catch (error) { status.textContent = faceError(error); }
+    finally { button.disabled = false; }
+  } });
+  return button;
 }
 
 function itemRows(items, settled, emptyLabel) {
@@ -97,7 +143,7 @@ function showWallet(wallet) {
     el('section.panel.stack', {}, [el('h2', { text: `Contas de ${monthLabel(wallet.paymentMonth)}` }),
       ...itemRows(wallet.payments, 'Pago', 'Contas deste mês ainda não cadastradas.'),
     ]),
-    el('div.actions', {}, [refresh, el('button', { type: 'button', text: 'Trancar', onclick: () => login() })]),
+    el('div.actions', {}, [refresh, facePassword && !biometria.armada(FACE_KEY) ? faceSetupButton(status) : null, el('button', { type: 'button', text: 'Trancar', onclick: () => login() })]),
     status,
   ]));
 }
