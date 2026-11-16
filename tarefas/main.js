@@ -1,11 +1,15 @@
 import { el, addDays, humanDay, todayKey } from '../js/utils.js';
 import { CLIENT_KEY, DEFAULT_CLIENT_ID, loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
+import * as biometria from '../js/biometria.js';
+import * as vault from '../js/vault.js';
 import { TASK_EXPORT, openTransfer } from '../js/companion-transfer.js';
 import { loadBoards, createTask, changeTask, taskFields, dateOf, highPriority, migrationPlan, importCaderno } from './backend.js';
 
+const FACE_KEY = 'caderno.tarefas.face.v1';
+const SNAPSHOT = 'caderno.tarefas.copia.v1';
 const app = document.querySelector('#app');
 const FILTERS = [['today', 'Hoje'], ['week', 'Semana'], ['open', 'Abertas'], ['done', 'Concluídas']];
-let grant, boards = [], area = '', filter = 'today';
+let grant, faceSecret, syncedAt, boards = [], area = '', filter = 'today';
 
 function render(...content) {
   document.body.classList.remove('entry');
@@ -14,6 +18,71 @@ function render(...content) {
 
 function hasSession() {
   return grant?.expires > Date.now() + 15000;
+}
+
+function lock(message = '') {
+  grant = faceSecret = syncedAt = null;
+  boards = [];
+  area = '';
+  if (!biometria.armada(FACE_KEY) || !localStorage.getItem(SNAPSHOT)) { login(message); return; }
+  const status = el('p.status', { role: 'status', text: message });
+  const face = el('button.primary', { type: 'button', text: 'Entrar com Face ID', onclick: async () => {
+    face.disabled = true;
+    try {
+      const secret = await biometria.entrar(FACE_KEY);
+      const snapshot = await vault.open(JSON.parse(localStorage.getItem(SNAPSHOT)), secret);
+      if (!face.isConnected) return;
+      faceSecret = secret;
+      boards = snapshot.boards;
+      syncedAt = snapshot.syncedAt;
+      grant = snapshot.grant;
+      showTasks();
+      loadIdentity().catch(() => {});
+      if (hasSession()) updateBoards().then(updated => {
+        if (updated && document.querySelector('#taskOverview')) showTasks();
+      }).catch(() => {});
+    } catch { setError(status, new Error('Não consegui abrir com Face ID. Tente novamente.')); }
+    finally { face.disabled = false; }
+  } });
+  render(el('div.panel.stack', {}, [face, status,
+    el('details.connection-settings', {}, [el('summary', { text: 'Recuperar acesso' }),
+      el('button', { type: 'button', text: 'Conectar conta Google', onclick: () => login() })])]));
+  document.body.classList.add('entry');
+}
+
+async function rememberTasks() {
+  if (!faceSecret) return;
+  const secret = faceSecret;
+  const timestamp = syncedAt;
+  try {
+    const sealed = await vault.sealWithPassword(secret, { boards, syncedAt: timestamp, grant: hasSession() ? grant : null });
+    if (faceSecret === secret && syncedAt === timestamp) localStorage.setItem(SNAPSHOT, JSON.stringify(sealed));
+  } catch { /* A cópia anterior continua disponível se o armazenamento falhar. */ }
+}
+
+function setupFace(status) {
+  let pending;
+  const button = el('button', { type: 'button', text: 'Ativar Face ID', onclick: async () => {
+    button.disabled = true;
+    try {
+      const credential = pending ? await biometria.completarCredencial(pending) : await biometria.criarCredencial('Tarefas');
+      if (!button.isConnected) return;
+      if (credential.precisaSegundoToque) {
+        pending = credential;
+        button.textContent = 'Confirmar Face ID';
+        return;
+      }
+      const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
+      const sealed = await vault.sealWithPassword(secret, { boards, syncedAt, grant: hasSession() ? grant : null });
+      if (!button.isConnected) return;
+      await biometria.guardar(secret, credential, FACE_KEY);
+      localStorage.setItem(SNAPSHOT, JSON.stringify(sealed));
+      faceSecret = secret;
+      showTasks('Face ID ativado.');
+    } catch { setError(status, new Error('Não consegui ativar o Face ID neste navegador.')); }
+    finally { button.disabled = false; }
+  } });
+  return button;
 }
 
 function login(message = '') {
@@ -39,6 +108,8 @@ function login(message = '') {
       localStorage.setItem(CLIENT_KEY, clientId);
       grant = authorized;
       boards = loaded;
+      syncedAt = Date.now();
+      if (faceSecret) await rememberTasks();
       showTasks();
     } catch (error) { setError(status, error); }
     finally { submit.disabled = false; }
@@ -61,9 +132,21 @@ function setError(status, error) {
 async function updateBoards() {
   if (!hasSession()) throw new Error('Autorize o Google Tasks novamente.');
   const session = grant;
-  const data = await loadBoards(session.token);
+  let data;
+  try { data = await loadBoards(session.token); }
+  catch (error) {
+    if (grant === session && error.message === 'Autorize o Google Tasks novamente.') {
+      grant = null;
+      await rememberTasks();
+      if (faceSecret) showTasks();
+    }
+    throw error;
+  }
   if (grant !== session) return false;
   boards = data;
+  syncedAt = Date.now();
+  await rememberTasks();
+  if (grant !== session) return false;
   if (!boards.some(board => board.id === area)) area = '';
   return true;
 }
@@ -86,12 +169,22 @@ function visibleTasks() {
 }
 
 function showTasks(message = '') {
-  if (!hasSession()) { login('Autorize para consultar suas tarefas.'); return; }
+  if (!hasSession() && !faceSecret) { lock('Conecte sua conta para consultar suas tarefas.'); return; }
+  const connected = hasSession();
   const status = el('p.status', { role: 'status', text: message });
   const tasks = visibleTasks();
-  const refresh = el('button', { type: 'button', text: 'Atualizar', onclick: async () => {
+  const refresh = el('button', { type: 'button', text: connected ? 'Atualizar' : 'Sincronizar Google', onclick: async () => {
     refresh.disabled = true;
-    try { if (await updateBoards()) showTasks('Tarefas conferidas.'); }
+    try {
+      if (!hasSession()) {
+        if (!globalThis.google?.accounts?.oauth2) { login(); return; }
+        const secret = faceSecret;
+        const refreshed = await requestGoogleGrant(localStorage.getItem(CLIENT_KEY) || DEFAULT_CLIENT_ID);
+        if (faceSecret !== secret || !refresh.isConnected) return;
+        grant = refreshed;
+      }
+      if (await updateBoards()) showTasks('Tarefas conferidas.');
+    }
     catch (error) { setError(status, error); }
     finally { refresh.disabled = false; }
   } });
@@ -99,9 +192,10 @@ function showTasks(message = '') {
     el('option', { value: '', text: 'Todas as listas' }),
     ...boards.map(board => el('option', { value: board.id, selected: area === board.id, text: board.title })),
   ]);
-  render(el('div.stack', {}, [
+  render(el('div.stack', { id: 'taskOverview' }, [
+    !connected ? el('p.muted', { text: syncedAt ? 'Última sincronização: ' + new Date(syncedAt).toLocaleString('pt-BR') + '. Sincronize para editar.' : 'Sincronize para editar.' }) : null,
     el('div.actions', {}, [
-      el('button.primary', { type: 'button', text: '+ Nova tarefa', disabled: !boards.length, onclick: () => editTask() }),
+      el('button.primary', { type: 'button', text: '+ Nova tarefa', disabled: !boards.length || !connected, onclick: () => editTask() }),
       refresh,
     ]),
     el('label', {}, ['Lista', picker]),
@@ -113,8 +207,9 @@ function showTasks(message = '') {
         : el('p.muted', { text: filter === 'today' ? 'Nada com prazo para hoje. Veja Abertas para incluir tarefas sem prazo.' : 'Nenhuma tarefa neste recorte.' }),
     ]),
     el('div.actions', {}, [
-      el('button', { type: 'button', text: 'Importar do Caderno', onclick: showImport }),
-      el('button', { type: 'button', text: 'Desconectar', onclick: () => login() }),
+      el('button', { type: 'button', text: 'Importar do Caderno', disabled: !connected, onclick: showImport }),
+      !faceSecret ? setupFace(status) : null,
+      el('button', { type: 'button', text: 'Trancar', onclick: () => lock() }),
     ]),
     status,
   ]));
@@ -123,7 +218,7 @@ function showTasks(message = '') {
 function taskRow(task, board, status) {
   const due = dateOf(task);
   const completed = task.status === 'completed';
-  const action = el('button', { type: 'button', text: completed ? 'Reabrir' : 'Concluir', onclick: async () => {
+  const action = el('button', { type: 'button', text: completed ? 'Reabrir' : 'Concluir', disabled: !hasSession(), onclick: async () => {
     action.disabled = true;
     try {
       if (!hasSession()) throw new Error('Autorize o Google Tasks novamente.');
@@ -136,7 +231,7 @@ function taskRow(task, board, status) {
     el('div', {}, [el('p.task-title', { text: task.title }), el('p.meta.muted', {
       text: `${board.title} · ${due ? humanDay(due) : 'Sem prazo'}${!completed && due && due < todayKey() ? ' · Atrasada' : ''}${highPriority(task) ? ' · Prioridade' : ''}`,
     })]),
-    el('div.task-buttons', {}, [action, el('button', { type: 'button', text: 'Editar', onclick: () => editTask(task, board) })]),
+    el('div.task-buttons', {}, [action, el('button', { type: 'button', text: 'Editar', disabled: !hasSession(), onclick: () => editTask(task, board) })]),
   ]);
 }
 
@@ -211,4 +306,5 @@ function previewImport(records) {
   ]));
 }
 
-login();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
+lock();
