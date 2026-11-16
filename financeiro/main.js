@@ -9,6 +9,7 @@ const brl = cents => moeda(cents / 100, { cents: 2 });
 let access, revision, lastActivity = 0;
 
 function render(...content) {
+  document.body.classList.remove('entry');
   app.replaceChildren(el('h1', { text: 'Financeiro' }), ...content);
   app.scrollIntoView({ block: 'start' });
 }
@@ -20,7 +21,7 @@ function login(forceSetup = false) {
   const password = el('input', { type: 'password', autocomplete: 'current-password', required: true });
   const code = el('textarea', { rows: 3, spellcheck: 'false', autocapitalize: 'none', required: true });
   const status = el('p.status', { role: 'status' });
-  const submit = el('button.primary', { type: 'submit', text: saved ? 'Destrancar' : 'Conectar Financeiro' });
+  const submit = el('button.primary', { type: 'submit', text: saved ? 'Entrar' : 'Conectar Financeiro' });
   const form = el('form.panel.stack', { onsubmit: async event => {
     event.preventDefault();
     submit.disabled = true;
@@ -44,7 +45,6 @@ function login(forceSetup = false) {
       status.textContent = error.message;
     } finally { submit.disabled = false; }
   } }, [
-    el('h2', { text: saved ? 'Destrancar Carteira' : 'Conectar à Central' }),
     ...(!saved ? [
       el('p.muted', { text: 'No Caderno instalado, vá em Pessoal → Carteira → Conectar app Financeiro, escolha uma senha e copie o código cifrado.' }),
       el('label', {}, ['Código do Caderno', code]),
@@ -54,6 +54,7 @@ function login(forceSetup = false) {
     status,
   ]);
   render(form);
+  document.body.classList.add('entry');
 }
 
 function itemRows(items, settled, emptyLabel) {

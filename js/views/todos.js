@@ -20,7 +20,7 @@ import { mesPendente } from '../analysis.js';
 import * as central from '../chatgpt.js';
 import * as vault from '../vault.js';
 import { FINANCE_ACCESS, TASK_EXPORT, makeTransfer } from '../companion-transfer.js';
-import { CLIENT_KEY, loadIdentity, requestGoogleGrant } from '../google-tasks.js';
+import { CLIENT_KEY, DEFAULT_CLIENT_ID, loadIdentity, requestGoogleGrant } from '../google-tasks.js';
 import { importCaderno } from '../../tarefas/backend.js';
 
 const ABAS = [
@@ -113,12 +113,12 @@ function migrarTarefasDireto() {
   const tasks = store.openTodos().map(({ id, text, due, star }) => ({ id, text, due, star }));
   if (!tasks.length) { toast('Nenhuma tarefa aberta para migrar.'); return; }
   openSheet('Migrar para Google Tasks', close => {
-    const client = el('input', { value: localStorage.getItem(CLIENT_KEY) || store.state.settings.googleTasks?.clientId || '', required: true, autocapitalize: 'none', spellcheck: 'false' });
+    const client = el('input', { value: localStorage.getItem(CLIENT_KEY) || store.state.settings.googleTasks?.clientId || DEFAULT_CLIENT_ID, required: true, autocapitalize: 'none', spellcheck: 'false' });
     const status = el('p.micro', { role: 'status' });
     const submit = el('button.btn.btn--solid', { type: 'submit', disabled: true, text: 'Autorizar e migrar' });
     const form = el('form', { onsubmit: async event => {
       event.preventDefault();
-      const id = client.value.trim();
+      const id = client.value.trim() || DEFAULT_CLIENT_ID;
       if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id)) { status.textContent = 'Cole o mesmo ID OAuth que usou no Tarefas.'; return; }
       submit.disabled = true;
       status.textContent = 'Aguardando autorização do Google…';
@@ -137,7 +137,7 @@ function migrarTarefasDireto() {
       finally { submit.disabled = false; }
     } }, [
       el('p.muted', { text: `${plural(tasks.length, 'tarefa aberta', 'tarefas abertas')}. A migração usa a lista Caderno do Google Tasks e reaproveita os itens já vinculados.` }),
-      el('label.field', {}, [el('span.micro', { text: 'ID do cliente OAuth' }), client]),
+      el('details', {}, [el('summary', { text: 'Configuração da conexão' }), el('label.field', {}, [el('span.micro', { text: 'ID do cliente OAuth' }), client])]),
       status,
       el('div.wrap', {}, [submit, el('button.btn.btn--sm', { type: 'button', text: 'Gerar código cifrado', onclick: () => mostrarTransferencia(false) })]),
     ]);
