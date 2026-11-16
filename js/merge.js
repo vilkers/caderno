@@ -78,7 +78,7 @@ export function mergeDocs(local, remote, now = Date.now()) {
   // preferências são do aparelho, mas o lado editado por último vence
   // a configuração de sincronia é sempre deste aparelho (guarda o token)
   const settings = ts(remote.settings) > ts(local.settings)
-    ? { ...local.settings, ...remote.settings, sync: local.settings?.sync }
+    ? { ...local.settings, ...remote.settings, sync: local.settings?.sync, chatGPT: local.settings?.chatGPT }
     : local.settings;
 
   // perfil: vence quem editou por último (foto e nome andam juntos)

@@ -7,6 +7,7 @@ import { todayKey, addDays, longDay } from '../../js/utils.js';
 import * as store from '../../js/store.js';
 import * as vault from '../../js/vault.js';
 import * as sync from '../../js/sync.js';
+import * as chatGPT from '../../js/chatgpt.js';
 import * as badges from '../../js/badges.js';
 import { logStreak } from '../../js/analysis.js';
 import { el, debounce } from '../../js/utils.js';
@@ -132,9 +133,14 @@ function entra() {
     sync.pullAndMerge()
       .then(r => { if (r.merged) { pinta(); aviso('DADOS DO REPOSITÓRIO'); } })
       .then(() => sync.syncNow({ silent: true }))
-      .catch(e => aviso(String(e.message).slice(0, 40).toUpperCase(), { ms: 4000 }));
+      .catch(e => aviso(String(e.message).slice(0, 40).toUpperCase(), { ms: 4000 }))
+      .finally(refreshChatGPT);
+  } else {
+    refreshChatGPT();
   }
 }
+
+let refreshChatGPT;
 
 function trancar() {
   store.flush();
@@ -235,6 +241,10 @@ function liga() {
   window.addEventListener('pagehide', () => store.flush());
   store.subscribe(reason => { if (reason !== 'badges') { confereTrofeus(); pintaHud(); } });
   sync.start();
+  refreshChatGPT = chatGPT.start(() => {
+    pinta();
+    aviso('CHECK-IN REGISTRADO');
+  });
 }
 
 /* ── Arranque ──────────────────────────────────────────────── */

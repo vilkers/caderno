@@ -5,6 +5,7 @@ import * as store from './store.js';
 import * as vault from './vault.js';
 import * as biometria from './biometria.js';
 import * as sync from './sync.js';
+import * as chatGPT from './chatgpt.js';
 import * as badges from './badges.js';
 import * as lembrete from './lembrete.js';
 import { applyPalette } from './palettes.js';
@@ -243,9 +244,14 @@ function enterApp() {
     sync.pullAndMerge()
       .then(r => { if (r.merged) { paint(); toast('dados do repositório trazidos'); } })
       .then(() => sync.syncNow({ silent: true }))
-      .catch(err => toast(err.message, { ms: 5000 }));
+      .catch(err => toast(err.message, { ms: 5000 }))
+      .finally(refreshChatGPT);
+  } else {
+    refreshChatGPT();
   }
 }
+
+let refreshChatGPT;
 
 function doLock() {
   store.flush();
@@ -346,6 +352,10 @@ function wire() {
   });
   sync.onStatus(paintSync);
   sync.start();
+  refreshChatGPT = chatGPT.start(() => {
+    paint();
+    toast('check-in do ChatGPT registrado');
+  });
 
   store.subscribe(reason => { if (reason !== 'badges') conferirConquistas(); });
   store.subscribe(reason => {
