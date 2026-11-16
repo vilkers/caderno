@@ -474,6 +474,27 @@ e compromissos preservam seus registros. Os valores de compromissos antigos
 saem do financeiro. Cópias cifradas anteriores continuam nos backups e no
 histórico da sincronização do cofre.
 
+### Apps Financeiro e Tarefas
+
+Os dois apps têm entradas e ícones separados, em `financeiro/` e `tarefas/`.
+Instale pelo Safari com **Compartilhar → Adicionar à Tela de Início → Abrir
+como App Web**. Abra os apps pelos novos ícones antes de configurar o acesso.
+
+- **Financeiro.** No Caderno instalado, abra **Pessoal → Carteira → Conectar
+  app Financeiro**. Copie o código cifrado e use-o com a senha do Caderno no
+  Financeiro. O código contém a conexão existente com a Central privada. O
+  Financeiro consulta o mesmo `carteira.json` que Claude Code e ChatGPT Work
+  atualizam. A atualização manual e a consulta ao voltar ao app já funcionam.
+- **Tarefas.** Autorize o Google Tasks com o ID OAuth de aplicativo web
+  descrito acima. O app lê e edita as tarefas direto no Google Tasks. Para
+  migrar, gere o código cifrado em **Pessoal → Tarefas → Preparar migração
+  de tarefas** e use **Importar do Caderno** no Tarefas. A prévia identifica
+  os itens já vinculados. Os itens pendentes entram na lista **Caderno** com
+  seus prazos e prioridades. O código contempla apenas tarefas abertas.
+
+Confira os dois destinos no iPhone e guarde uma exportação cifrada do Caderno
+antes de concluir a troca de interface no app original.
+
 ---
 
 ## Estrutura

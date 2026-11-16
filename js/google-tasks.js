@@ -20,29 +20,34 @@ export function loadIdentity() {
 }
 
 export function authorize(clientId) {
+  const session = store.getSession();
+  return requestGoogleGrant(clientId).then(response => {
+    if (!session || store.getSession() !== session) throw new Error('Destranque o Caderno.');
+    grant = { ...response, session };
+  });
+}
+
+export function requestGoogleGrant(clientId) {
   const oauth = globalThis.google?.accounts?.oauth2;
   if (!oauth) return Promise.reject(new Error('Aguarde o login do Google carregar.'));
   return new Promise((resolve, reject) => {
-    const session = store.getSession();
     oauth.initTokenClient({
       client_id: clientId,
       scope: SCOPE,
       include_granted_scopes: false,
       callback: response => {
-        if (!session || store.getSession() !== session) { reject(new Error('Destranque o Caderno.')); return; }
         if (response.error || !response.access_token || !oauth.hasGrantedAllScopes(response, SCOPE)) {
           reject(new Error('Autorize o acesso ao Google Tasks para continuar.'));
           return;
         }
-        grant = { token: response.access_token, expires: Date.now() + Number(response.expires_in) * 1000, session };
-        resolve();
+        resolve({ token: response.access_token, expires: Date.now() + Number(response.expires_in) * 1000 });
       },
       error_callback: () => reject(new Error('O login do Google foi fechado ou bloqueado.')),
     }).requestAccessToken({ prompt: 'select_account' });
   });
 }
 
-async function googleRequest(token, path, method = 'GET', body) {
+export async function googleRequest(token, path, method = 'GET', body) {
   const res = await fetch(`${API}${path}`, {
     method, cache: 'no-store',
     headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
@@ -56,7 +61,7 @@ async function googleRequest(token, path, method = 'GET', body) {
   return res.json();
 }
 
-async function list(token, path, query = {}) {
+export async function list(token, path, query = {}) {
   const items = [];
   let pageToken;
   do {

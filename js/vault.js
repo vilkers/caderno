@@ -113,9 +113,9 @@ export async function seal(session, data) {
 }
 
 /** Abre um blob cifrado com QUALQUER sal, usando a senha viva da sessão. */
-export async function open(blob) {
-  if (!live) throw new Error('trancado');
-  const key = await deriveKey(live, unb64(blob.salt), blob.iters || ITER);
+export async function open(blob, password = live) {
+  if (!password) throw new Error('trancado');
+  const key = await deriveKey(password, unb64(blob.salt), blob.iters || ITER);
   try {
     const plain = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: unb64(blob.iv) }, key, unb64(blob.ct)
