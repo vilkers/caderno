@@ -17,6 +17,8 @@ import { check, iconBtn } from './today.js';
 import { editarCompromisso, sugestoesAgenda } from './agendaform.js';
 import { painelContas } from './agenda.js';
 import { mesPendente } from '../analysis.js';
+import * as central from '../chatgpt.js';
+import * as vault from '../vault.js';
 
 const ABAS = [
   ['tarefas', 'Tarefas'],
@@ -26,7 +28,10 @@ const ABAS = [
 ];
 
 export function render(ctx) {
-  const aba = ABAS.some(([id]) => id === ctx.pessoalAba) ? ctx.pessoalAba : 'tarefas';
+  const simpleWallet = store.state.wallet?.mode === 'simple';
+  const tabs = simpleWallet ? ABAS.filter(([id]) => id === 'tarefas' || id === 'carteira') : ABAS;
+  const aba = tabs.some(([id]) => id === ctx.pessoalAba) ? ctx.pessoalAba
+    : (simpleWallet && ['contas', 'assinaturas'].includes(ctx.pessoalAba) ? 'carteira' : 'tarefas');
   const view = el('div.view');
   const abertas = store.listTodos().filter(t => !t.done).length;
   /* As duas abas de dinheiro andam pelo tempo: o que se paga e o que se recebe
@@ -43,7 +48,7 @@ export function render(ctx) {
     tarefas: abertas ? `${abertas} em aberto` : 'nada em aberto',
     contas: acoes.length ? `${resolvidas}/${acoes.length} resolvidas` : 'vazio',
     assinaturas: assinaturas.length ? `${moeda(assinaturas.reduce((s, a) => s + (Number(a.valor) || 0), 0))}/mês` : 'vazio',
-    carteira: (c.totalEntrada || c.totalSaida)
+    carteira: simpleWallet ? 'saldo e pendências' : (c.totalEntrada || c.totalSaida)
       ? `${sobra < 0 ? '−' : ''}${moeda(Math.abs(sobra))}`
       : 'vazio',
   };
@@ -59,7 +64,7 @@ export function render(ctx) {
     el('div.vhead__r', {}, []),
   ]));
 
-  view.append(el('div.abas', {}, ABAS.map(([id, label]) =>
+  view.append(el('div.abas', {}, tabs.map(([id, label]) =>
     el('button.aba' + (aba === id ? '.is-on' : ''), {
       type: 'button',
       onclick: () => { ctx.pessoalAba = id; ctx.rerender(); },
@@ -68,12 +73,12 @@ export function render(ctx) {
       el('span.micro.aba__n' + (resumo[id] === 'vazio' ? '.is-vazio' : ''), { text: resumo[id] }),
     ]))));
 
-  if (aba !== 'tarefas') view.append(navMes(ctx, mes));
+  if (aba !== 'tarefas' && !simpleWallet) view.append(navMes(ctx, mes));
 
   /* O convite pra fechar o mês mora aqui, e não no check-in: o check-in é
      sobre hoje, e a tela já tinha aviso demais em cima dos cartões. Aqui é
      onde o mês vive. */
-  const pendente = aba !== 'tarefas' ? mesPendente() : null;
+  const pendente = aba !== 'tarefas' && !simpleWallet ? mesPendente() : null;
   if (pendente) {
     view.append(el('button.alert', {
       type: 'button',
@@ -265,7 +270,18 @@ export function mostrarImportacaoCarteira(data, ctx) {
 }
 
 function painelCarteira(ctx, mes) {
+  if (store.state.wallet?.mode === 'simple') return carteiraSimples(ctx);
   const view = el('div.painel');
+  view.append(el('button.btn.btn--solid', {
+    type: 'button', text: 'Recomeçar financeiro',
+    onclick: async e => {
+      const button = e.currentTarget;
+      button.disabled = true;
+      try { await conferirRecomeco(ctx); }
+      catch (err) { toast(err.message, { ms: 5500 }); }
+      finally { button.disabled = false; }
+    },
+  }));
   const c = store.contasDoMes(mes);
   const wallet = store.state.wallet;
   if (wallet) {
@@ -358,6 +374,101 @@ function painelCarteira(ctx, mes) {
 
   view.append(botoesCarteira(ctx));
   return view;
+}
+
+const dinheiroCarteira = cents => moeda(cents / 100, { cents: 2 });
+
+function linhasCarteira(title, items, paidLabel, emptyText) {
+  return el('div.carteirabloco', {}, [
+    el('div.section__h', {}, [el('p.micro', { text: title })]),
+    ...items.map(item => el('div.dinheiro__l', {}, [
+      el('div', {}, [
+        el('p', { text: item.title }),
+        el('p.micro', { text: [item.status === 'pending' ? 'pendente' : paidLabel, item.date && humanDay(item.date)].filter(Boolean).join(' · ') }),
+      ]),
+      el('span.num', { text: item.amountCents === null ? 'Valor a definir' : dinheiroCarteira(item.amountCents) }),
+    ])),
+    ...(items.length ? [] : [el('p.muted', { text: emptyText })]),
+  ]);
+}
+
+function resumoCarteira(wallet) {
+  return [
+    el('div.totalzao', {}, [
+      el('p.micro', { text: `PATRIMÔNIO EM ${humanDay(wallet.date)}` }),
+      el('p.totalzao__n.num', {}, cifra((wallet.balance + wallet.invested) / 100, { cents: 2 })),
+      el('p.nota-pe', { text: `Em conta${wallet.balanceEstimated ? ' (estimado)' : ''} ${dinheiroCarteira(wallet.balance)} · Investido ${dinheiroCarteira(wallet.invested)}` }),
+    ]),
+    linhasCarteira('RECEBIMENTOS', wallet.receivables, 'recebido', 'Sem recebimentos cadastrados.'),
+    linhasCarteira(`CONTAS DE ${monthLabel(wallet.paymentMonth).toUpperCase()}`, wallet.payments, 'pago', 'Contas deste mês ainda não cadastradas.'),
+  ];
+}
+
+async function conferirRecomeco(ctx) {
+  const session = store.getSession();
+  const preview = await central.readCentralWallet();
+  if (store.getSession() !== session) return;
+  openSheet('Recomeçar financeiro', close => [
+    el('p.muted', { text: 'Ao aplicar, o Caderno limpa os lançamentos financeiros antigos e passa a buscar saldo, recebimentos e contas na Central do Vilker.' }),
+    ...resumoCarteira(store.centralWalletPlan(preview.data)),
+    el('div.sheet__actions', {}, [
+      el('button.btn', { type: 'button', onclick: close, text: 'Cancelar' }),
+      el('button.btn.btn--danger', {
+        type: 'button', text: 'Recomeçar com esses dados',
+        onclick: async e => {
+          const button = e.currentTarget;
+          button.disabled = true;
+          try {
+            const latest = await central.readCentralWallet();
+            if (store.getSession() !== session || !button.isConnected) return;
+            if (latest.sha !== preview.sha || latest.source !== preview.source) {
+              await conferirRecomeco(ctx);
+              return;
+            }
+            if (!(await store.flush()) || store.getSession() !== session) throw new Error('Não consegui preparar o backup do cofre.');
+            await store.applyCentralWallet(latest, { reset: true });
+            if (!(await store.flush())) throw new Error('Não consegui salvar a Carteira no cofre.');
+            close();
+            ctx.rerender();
+            toast('Carteira conectada à Central');
+          } catch (err) { toast(err.message, { ms: 5500 }); }
+          finally { button.disabled = false; }
+        },
+      }),
+    ]),
+  ]);
+}
+
+function carteiraSimples(ctx) {
+  const wallet = store.state.wallet;
+  return el('div.painel', {}, [
+    ...resumoCarteira(wallet),
+    el('button.btn.btn--sm', {
+      type: 'button', text: 'Atualizar da Central',
+      onclick: async e => {
+        const button = e.currentTarget;
+        button.disabled = true;
+        try {
+          if (await central.refreshCentralWallet()) ctx.rerender();
+          toast('Carteira conferida');
+        } catch (err) { toast(err.message, { ms: 5500 }); }
+        finally { button.disabled = false; }
+      },
+    }),
+    ...(vault.exportWalletBackup() ? [el('button.btn.btn--sm', {
+      type: 'button', text: 'Baixar backup anterior',
+      onclick: () => {
+        const data = vault.exportWalletBackup();
+        if (!data) return;
+        const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+        const link = el('a', { href: url, download: 'caderno-antes-do-recomeco.caderno' });
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      },
+    })] : []),
+  ]);
 }
 
 const soma = lista => lista.reduce((t, a) => t + (Number(a.valor) || 0), 0);

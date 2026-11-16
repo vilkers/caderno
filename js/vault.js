@@ -4,6 +4,7 @@
 
 const VAULT_KEY = 'caderno.vault.v1';
 const META_KEY  = 'caderno.meta.v1';
+const WALLET_BACKUP_KEY = 'caderno.backup-antes-da-carteira.v1';
 const ITER      = 310000;
 
 const enc = new TextEncoder();
@@ -16,7 +17,12 @@ let live = null;
 export const hasLivePassword = () => !!live;
 export const forget = () => { live = null; };
 
-const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64 = buf => {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return btoa(binary);
+};
 const unb64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
 
 export const supported = () => !!(globalThis.crypto && crypto.subtle);
@@ -128,7 +134,15 @@ export async function changePassword(newPassword, data) {
 export function destroy() {
   localStorage.removeItem(VAULT_KEY);
   localStorage.removeItem(META_KEY);
+  localStorage.removeItem(WALLET_BACKUP_KEY);
 }
+
+export async function backupBeforeWalletReset(session, data) {
+  const previous = await seal(session, data);
+  localStorage.setItem(WALLET_BACKUP_KEY, JSON.stringify(previous));
+}
+
+export const exportWalletBackup = () => localStorage.getItem(WALLET_BACKUP_KEY);
 
 /** Backup cifrado (o mesmo blob do localStorage, portável entre aparelhos). */
 export const exportEncrypted = () => localStorage.getItem(VAULT_KEY);

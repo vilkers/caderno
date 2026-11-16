@@ -369,7 +369,7 @@ function wire() {
   refreshChatGPT = chatGPT.start(() => {
     paint();
     toast('check-in do ChatGPT registrado');
-  });
+  }, () => { if (ctx.view === 'lista' && ctx.pessoalAba === 'carteira') paint(); });
   googleTasks.start(() => { if (ctx.view === 'lista') paint(); });
 
   store.subscribe(reason => { if (reason !== 'badges') conferirConquistas(); });

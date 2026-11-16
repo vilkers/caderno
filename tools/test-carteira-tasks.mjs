@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as store from '../js/store.js';
 import { syncTasks } from '../js/google-tasks.js';
 import { mergeDocs } from '../js/merge.js';
+import * as vault from '../js/vault.js';
 
 const storage = new Map();
 globalThis.localStorage = {
@@ -67,6 +68,40 @@ store.updateTodo(dated.id, { text: 'Título atualizado', updatedAt: Date.now() }
 googleItems[0].updated = new Date(dated.updatedAt - 1).toISOString();
 assert.deepEqual(await syncTasks('teste'), { sent: 1, received: 0 });
 assert.equal(googleItems[0].title, 'Título atualizado');
+
+const personalEvent = store.addAgenda({ tipo: 'evento', label: 'Compromisso', valor: 80 });
+const oldDoc = store.syncDoc();
+await store.flush();
+const record = { source: 'teste/privado', sha: 'a', data: {
+  version: 1, date, balance: 400025, invested: 100010, balanceEstimated: false,
+  paymentMonth: date.slice(0, 7),
+  receivables: [{ id: 'entrada', title: 'Entrada', status: 'received', amountCents: 125000, date }],
+  payments: [],
+} };
+assert.equal(await store.applyCentralWallet(record), false);
+const setItem = localStorage.setItem;
+localStorage.setItem = (key, value) => { if (key.includes('antes-da-carteira')) throw new Error('sem espaço'); setItem(key, value); };
+await assert.rejects(store.applyCentralWallet(record, { reset: true }), /sem espaço/);
+assert.ok(store.agendaById(bill.id));
+localStorage.setItem = setItem;
+assert.equal(await store.applyCentralWallet(record, { reset: true }), true);
+const oldBackup = vault.exportWalletBackup();
+assert.equal((await vault.open(JSON.parse(oldBackup))).agenda.find(item => item.id === bill.id).valor, 100);
+assert.equal(store.agendaById(bill.id), undefined);
+assert.equal(store.agendaById(personalEvent.id).label, 'Compromisso');
+assert.equal(store.agendaById(personalEvent.id).valor, null);
+assert.equal(store.listTodos().length, oldDoc.todos.length);
+assert.deepEqual(store.state.days, oldDoc.days);
+assert.equal(await store.applyCentralWallet(record), false);
+assert.equal(await store.applyCentralWallet({ ...record, sha: 'b', data: { ...record.data, balance: 450000 } }), true);
+assert.equal(store.state.wallet.balance, 450000);
+assert.equal(vault.exportWalletBackup(), oldBackup);
+const migrated = store.migrate(store.syncDoc());
+assert.equal(migrated.wallet.mode, 'simple');
+assert.equal(mergeDocs(migrated, oldDoc).doc.agenda.find(item => item.id === bill.id).label, undefined);
+const staleDoc = { ...oldDoc, agenda: [{ ...bill, updatedAt: Date.now() + 1000 }] };
+assert.equal(mergeDocs(migrated, staleDoc).doc.agenda.find(item => item.id === bill.id).label, undefined);
+await store.flush();
 store.lockVault();
 assert.deepEqual(await syncTasks('teste'), { sent: 0, received: 0 });
 console.log('Carteira e Google Tasks passaram: atualização sem duplicatas e sincronização de título, prazo e conclusão.');

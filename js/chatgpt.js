@@ -2,11 +2,12 @@ import * as store from './store.js';
 import { debounce, todayKey } from './utils.js';
 
 export const PATH = 'caderno-automacao/check-in.json';
+const WALLET_PATH = 'caderno-automacao/carteira.json';
 const API = 'https://api.github.com';
 const LIMIT = 50;
 const empty = () => ({ version: 1, categories: [], days: {}, requests: [], results: [] });
 export const config = () => store.state.settings.chatGPT;
-let running;
+let running, readingWallet;
 
 function validDate(key) {
   if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
@@ -59,9 +60,7 @@ async function read(c, branch) {
   if (!res.ok) throw new Error('Não consegui abrir o arquivo de check-in no GitHub.');
   const file = await res.json();
   try {
-    if (file.encoding !== 'base64' || !file.sha) throw new Error('arquivo');
-    const bytes = Uint8Array.from(atob(file.content), ch => ch.charCodeAt(0));
-    const doc = JSON.parse(new TextDecoder().decode(bytes));
+    const doc = decodeDocument(file);
     if (doc.version !== 1 || !Array.isArray(doc.requests) || doc.requests.length > LIMIT || !Array.isArray(doc.results)) {
       throw new Error('formato');
     }
@@ -69,6 +68,39 @@ async function read(c, branch) {
   } catch {
     throw new Error('O arquivo de check-in está fora do formato esperado.');
   }
+}
+
+function decodeDocument(file) {
+  if (file.encoding !== 'base64' || !file.sha) throw new Error('Arquivo da Central fora do formato esperado.');
+  const bytes = Uint8Array.from(atob(file.content), ch => ch.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+export async function readCentralWallet() {
+  const c = config();
+  const session = store.getSession();
+  if (!session) throw new Error('Destranque o Caderno.');
+  if (!c) throw new Error('Conecte o repositório privado em Ajustes → Check-in com ChatGPT.');
+  const branch = await privateRepo(c);
+  const res = await github(c, `/contents/${WALLET_PATH}?ref=${encodeURIComponent(branch)}`);
+  if (!res.ok) throw new Error(res.status === 404 ? 'A Carteira ainda não foi preparada neste repositório privado.' : 'Não consegui consultar a Carteira na Central.');
+  const file = await res.json();
+  if (config() !== c || store.getSession() !== session) throw new Error('A conexão mudou. Abra a Carteira e tente de novo.');
+  const data = decodeDocument(file);
+  store.centralWalletPlan(data);
+  return { data, sha: file.sha, source: `${c.owner}/${c.repo}`.toLowerCase() };
+}
+
+export async function refreshCentralWallet() {
+  const c = config();
+  const wallet = store.state.wallet;
+  if (!c || !store.isUnlocked() || wallet?.mode !== 'simple' || wallet.source !== `${c.owner}/${c.repo}`.toLowerCase()) return false;
+  if (!readingWallet) readingWallet = readCentralWallet().then(async record => {
+    if (!(await store.applyCentralWallet(record))) return false;
+    if (!(await store.flush())) throw new Error('Não consegui salvar a Carteira no cofre.');
+    return true;
+  }).finally(() => { readingWallet = null; });
+  return readingWallet;
 }
 
 function categories() {
@@ -167,10 +199,11 @@ export async function sync() {
   return running;
 }
 
-export function start(onApplied) {
+export function start(onApplied, onWallet = () => {}) {
   const refresh = () => {
     if (document.hidden) return;
     sync().then(result => { if (result?.applied) onApplied(); }).catch(() => {});
+    refreshCentralWallet().then(changed => { if (changed) onWallet(); }).catch(() => {});
   };
   const afterChange = debounce(refresh, 15000);
   store.subscribe(reason => {

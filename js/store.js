@@ -6,7 +6,7 @@
 
 import * as vault from './vault.js';
 import { uid, debounce, todayKey, monthKey, daysInMonth, keyOf, parseKey, WD } from './utils.js';
-import { mergeDocs } from './merge.js';
+import { clearLegacyFinances, mergeDocs } from './merge.js';
 
 export const VERSION = 3;
 
@@ -260,7 +260,7 @@ export function migrate(data) {
     .map((x, i) => ({ ...x, order: x.order ?? i }));
 
   const agenda = (Array.isArray(data.agenda) ? data.agenda : [])
-    .map((a, i) => ({
+    .map((a, i) => a.financeiroRemovido && a.deletedAt ? a : ({
       repete: 'mensal', fluxo: 'saida', tipo: 'conta', emoji: '•', label: 'Compromisso',
       ...a,
       id: a.id || uid(),
@@ -332,9 +332,16 @@ export function replaceAll(data) {
 }
 
 /** Junta um documento vindo do repositório com o daqui. */
-export function applyRemote(remoteDoc) {
+export async function applyRemote(remoteDoc) {
+  const activeSession = session;
   const { doc, changed } = mergeDocs(structuredClone(state), migrate(remoteDoc));
   if (changed) {
+    if (doc.wallet?.mode === 'simple' && state.wallet?.mode !== 'simple' && state.agenda.length && activeSession) {
+      const rev = state.rev;
+      await vault.backupBeforeWalletReset(activeSession, state);
+      if (session !== activeSession) return false;
+      if (state.rev !== rev) return applyRemote(remoteDoc);
+    }
     Object.keys(state).forEach(k => delete state[k]);
     Object.assign(state, doc);
     emit('replace');
@@ -752,10 +759,14 @@ function validWallet(wallet) {
   return date && keyOf(date) === wallet.date && wallet.date <= todayKey()
     && Number.isSafeInteger(wallet.balance) && Number.isSafeInteger(wallet.invested) && wallet.invested >= 0
     && Number.isSafeInteger(wallet.balance + wallet.invested)
-    && (wallet.projected === undefined || Number.isSafeInteger(wallet.projected));
+    && (wallet.projected === undefined || Number.isSafeInteger(wallet.projected))
+    && (wallet.mode !== 'simple' || (Number.isSafeInteger(wallet.resetAt) && wallet.resetAt > 0
+      && typeof wallet.source === 'string' && typeof wallet.revision === 'string'
+      && Array.isArray(wallet.receivables) && Array.isArray(wallet.payments)));
 }
 
 export function walletImportPlan(data) {
+  if (state.wallet?.mode === 'simple') throw new Error('Use a Central para atualizar a Carteira.');
   if (!validWallet(data) || !Array.isArray(data.receivables) || new Set(data.receivables.map(item => item?.id)).size !== data.receivables.length) {
     throw new Error('Panorama financeiro inválido.');
   }
@@ -787,6 +798,57 @@ export function applyWalletImport(data) {
     item.updatedAt = updatedAt;
   }
   emit('agenda');
+}
+
+function walletDate(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && keyOf(parseKey(value)) === value;
+}
+
+function walletItems(items, statuses, paymentMonth) {
+  if (!Array.isArray(items) || items.length > 200) throw new Error('Confira os lançamentos da Carteira na Central.');
+  const ids = new Set();
+  return items.map(item => {
+    const { id, title, amountCents, date, status } = item || {};
+    if (typeof id !== 'string' || !/^[a-z0-9_-]{1,80}$/.test(id) || ids.has(id) || typeof title !== 'string'
+      || !title.trim() || title.length > 120 || !(Number.isSafeInteger(amountCents) && amountCents > 0 || paymentMonth && amountCents === null)
+      || !statuses.includes(status) || (date != null && (!walletDate(date) || (paymentMonth && !date.startsWith(paymentMonth))))) {
+      throw new Error('Há um lançamento inválido ou repetido na Carteira da Central.');
+    }
+    ids.add(id);
+    return { id, title: title.trim(), amountCents, date: date ?? null, status };
+  });
+}
+
+export function centralWalletPlan(data) {
+  const { version, date, balance, invested, balanceEstimated, paymentMonth, receivables, payments } = data || {};
+  if (version !== 1 || !validWallet({ date, balance, invested }) || typeof balanceEstimated !== 'boolean'
+      || typeof paymentMonth !== 'string' || !walletDate(`${paymentMonth}-01`)) {
+    throw new Error('Confira o saldo e o mês das contas no arquivo da Central.');
+  }
+  return { date, balance, invested, balanceEstimated, paymentMonth,
+    receivables: walletItems(receivables, ['pending', 'received']),
+    payments: walletItems(payments, ['pending', 'paid'], paymentMonth) };
+}
+
+export async function applyCentralWallet({ data, sha, source }, { reset = false } = {}) {
+  const previous = state.wallet;
+  if (!session || (!reset && (previous?.mode !== 'simple' || previous.source !== source))) return false;
+  if (previous?.mode === 'simple' && previous.source === source && previous.revision === sha) return false;
+  const record = centralWalletPlan(data);
+  if (previous?.mode === 'simple' && record.date < previous.date) throw new Error('O saldo na Central é anterior ao saldo atual.');
+  const updatedAt = now();
+  const resetAt = previous?.mode === 'simple' ? previous.resetAt : updatedAt;
+  if (reset && previous?.mode !== 'simple') {
+    const activeSession = session;
+    const rev = state.rev;
+    await vault.backupBeforeWalletReset(activeSession, state);
+    if (session !== activeSession) throw new Error('Destranque o Caderno e tente novamente.');
+    if (state.rev !== rev) return applyCentralWallet({ data, sha, source }, { reset });
+    state.agenda = clearLegacyFinances(state.agenda, resetAt);
+  }
+  state.wallet = { ...record, mode: 'simple', source, revision: sha, resetAt, updatedAt };
+  emit('agenda');
+  return true;
 }
 
 /* ── Import / export ───────────────────────────────────────── */
