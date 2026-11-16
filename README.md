@@ -442,6 +442,29 @@ O app aplica o pedido inteiro se os valores anteriores baterem. Depois remove
 o pedido da fila e informa `applied` ou `conflict` em `results`, com o mesmo ID.
 `applied` confirma a gravação. Um pedido ainda na fila aguarda o app abrir.
 
+### Google Tasks
+
+No Google Cloud, ative a Google Tasks API, configure a tela de consentimento
+e crie um cliente OAuth do tipo **Aplicativo da Web**. Em **Origens JavaScript
+autorizadas**, use `https://vilkers.github.io`. Se o projeto estiver no modo
+de teste, adicione sua conta Google à lista de usuários de teste.
+
+No Caderno clássico, abra **Ajustes → Google Tasks → conectar**, cole apenas
+o ID do cliente e autorize sua conta. As tarefas abertas com prazo entram na
+lista **Caderno** do Google Tasks. Ligações existentes sincronizam título,
+prazo e conclusão com base na alteração mais recente enquanto o app está
+aberto e autorizado. A sessão OAuth fica em memória. Para retomar depois de
+trancar o Caderno, fechar a página ou expirar a sessão, reconecte em Ajustes.
+
+### Atualização da Carteira
+
+Um link com fragmento `#carteira=` pode trazer um panorama em JSON com `date`,
+`balance` e `invested` em centavos e uma lista `receivables` de renomeações
+identificadas por `id`, `previous`, `title`, `value` em reais e `due`. O app
+limpa o fragmento, mostra a prévia e grava no cofre depois de confirmar.
+Um panorama substitui o saldo de referência da Carteira. Os lançamentos
+registrados continuam disponíveis no histórico mensal.
+
 ---
 
 ## Estrutura

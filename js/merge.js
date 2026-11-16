@@ -78,13 +78,15 @@ export function mergeDocs(local, remote, now = Date.now()) {
   // preferências são do aparelho, mas o lado editado por último vence
   // a configuração de sincronia é sempre deste aparelho (guarda o token)
   const settings = ts(remote.settings) > ts(local.settings)
-    ? { ...local.settings, ...remote.settings, sync: local.settings?.sync, chatGPT: local.settings?.chatGPT }
+    ? { ...local.settings, ...remote.settings, sync: local.settings?.sync,
+        chatGPT: local.settings?.chatGPT, googleTasks: local.settings?.googleTasks }
     : local.settings;
 
   // perfil: vence quem editou por último (foto e nome andam juntos)
   const profile = ts(remote.profile) > ts(local.profile)
     ? { ...local.profile, ...remote.profile }
     : local.profile;
+  const wallet = ts(remote.wallet) > ts(local.wallet) ? remote.wallet : local.wallet;
 
   // revisões: uma por semana, ganha a editada por último
   const reviews = { ...(local.reviews || {}) };
@@ -102,11 +104,11 @@ export function mergeDocs(local, remote, now = Date.now()) {
     version: Math.max(local.version || 2, remote.version || 2),
     rev: Math.max(local.rev || 0, remote.rev || 0) + 1,
     updatedAt: Math.max(local.updatedAt || 0, remote.updatedAt || 0, now),
-    profile, settings, categories, days, todos, agenda, reviews, badges,
+    profile, settings, categories, days, todos, agenda, wallet, reviews, badges,
   };
 
-  const changed = JSON.stringify([local.days, local.categories, local.todos, local.agenda])
-                !== JSON.stringify([doc.days, doc.categories, doc.todos, doc.agenda]);
+  const changed = JSON.stringify([local.days, local.categories, local.todos, local.agenda, local.wallet])
+                !== JSON.stringify([doc.days, doc.categories, doc.todos, doc.agenda, doc.wallet]);
   return { doc, changed };
 }
 

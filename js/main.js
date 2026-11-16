@@ -6,6 +6,7 @@ import * as vault from './vault.js';
 import * as biometria from './biometria.js';
 import * as sync from './sync.js';
 import * as chatGPT from './chatgpt.js';
+import * as googleTasks from './google-tasks.js';
 import * as badges from './badges.js';
 import * as lembrete from './lembrete.js';
 import { applyPalette } from './palettes.js';
@@ -218,6 +219,7 @@ function prepararFaceId(isNew) {
 }
 
 function enterApp() {
+  const carteira = new URLSearchParams(location.hash.slice(1)).get('carteira');
   applyPalette(store.state.settings.palette);
   vault.writeMeta({ palette: store.state.settings.palette });
   document.documentElement.dataset.motion = store.state.settings.motion ? 'on' : 'off';
@@ -228,6 +230,11 @@ function enterApp() {
   ctx.day = todayKey();
   ctx.view = 'hoje';
   aplicarAtalhoDaURL();
+  if (carteira) {
+    ctx.view = 'lista';
+    ctx.pessoalAba = 'carteira';
+    history.replaceState(null, '', location.pathname);
+  }
   history.replaceState({ view: ctx.view }, '');
   paint();
   armAutolock();
@@ -240,20 +247,27 @@ function enterApp() {
     }), 900);
   }
 
+  const afterSync = () => {
+    refreshChatGPT();
+    if (!carteira || !store.isUnlocked()) return;
+    try { viewTodos.mostrarImportacaoCarteira(JSON.parse(carteira), ctx); }
+    catch { toast('Link da Carteira inválido.'); }
+  };
   if (sync.configured()) {
     sync.pullAndMerge()
       .then(r => { if (r.merged) { paint(); toast('dados do repositório trazidos'); } })
       .then(() => sync.syncNow({ silent: true }))
       .catch(err => toast(err.message, { ms: 5000 }))
-      .finally(refreshChatGPT);
+      .finally(afterSync);
   } else {
-    refreshChatGPT();
+    afterSync();
   }
 }
 
 let refreshChatGPT;
 
 function doLock() {
+  googleTasks.disconnect();
   store.flush();
   if (sync.configured()) sync.syncNow({ silent: true }).catch(() => {});
   store.lockVault();
@@ -356,6 +370,7 @@ function wire() {
     paint();
     toast('check-in do ChatGPT registrado');
   });
+  googleTasks.start(() => { if (ctx.view === 'lista') paint(); });
 
   store.subscribe(reason => { if (reason !== 'badges') conferirConquistas(); });
   store.subscribe(reason => {
