@@ -20,6 +20,8 @@ import { mesPendente } from '../analysis.js';
 import * as central from '../chatgpt.js';
 import * as vault from '../vault.js';
 import { FINANCE_ACCESS, TASK_EXPORT, makeTransfer } from '../companion-transfer.js';
+import { CLIENT_KEY, loadIdentity, requestGoogleGrant } from '../google-tasks.js';
+import { importCaderno } from '../../tarefas/backend.js';
 
 const ABAS = [
   ['tarefas', 'Tarefas'],
@@ -77,8 +79,8 @@ export function render(ctx) {
   if (aba === 'carteira' || aba === 'tarefas') {
     const finance = aba === 'carteira';
     view.append(el('div.wrap', {}, [el('button.btn.btn--sm', {
-      type: 'button', text: finance ? 'Conectar app Financeiro' : 'Preparar migração de tarefas',
-      onclick: () => mostrarTransferencia(finance),
+      type: 'button', text: finance ? 'Conectar app Financeiro' : 'Migrar para Google Tasks',
+      onclick: () => finance ? mostrarTransferencia(true) : migrarTarefasDireto(),
     })]));
   }
 
@@ -104,6 +106,44 @@ export function render(ctx) {
       : painelCarteira(ctx, mes),
   );
   return view;
+}
+
+function migrarTarefasDireto() {
+  const session = store.getSession();
+  const tasks = store.openTodos().map(({ id, text, due, star }) => ({ id, text, due, star }));
+  if (!tasks.length) { toast('Nenhuma tarefa aberta para migrar.'); return; }
+  openSheet('Migrar para Google Tasks', close => {
+    const client = el('input', { value: localStorage.getItem(CLIENT_KEY) || store.state.settings.googleTasks?.clientId || '', required: true, autocapitalize: 'none', spellcheck: 'false' });
+    const status = el('p.micro', { role: 'status' });
+    const submit = el('button.btn.btn--solid', { type: 'submit', disabled: true, text: 'Autorizar e migrar' });
+    const form = el('form', { onsubmit: async event => {
+      event.preventDefault();
+      const id = client.value.trim();
+      if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id)) { status.textContent = 'Cole o mesmo ID OAuth que usou no Tarefas.'; return; }
+      submit.disabled = true;
+      status.textContent = 'Aguardando autorização do Google…';
+      const sheet = form.closest('#sheet');
+      const active = () => store.getSession() === session && form.isConnected && sheet && !sheet.hidden && !sheet.classList.contains('is-closing');
+      try {
+        const grant = await requestGoogleGrant(id);
+        if (!active()) return;
+        localStorage.setItem(CLIENT_KEY, id);
+        status.textContent = 'Enviando tarefas abertas para a lista Caderno…';
+        const count = await importCaderno(grant.token, tasks, active);
+        if (!active()) return;
+        close();
+        toast(count ? `${plural(count, 'tarefa importada', 'tarefas importadas')}.` : 'As tarefas abertas já estão no Google Tasks.', { ms: 5500 });
+      } catch (error) { status.textContent = error.message; }
+      finally { submit.disabled = false; }
+    } }, [
+      el('p.muted', { text: `${plural(tasks.length, 'tarefa aberta', 'tarefas abertas')}. A migração usa a lista Caderno do Google Tasks e reaproveita os itens já vinculados.` }),
+      el('label.field', {}, [el('span.micro', { text: 'ID do cliente OAuth' }), client]),
+      status,
+      el('div.wrap', {}, [submit, el('button.btn.btn--sm', { type: 'button', text: 'Gerar código cifrado', onclick: () => mostrarTransferencia(false) })]),
+    ]);
+    loadIdentity().then(() => { submit.disabled = false; }).catch(error => { status.textContent = error.message; });
+    return form;
+  });
 }
 
 function mostrarTransferencia(finance) {

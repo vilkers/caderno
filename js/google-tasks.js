@@ -1,4 +1,6 @@
 import * as store from './store.js';
+
+export const CLIENT_KEY = 'caderno.tarefas.cliente-oauth.v1';
 import { debounce } from './utils.js';
 
 const API = 'https://tasks.googleapis.com/tasks/v1';

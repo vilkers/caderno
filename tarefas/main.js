@@ -1,10 +1,9 @@
 import { el, addDays, humanDay, todayKey } from '../js/utils.js';
-import { loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
+import { CLIENT_KEY, loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
 import { TASK_EXPORT, openTransfer } from '../js/companion-transfer.js';
 import { loadBoards, createTask, changeTask, taskFields, dateOf, highPriority, migrationPlan, importCaderno } from './backend.js';
 
 const app = document.querySelector('#app');
-const CLIENT_KEY = 'caderno.tarefas.cliente-oauth.v1';
 const FILTERS = [['today', 'Hoje'], ['week', 'Semana'], ['open', 'Abertas'], ['done', 'Concluídas']];
 let grant, boards = [], area = '', filter = 'today';
 

@@ -53,19 +53,23 @@ export function migrationPlan(records, boards) {
   return pending;
 }
 
-export async function importCaderno(token, records) {
+export async function importCaderno(token, records, active = () => true) {
   const run = async () => {
+    if (!active()) return 0;
     const boards = await loadBoards(token);
     const pending = migrationPlan(records, boards);
-    if (!pending.length) return 0;
+    if (!pending.length || !active()) return 0;
     const matching = boards.filter(board => board.title === 'Caderno');
     if (matching.length > 1) throw new Error('Deixe uma única lista chamada Caderno no Google Tasks.');
     const target = matching[0] || await googleRequest(token, listPath, 'POST', { title: 'Caderno' });
+    let imported = 0;
     for (const item of pending) {
+      if (!active()) break;
       const note = marker + item.id + (item.star ? '\nPrioridade: alta' : '');
       await createTask(token, target.id, item.title, item.due, note);
+      imported++;
     }
-    return pending.length;
+    return imported;
   };
   return globalThis.navigator?.locks ? navigator.locks.request('caderno-tarefas-importacao', run) : run();
 }
