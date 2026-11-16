@@ -43,7 +43,7 @@ export function mergeAgenda(localList = [], remoteList = [], now = Date.now()) {
         if (!atual || Number(m?.em || 0) > Number(atual.em || 0)) marcas[mes] = m;
       }
     }
-    porId.set(id, { ...item, marcas });
+    porId.set(id, { ...item, marcas: item.financeiroRemovido ? {} : marcas });
   }
   return [...porId.values()]
     .filter(i => !(i.deletedAt && now - i.deletedAt > TOMB_TTL))
@@ -61,10 +61,18 @@ export function mergeDays(localDays = {}, remoteDays = {}) {
   return out;
 }
 
-/**
- * Junta dois documentos completos.
- * Devolve { doc, changed } — `changed` diz se o remoto trouxe algo novo.
- */
+const FINANCE_TYPES = new Set(['renda', 'conta', 'cartao', 'aluguel', 'assinatura']);
+
+export function clearLegacyFinances(agenda, resetAt) {
+  return agenda.map(item => {
+    const updatedAt = Math.max(ts(item), resetAt);
+    if (FINANCE_TYPES.has(item.tipo)) return { id: item.id, financeiroRemovido: true, marcas: {}, deletedAt: item.deletedAt || updatedAt, updatedAt };
+    if (item.valor != null) return { ...item, valor: null, updatedAt, ...(item.deletedAt ? { marcas: {} } : {}) };
+    return item;
+  });
+}
+
+/** Junta dois documentos completos e informa se o remoto trouxe algo novo. */
 export function mergeDocs(local, remote, now = Date.now()) {
   if (!remote || remote.empty) return { doc: local, changed: false };
 
@@ -73,7 +81,6 @@ export function mergeDocs(local, remote, now = Date.now()) {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const todos = mergeById(local.todos, remote.todos, now)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const agenda = mergeAgenda(local.agenda, remote.agenda, now);
 
   // preferências são do aparelho, mas o lado editado por último vence
   // a configuração de sincronia é sempre deste aparelho (guarda o token)
@@ -86,7 +93,12 @@ export function mergeDocs(local, remote, now = Date.now()) {
   const profile = ts(remote.profile) > ts(local.profile)
     ? { ...local.profile, ...remote.profile }
     : local.profile;
-  const wallet = ts(remote.wallet) > ts(local.wallet) ? remote.wallet : local.wallet;
+  const localSimple = local.wallet?.mode === 'simple';
+  const remoteSimple = remote.wallet?.mode === 'simple';
+  const useRemoteWallet = localSimple === remoteSimple ? ts(remote.wallet) > ts(local.wallet) : remoteSimple;
+  const wallet = useRemoteWallet ? remote.wallet : local.wallet;
+  const mergedAgenda = mergeAgenda(local.agenda, remote.agenda, now);
+  const agenda = wallet?.mode === 'simple' ? clearLegacyFinances(mergedAgenda, wallet.resetAt) : mergedAgenda;
 
   // revisões: uma por semana, ganha a editada por último
   const reviews = { ...(local.reviews || {}) };

@@ -180,7 +180,7 @@ export async function syncNow({ silent = false } = {}) {
     setStatus('syncing', silent ? 'sincronizando' : 'sincronizando…');
     try {
       const remote = await pull();
-      const merged = remote.doc ? store.applyRemote(remote.doc) : false;
+      const merged = remote.doc ? await store.applyRemote(remote.doc) : false;
 
       /* Nada a gravar: o repositório já está igual a isto aqui. Sair agora
          evita um commit vazio e, principalmente, evita o vaivém em que cada
@@ -199,7 +199,7 @@ export async function syncNow({ silent = false } = {}) {
         setStatus('syncing', `o repositório mudou — tentando de novo (${tentativa}/3)`);
         await espera(700 * tentativa);
         const denovo = await pull();
-        if (denovo.doc) store.applyRemote(denovo.doc);
+        if (denovo.doc) await store.applyRemote(denovo.doc);
         sha = denovo.sha;
         result = await put(sha);
       }
@@ -228,7 +228,7 @@ export async function pullAndMerge() {
   setStatus('syncing', 'buscando');
   try {
     const remote = await pull();
-    const merged = remote.doc ? store.applyRemote(remote.doc) : false;
+    const merged = remote.doc ? await store.applyRemote(remote.doc) : false;
     setStatus('ok', merged ? 'atualizado do repositório' : 'sincronizado');
     return { merged, missing: remote.missing };
   } catch (e) {

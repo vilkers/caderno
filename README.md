@@ -465,6 +465,15 @@ limpa o fragmento, mostra a prévia e grava no cofre depois de confirmar.
 Um panorama substitui o saldo de referência da Carteira. Os lançamentos
 registrados continuam disponíveis no histórico mensal.
 
+Para o recomeço financeiro, use **Pessoal → Carteira → Recomeçar financeiro**
+no app instalado. A prévia vem de `caderno-automacao/carteira.json`, no mesmo
+repositório privado conectado para o check-in. Ao confirmar, o app guarda um
+backup cifrado local, limpa o financeiro antigo e passa a atualizar a Carteira
+desse arquivo. O backup pode ser baixado na Carteira. Rotinas, tarefas, perfil
+e compromissos preservam seus registros. Os valores de compromissos antigos
+saem do financeiro. Cópias cifradas anteriores continuam nos backups e no
+histórico da sincronização do cofre.
+
 ---
 
 ## Estrutura
