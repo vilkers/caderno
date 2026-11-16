@@ -185,6 +185,7 @@ export const blankState = () => ({
   days: {},
   todos: [],
   agenda: [],          // compromissos do mês, assinaturas e entradas
+  wallet: null,
   reviews: {},         // chave da semana → como ela fechou
   badges: {},          // id da conquista → quando caiu
   levelSeen: 0,        // último nível já comemorado
@@ -279,6 +280,7 @@ export function migrate(data) {
     updatedAt: t,
     deviceId: data.deviceId || fresh.deviceId,
     profile, settings, categories, days, todos, agenda,
+    wallet: validWallet(data.wallet) ? data.wallet : null,
     reviews: data.reviews && typeof data.reviews === 'object' ? data.reviews : {},
     badges: data.badges && typeof data.badges === 'object' ? data.badges : {},
     levelSeen: Number(data.levelSeen) || 0,
@@ -745,6 +747,48 @@ export function setChatGPT(config) {
   persist();
 }
 
+function validWallet(wallet) {
+  const date = typeof wallet?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(wallet.date) ? parseKey(wallet.date) : null;
+  return date && keyOf(date) === wallet.date && wallet.date <= todayKey()
+    && Number.isSafeInteger(wallet.balance) && Number.isSafeInteger(wallet.invested) && wallet.invested >= 0
+    && Number.isSafeInteger(wallet.balance + wallet.invested)
+    && (wallet.projected === undefined || Number.isSafeInteger(wallet.projected));
+}
+
+export function walletImportPlan(data) {
+  if (!validWallet(data) || !Array.isArray(data.receivables) || new Set(data.receivables.map(item => item?.id)).size !== data.receivables.length) {
+    throw new Error('Panorama financeiro inválido.');
+  }
+  if (state.wallet && state.wallet.date > data.date) throw new Error('A Carteira já tem um saldo de uma data mais recente.');
+  const receivables = data.receivables.map(request => {
+    const item = agendaById(request?.id);
+    if (!item || item.tipo !== 'renda' || item.valor !== request.value || item.data !== request.due
+        || ![request.previous, request.title].includes(item.label) || typeof request.title !== 'string'
+        || !request.title.trim() || request.title.length > 100) {
+      throw new Error('Um recebimento mudou desde o preparo. Confira os lançamentos na Carteira.');
+    }
+    return { item, title: request.title };
+  });
+  const projected = data.balance + data.invested + receivables.reduce((total, { item }) => total + Math.round(item.valor * 100), 0);
+  if (!Number.isSafeInteger(projected)) throw new Error('Valor financeiro fora do intervalo.');
+  return { balance: data.balance, invested: data.invested, date: data.date, projected, receivables };
+}
+
+export function applyWalletImport(data) {
+  const { receivables, ...snapshot } = walletImportPlan(data);
+  if (state.wallet?.date === snapshot.date && state.wallet.balance === snapshot.balance
+      && state.wallet.invested === snapshot.invested && state.wallet.projected === snapshot.projected
+      && receivables.every(({ item, title }) => item.label === title)) return;
+  const updatedAt = now();
+  state.wallet = { ...snapshot, updatedAt };
+  for (const { item, title } of receivables) {
+    if (item.label === title) continue;
+    item.label = title;
+    item.updatedAt = updatedAt;
+  }
+  emit('agenda');
+}
+
 /* ── Import / export ───────────────────────────────────────── */
 export function exportJSON() {
   return JSON.stringify({ ...syncDoc(), exportedAt: new Date().toISOString(), app: 'caderno' }, null, 2);
@@ -754,7 +798,8 @@ export function importJSON(text) {
   if (!data || typeof data !== 'object' || !('days' in data)) throw new Error('formato');
   replaceAll({
     ...data,
-    settings: { ...data.settings, sync: state.settings.sync, chatGPT: state.settings.chatGPT },
+    settings: { ...data.settings, sync: state.settings.sync, chatGPT: state.settings.chatGPT,
+      googleTasks: state.settings.googleTasks },
   });
 }
 /** Cópia portátil sem credenciais nem configurações locais de integração. */
@@ -762,6 +807,7 @@ export function syncDoc() {
   const doc = structuredClone(state);
   delete doc.settings.sync;
   delete doc.settings.chatGPT;
+  delete doc.settings.googleTasks;
   return doc;
 }
 

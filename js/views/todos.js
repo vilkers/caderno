@@ -235,9 +235,49 @@ const botoesAssinatura = ctx => el('div.wrap', { style: { marginTop: 'var(--s-6)
 ]);
 
 /* ══ CARTEIRA ═══════════════════════════════════════════════ */
+export function mostrarImportacaoCarteira(data, ctx) {
+  try {
+    const plan = store.walletImportPlan(data);
+    const brl = cents => moeda(cents / 100, { cents: 2 });
+    openSheet('Atualizar a Carteira', close => [
+      el('p.muted', { text: `Saldo em ${humanDay(plan.date)}. Em conta ${brl(plan.balance)} e investido ${brl(plan.invested)}.` }),
+      ...plan.receivables.map(({ item, title }) => el('p.muted', { text: `${item.label} → ${title} · ${moeda(item.valor, { cents: 2 })}` })),
+      el('div.sheet__actions', {}, [
+        el('button.btn', { type: 'button', onclick: close, text: 'Cancelar' }),
+        el('button.btn.btn--solid', {
+          type: 'button', text: 'Aplicar atualização',
+          onclick: async e => {
+            const button = e.currentTarget;
+            button.disabled = true;
+            try {
+              store.applyWalletImport(data);
+              if (!(await store.flush())) throw new Error('Não consegui salvar no cofre. Tente de novo.');
+              close();
+              ctx.rerender();
+              toast('Carteira atualizada');
+            } catch (err) { toast(err.message, { ms: 5500 }); }
+            finally { button.disabled = false; }
+          },
+        }),
+      ]),
+    ]);
+  } catch (err) { toast(err.message, { ms: 5500 }); }
+}
+
 function painelCarteira(ctx, mes) {
   const view = el('div.painel');
   const c = store.contasDoMes(mes);
+  const wallet = store.state.wallet;
+  if (wallet) {
+    const brl = cents => moeda(cents / 100, { cents: 2 });
+    const total = wallet.balance + wallet.invested;
+    view.append(el('div.totalzao', {}, [
+      el('p.micro', { text: `PATRIMÔNIO EM ${humanDay(wallet.date)}` }),
+      el('p.totalzao__n.num', { text: brl(total) }),
+      el('p.nota-pe', { text: `Em conta ${brl(wallet.balance)} · Investido ${brl(wallet.invested)}` }),
+      ...(wallet.projected !== undefined ? [el('p.nota-pe', { text: `Projeção na data de referência · ${brl(wallet.projected)}` })] : []),
+    ]));
+  }
   const hoje = todayKey();
 
   /* A carteira é o dinheiro do mês nas duas direções: o que entra e o que
@@ -333,6 +373,28 @@ const botoesCarteira = ctx => el('div.wrap', { style: { marginTop: 'var(--s-6)' 
     type: 'button',
     onclick: () => editarCompromisso(null, () => ctx.rerender(), { tipo: 'conta', emoji: '💸' }),
   }, [el('span', { text: '+ a pagar' })]),
+  el('button.btn.btn--sm', {
+    type: 'button',
+    onclick: () => openSheet('Importar atualização da Carteira', () => {
+      const input = el('input', { type: 'text', placeholder: 'Link de atualização', autocapitalize: 'none', spellcheck: 'false' });
+      const status = el('p.micro', { role: 'status' });
+      return [
+        el('label.field', {}, [el('span.micro', { text: 'LINK DA CARTEIRA' }), input]),
+        status,
+        el('div.sheet__actions', {}, [el('button.btn.btn--solid', {
+          type: 'button', text: 'Conferir atualização',
+          onclick: () => {
+            try {
+              const fragment = new URL(input.value.trim()).hash.slice(1);
+              const data = new URLSearchParams(fragment).get('carteira');
+              if (!data) throw new Error('link');
+              mostrarImportacaoCarteira(JSON.parse(data), ctx);
+            } catch { status.textContent = 'Use um link de atualização da Carteira.'; }
+          },
+        })]),
+      ];
+    }),
+  }, [el('span', { text: 'importar atualização' })]),
 ]);
 
 /* Cabeçalho de bloco com a barra do quanto já foi resolvido. */

@@ -158,7 +158,7 @@ const espera = ms => new Promise(ok => setTimeout(ok, ms));
 function mesmoConteudo(a, b) {
   if (!a || !b) return false;
   const limpo = d => JSON.stringify({
-    days: d.days, categories: d.categories, todos: d.todos, agenda: d.agenda,
+    days: d.days, categories: d.categories, todos: d.todos, agenda: d.agenda, wallet: d.wallet ?? null,
     reviews: d.reviews, badges: d.badges, profile: d.profile, levelSeen: d.levelSeen,
     settings: { ...d.settings, sync: undefined, updatedAt: undefined },
   });
