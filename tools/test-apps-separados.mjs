@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as store from '../js/store.js';
+import * as vault from '../js/vault.js';
 import { FINANCE_ACCESS, TASK_EXPORT, makeTransfer, openTransfer } from '../js/companion-transfer.js';
 import { readWalletForConnection } from '../js/chatgpt.js';
 import { changeTask, importCaderno, loadBoards, migrationPlan } from '../tarefas/backend.js';
@@ -10,12 +11,18 @@ const password = 'senha-ficticia';
 await store.createVault(password);
 const today = store.todayKey();
 const config = { owner: 'teste', repo: 'privado', token: 'token-ficticio', from: today };
-const code = await makeTransfer(store.getSession(), FINANCE_ACCESS, config);
+const transferPassword = 'senha-nova-financeiro';
+const originalVault = vault.exportEncrypted();
+const code = await makeTransfer(store.getSession(), FINANCE_ACCESS, config, transferPassword);
+const oldCode = JSON.stringify(await vault.seal(store.getSession(), { type: FINANCE_ACCESS, data: config }));
 assert.doesNotMatch(code, /token-ficticio|privado/);
+assert.equal(vault.exportEncrypted(), originalVault);
 await assert.rejects(openTransfer(code, 'senha-errada', FINANCE_ACCESS), /senha/);
-await assert.rejects(openTransfer(code, password, TASK_EXPORT), /este app/);
+await assert.rejects(openTransfer(code, password, FINANCE_ACCESS), /senha/);
+await assert.rejects(openTransfer(code, transferPassword, TASK_EXPORT), /este app/);
 store.lockVault();
-assert.deepEqual(await openTransfer(code, password, FINANCE_ACCESS), config);
+assert.deepEqual(await openTransfer(code, transferPassword, FINANCE_ACCESS), config);
+assert.deepEqual(await openTransfer(oldCode, password, FINANCE_ACCESS), config);
 
 const ledger = { version: 1, date: today, balance: 100000, invested: 200000,
   balanceEstimated: false, paymentMonth: today.slice(0, 7), receivables: [], payments: [] };

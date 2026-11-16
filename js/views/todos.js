@@ -114,24 +114,38 @@ function mostrarTransferencia(finance) {
     ? { owner: connection.owner, repo: connection.repo, from: connection.from, token: connection.token }
     : store.openTodos().map(({ id, text, due, star }) => ({ id, text, due, star }));
   openSheet(finance ? 'Conectar app Financeiro' : 'Migrar tarefas abertas', () => {
-    const code = el('textarea', { readOnly: true, rows: '3', 'aria-label': 'Código cifrado' });
-    const status = el('p.micro', { role: 'status', text: 'Preparando código cifrado…' });
-    const copy = el('button.btn.btn--solid', { type: 'button', disabled: true, text: 'Copiar código', onclick: async () => {
+    const password = el('input', { type: 'password', autocomplete: 'new-password', minlength: 8, required: true });
+    const code = el('textarea', { readOnly: true, hidden: true, rows: '3', 'aria-label': 'Código cifrado' });
+    const status = el('p.micro', { role: 'status' });
+    const copy = el('button.btn.btn--solid', { type: 'button', hidden: true, disabled: true, text: 'Copiar código', onclick: async () => {
       try { await navigator.clipboard.writeText(code.value); status.textContent = 'Código copiado.'; }
       catch { code.focus(); code.select(); status.textContent = 'Toque em Copiar na seleção.'; }
     } });
-    makeTransfer(session, finance ? FINANCE_ACCESS : TASK_EXPORT, data).then(value => {
-      if (store.getSession() !== session || !code.isConnected) return;
-      code.value = value;
-      copy.disabled = false;
-      status.textContent = '';
-    }).catch(err => { status.textContent = err.message; });
-    return [
+    const generate = el('button.btn.btn--solid', { type: 'submit', text: 'Gerar código' });
+    return el('form', { onsubmit: async event => {
+      event.preventDefault();
+      generate.disabled = true;
+      status.textContent = 'Preparando código cifrado…';
+      try {
+        const value = await makeTransfer(session, finance ? FINANCE_ACCESS : TASK_EXPORT, data, password.value);
+        if (store.getSession() !== session || !code.isConnected) return;
+        password.value = '';
+        password.disabled = true;
+        generate.hidden = true;
+        code.hidden = false;
+        code.value = value;
+        copy.hidden = false;
+        copy.disabled = false;
+        status.textContent = 'Use no outro app a senha que você acabou de escolher.';
+      } catch (err) { status.textContent = err.message; }
+      finally { generate.disabled = false; }
+    } }, [
       el('p.muted', { text: finance
-        ? 'Copie o código, abra o ícone Financeiro e cole junto com a senha do Caderno.'
-        : `${data.length} tarefas abertas. Cole o código e a senha do Caderno em Importar do Caderno, no app Tarefas. O histórico completo fica no cofre original.` }),
-      code, status, copy,
-    ];
+        ? 'Escolha uma senha para o Financeiro. Ela abre o código e destranca o novo app.'
+        : `${data.length} tarefas abertas. Escolha uma senha para abrir este código no app Tarefas.` }),
+      el('label.field', {}, [el('span.micro', { text: finance ? 'Senha do Financeiro' : 'Senha da migração' }), password]),
+      generate, code, status, copy,
+    ]);
   });
 }
 

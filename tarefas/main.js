@@ -184,7 +184,7 @@ function showImport() {
   } }, [
     el('h2', { text: 'Importar do Caderno' }),
     el('p.muted', { text: 'No Caderno instalado, abra Pessoal → Tarefas → Preparar migração de tarefas e copie o código cifrado.' }),
-    el('label', {}, ['Código do Caderno', code]), el('label', {}, ['Senha do Caderno', password]),
+    el('label', {}, ['Código do Caderno', code]), el('label', {}, ['Senha escolhida ao gerar o código', password]),
     el('div.actions', {}, [submit, el('button', { type: 'button', text: 'Voltar', onclick: () => showTasks() })]), status,
   ]));
 }
