@@ -50,12 +50,12 @@ export async function abrirSelo(chave, blob) {
 
 /* ── Estado guardado neste aparelho ─────────────────────────── */
 
-function ler() {
-  try { return JSON.parse(localStorage.getItem(CHAVE)) || null; }
+function ler(storageKey = CHAVE) {
+  try { return JSON.parse(localStorage.getItem(storageKey)) || null; }
   catch { return null; }
 }
-export const armada = () => !!ler();
-export function desarmar() { localStorage.removeItem(CHAVE); }
+export const armada = (storageKey = CHAVE) => !!ler(storageKey);
+export function desarmar(storageKey = CHAVE) { localStorage.removeItem(storageKey); }
 
 /* ── WebAuthn ───────────────────────────────────────────────── */
 
@@ -116,11 +116,11 @@ export async function completarCredencial(cred) {
 }
 
 /** Guarda a senha selada. Nada aqui pede biometria — já foi pedida. */
-export async function guardar(senha, cred) {
+export async function guardar(senha, cred, storageKey = CHAVE) {
   const hkdfSalt = aleatorio(16);
   const chave = await chaveDePrf(new Uint8Array(cred.prf), hkdfSalt);
   const selo = await selar(chave, senha);
-  localStorage.setItem(CHAVE, JSON.stringify({
+  localStorage.setItem(storageKey, JSON.stringify({
     v: 1, id: b64(cred.id), prfSalt: b64(cred.prfSalt), hkdfSalt: b64(hkdfSalt),
     ...selo, armadaEm: Date.now(),
   }));
@@ -149,8 +149,8 @@ export async function diagnostico() {
 }
 
 /** Pede o rosto e devolve a senha. Lança Error('cancelado') se você desistir. */
-export async function entrar() {
-  const guardado = ler();
+export async function entrar(storageKey = CHAVE) {
+  const guardado = ler(storageKey);
   if (!guardado) throw new Error('desarmada');
   const prf = await colher(unb64(guardado.id), unb64(guardado.prfSalt));
   const chave = await chaveDePrf(new Uint8Array(prf), unb64(guardado.hkdfSalt));
