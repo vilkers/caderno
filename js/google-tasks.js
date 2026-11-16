@@ -1,7 +1,9 @@
 import * as store from './store.js';
 
-export const CLIENT_KEY = 'caderno.tarefas.cliente-oauth.v1';
 import { debounce } from './utils.js';
+
+export const CLIENT_KEY = 'caderno.tarefas.cliente-oauth.v1';
+export const DEFAULT_CLIENT_ID = '381970438729-plj0p60emqn02qop7db10un6ank92md0.apps.googleusercontent.com';
 
 const API = 'https://tasks.googleapis.com/tasks/v1';
 const SCOPE = 'https://www.googleapis.com/auth/tasks';
@@ -44,8 +46,10 @@ export function requestGoogleGrant(clientId) {
         }
         resolve({ token: response.access_token, expires: Date.now() + Number(response.expires_in) * 1000 });
       },
-      error_callback: () => reject(new Error('O login do Google foi fechado ou bloqueado.')),
-    }).requestAccessToken({ prompt: 'select_account' });
+      error_callback: error => reject(new Error(error.type === 'popup_failed_to_open'
+        ? 'Abra o Tarefas no Safari e toque em Entrar com Google.'
+        : 'O login foi fechado. Toque em Entrar com Google para tentar de novo.')),
+    }).requestAccessToken({ prompt: '' });
   });
 }
 

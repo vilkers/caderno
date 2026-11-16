@@ -1,7 +1,7 @@
 /* sw.js — cache do casco do app para uso offline.
    Os dados nunca passam por aqui: ficam cifrados no localStorage. */
 
-const CACHE = 'caderno-v26';
+const CACHE = 'caderno-v27';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css', './css/fonts.css',
@@ -13,7 +13,7 @@ const SHELL = [
   './js/merge.js', './js/sync.js', './js/badges.js', './js/icons.js', './js/avatar.js', './js/idb.js', './js/lembrete.js', './js/arrastar.js', './js/resumo.js', './js/graficos.js',
   './js/views/today.js', './js/views/month.js', './js/views/todos.js',
   './js/views/insights.js', './js/views/settings.js', './js/views/metas.js', './js/views/perfil.js', './js/views/fechames.js', './js/views/resumo.js', './js/views/revisao.js', './js/views/agenda.js', './js/views/agendaform.js', './js/views/paleta.js',
-  './assets/icon.svg',
+  './assets/icon.svg', './assets/icone-inicio.png',
 ];
 
 self.addEventListener('install', e => {

@@ -1,5 +1,5 @@
 import { el, addDays, humanDay, todayKey } from '../js/utils.js';
-import { CLIENT_KEY, loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
+import { CLIENT_KEY, DEFAULT_CLIENT_ID, loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
 import { TASK_EXPORT, openTransfer } from '../js/companion-transfer.js';
 import { loadBoards, createTask, changeTask, taskFields, dateOf, highPriority, migrationPlan, importCaderno } from './backend.js';
 
@@ -8,6 +8,7 @@ const FILTERS = [['today', 'Hoje'], ['week', 'Semana'], ['open', 'Abertas'], ['d
 let grant, boards = [], area = '', filter = 'today';
 
 function render(...content) {
+  document.body.classList.remove('entry');
   app.replaceChildren(el('h1', { text: 'Tarefas' }), ...content);
 }
 
@@ -19,12 +20,12 @@ function login(message = '') {
   grant = null;
   boards = [];
   area = '';
-  const client = el('input', { type: 'text', value: localStorage.getItem(CLIENT_KEY) || '', autocomplete: 'off', required: true });
+  const client = el('input', { type: 'text', value: localStorage.getItem(CLIENT_KEY) || DEFAULT_CLIENT_ID, autocomplete: 'off' });
   const status = el('p.status', { role: 'status', text: message });
-  const submit = el('button.primary', { type: 'submit', text: 'Autorizar Google Tasks', disabled: true });
+  const submit = el('button.primary', { type: 'submit', text: 'Entrar com Google', disabled: true });
   const form = el('form.panel.stack', { onsubmit: async event => {
     event.preventDefault();
-    const clientId = client.value.trim();
+    const clientId = client.value.trim() || DEFAULT_CLIENT_ID;
     if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(clientId)) {
       status.textContent = 'Cole o ID de cliente OAuth do tipo Aplicativo da Web.';
       return;
@@ -42,13 +43,13 @@ function login(message = '') {
     } catch (error) { setError(status, error); }
     finally { submit.disabled = false; }
   } }, [
-    el('h2', { text: 'Conectar Google Tasks' }),
-    el('p.muted', { text: 'Use o ID de um cliente OAuth de aplicativo web com a Google Tasks API e a origem https://vilkers.github.io.' }),
-    el('label', {}, ['ID de cliente OAuth', client]),
-    el('div.actions', {}, [submit]),
+    el('p.muted', { text: 'Entre com a conta onde estão suas listas do Google Tasks.' }),
+    submit,
     status,
+    el('details.connection-settings', {}, [el('summary', { text: 'Configuração da conexão' }), el('label', {}, ['ID de cliente OAuth', client])]),
   ]);
   render(form);
+  document.body.classList.add('entry');
   loadIdentity().then(() => { submit.disabled = false; }).catch(error => setError(status, error));
 }
 
@@ -109,7 +110,7 @@ function showTasks(message = '') {
         type: 'button', text, 'aria-pressed': String(filter === id), onclick: () => { filter = id; showTasks(); },
       }))),
       tasks.length ? el('ul.tasks-list', {}, tasks.map(({ task, board }) => taskRow(task, board, status)))
-        : el('p.muted', { text: 'Nenhuma tarefa neste recorte.' }),
+        : el('p.muted', { text: filter === 'today' ? 'Nada com prazo para hoje. Veja Abertas para incluir tarefas sem prazo.' : 'Nenhuma tarefa neste recorte.' }),
     ]),
     el('div.actions', {}, [
       el('button', { type: 'button', text: 'Importar do Caderno', onclick: showImport }),
