@@ -34,7 +34,7 @@ export const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toS
 export function debounce(fn, ms = 300) {
   let t;
   const wrapped = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-  wrapped.flush = (...a) => { clearTimeout(t); fn(...a); };
+  wrapped.flush = (...a) => { clearTimeout(t); return fn(...a); };
   return wrapped;
 }
 

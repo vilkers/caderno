@@ -1,7 +1,7 @@
 /* sw.js — casco do Caderno 2.0 em cache. Os dados não passam por aqui:
    ficam cifrados no localStorage, compartilhados com a versão clássica. */
 
-const CACHE = 'caderno-retro-v2';
+const CACHE = 'caderno-retro-v3';
 const CASCO = [
   './', './index.html', './manifest.webmanifest',
   './css/retro.css',
@@ -13,6 +13,7 @@ const CASCO = [
   './assets/fonts/silkscreen-latin.woff2', './assets/fonts/silkscreen-latin-700.woff2',
   '../js/store.js', '../js/vault.js', '../js/utils.js', '../js/analysis.js',
   '../js/badges.js', '../js/merge.js', '../js/sync.js',
+  '../js/chatgpt.js',
   '../temas/pixel/sprites.js', '../temas/pixel/sfx.js', '../temas/pixel/tokens.css',
 ];
 

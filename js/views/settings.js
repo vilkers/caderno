@@ -8,6 +8,7 @@ import { TYPES, CADENCIAS } from '../store.js';
 import * as vault from '../vault.js';
 import * as biometria from '../biometria.js';
 import * as sync from '../sync.js';
+import * as chatGPT from '../chatgpt.js';
 import * as lembrete from '../lembrete.js';
 import { PALETTES } from '../palettes.js';
 import { toast, openSheet, confirmSheet, stagger, interruptor } from '../ui.js';
@@ -26,6 +27,7 @@ export function render(ctx) {
   ]));
 
   view.append(section('SINCRONIA · BANCO DE DADOS', syncBox(ctx)));
+  view.append(section('CHECK-IN COM CHATGPT', chatGPTBox(ctx)));
 
   view.append(section('VERSÃO 2.0', el('div', {}, [
     row('Caderno 2.0 — pixel', 'A mesma rotina em forma de fase: blocos, moedas, mundos e troféus. Mesmos dados, mesma senha.',
@@ -99,7 +101,7 @@ export function render(ctx) {
   view.append(section('BACKUP E DADOS', el('div', {}, [
     row('Backup cifrado', 'Arquivo .caderno — só abre com esta senha. É o backup recomendado.',
       el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: exportVault }, [el('span', { text: 'baixar' })])),
-    row('Exportar JSON', 'Legível, sem senha. Bom pra levar os dados pra outro lugar — guarde com cuidado.',
+    row('Exportar JSON', 'Legível, sem senha e sem tokens de acesso. Contém os seus registros.',
       el('button.btn.btn--sm', { type: 'button', onclick: exportJSON }, [el('span', { text: 'baixar' })])),
     row('Importar', 'Aceita .json e .caderno. Substitui o que está aqui.',
       el('button.btn.btn--sm', { type: 'button', onclick: () => importFile(ctx) }, [el('span', { text: 'escolher arquivo' })])),
@@ -320,6 +322,77 @@ function syncSheet(ctx) {
           },
         }, [el('span', { text: 'salvar e sincronizar' })]),
       ]),
+    ];
+  });
+}
+
+function chatGPTBox(ctx) {
+  const c = chatGPT.config();
+  const configure = el('button.btn.btn--sm', {
+    type: 'button', onclick: () => chatGPTSheet(ctx),
+  }, [el('span', { text: c ? 'editar' : 'conectar' })]);
+  const rows = [row('Repositório privado', c ? `${c.owner}/${c.repo} · desde ${c.from}` :
+    'Compartilha as marcações de rotina a partir da data que você escolher.', configure)];
+  if (c) {
+    rows.push(row('Buscar check-ins', 'A busca também roda enquanto o Caderno estiver aberto e destrancado.',
+      el('button.btn.btn--sm.btn--solid', {
+        type: 'button',
+        onclick: async e => {
+          const button = e.currentTarget;
+          button.disabled = true;
+          try {
+            const result = await chatGPT.sync();
+            toast(result ? 'check-ins conferidos' : 'sem conexão');
+          } catch (err) { toast(err.message, { ms: 5000 }); }
+          finally { button.disabled = false; }
+        },
+      }, [el('span', { text: 'sincronizar' })])));
+    rows.push(row('Desconectar', 'Para o envio deste aparelho. As cópias já enviadas ficam no histórico do repositório.',
+      el('button.btn.btn--sm', {
+        type: 'button', onclick: () => { store.setChatGPT(undefined); ctx.rerender(); },
+      }, [el('span', { text: 'desconectar' })])));
+  }
+  return el('div', {}, rows);
+}
+
+function chatGPTSheet(ctx) {
+  const c = chatGPT.config();
+  openSheet('Conectar check-in', close => {
+    const repository = el('input', { type: 'text', value: c ? `${c.owner}/${c.repo}` : '', placeholder: 'usuário/repositório', spellcheck: 'false', autocapitalize: 'none' });
+    const from = el('input', { type: 'date', value: c?.from || store.todayKey(), max: store.todayKey() });
+    const token = el('input', { type: 'password', placeholder: c ? 'Deixe vazio para manter o atual' : 'github_pat_…', autocomplete: 'off' });
+    const status = el('p.micro', { role: 'status' });
+    const button = el('button.btn.btn--solid', {
+      type: 'button',
+      onclick: async () => {
+        const match = /^([\w-]+)\/([\w.-]+)$/.exec(repository.value.trim());
+        if (!match) { status.textContent = 'Use o formato usuário/repositório.'; return; }
+        const [, owner, repo] = match;
+        const unchanged = c?.owner === owner && c.repo === repo;
+        const next = { owner, repo, from: from.value, token: token.value.trim() || (unchanged ? c.token : '') };
+        button.disabled = true;
+        status.textContent = 'Conferindo acesso…';
+        try {
+          await chatGPT.check(next);
+          if (!button.isConnected || !store.isUnlocked()) return;
+          store.setChatGPT(next);
+          if (!(await chatGPT.sync())) throw new Error('Confira a conexão e tente de novo.');
+          if (!button.isConnected || !store.isUnlocked()) return;
+          close();
+          ctx.rerender();
+          toast('check-in conectado');
+        } catch (err) {
+          if (store.isUnlocked() && chatGPT.config() === next) store.setChatGPT(c);
+          status.textContent = err.message;
+        } finally { button.disabled = false; }
+      },
+    }, [el('span', { text: 'conectar e sincronizar' })]);
+    return [
+      el('p.muted', { text: 'As marcações e as categorias ativas ficam legíveis para quem tem acesso ao repositório privado. Notas gerais do dia, tarefas e agenda ficam no cofre.' }),
+      el('p.muted', { text: 'No GitHub, crie um token fine-grained para esse repositório com Contents: Read and write. Cole o token aqui no Caderno.' }),
+      field('REPOSITÓRIO PRIVADO', repository), field('COMPARTILHAR A PARTIR DE', from),
+      field('TOKEN DO REPOSITÓRIO', token), status,
+      el('div.sheet__actions', {}, [button]),
     ];
   });
 }

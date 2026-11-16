@@ -7,8 +7,9 @@ e o app lê os seus próprios dados de volta pra você.
 Os dados ficam no `localStorage` do navegador, cifrados com AES-GCM 256 usando
 uma chave derivada da sua senha (PBKDF2-SHA256, 310 mil iterações) — e, se você
 ligar a sincronia, também num arquivo cifrado dentro do próprio repositório
-(`dados/caderno.enc.json`), que é o banco de dados do app. Não existe backend,
-analytics ou requisição a terceiros — nem as fontes, que são servidas daqui.
+(`dados/caderno.enc.json`), que é o banco de dados do app. As fontes são locais.
+O [check-in com ChatGPT](#check-in-com-chatgpt) é uma integração opcional com
+um repositório privado separado.
 
 ---
 
@@ -408,11 +409,37 @@ Preferências) reduz isso.
   backup mais completo, porque tem histórico.
 - **Backup cifrado (.caderno)** — o mesmo blob, portátil entre aparelhos; abre
   com a mesma senha. Bom pra guardar fora do GitHub.
-- **JSON** — legível, sem senha. Bom pra migrar ou analisar em outro lugar;
-  guarde com cuidado, porque é texto puro.
+- **JSON** — legível, sem senha e sem credenciais das integrações. Bom pra
+  migrar ou analisar em outro lugar. Guarde com cuidado, porque é texto puro.
 
 Trocar de aparelho: baixe o backup cifrado, abra o app no aparelho novo e use
 Ajustes → Dados → Importar.
+
+### Check-in com ChatGPT
+
+No Caderno clássico, abra **Ajustes → Check-in com ChatGPT → conectar**.
+Escolha um repositório privado inicializado com README e acessível ao seu
+ChatGPT pelo GitHub. No GitHub, gere um token fine-grained exclusivo para
+esse repositório, com **Contents: Read and write**. Insira o token no Caderno
+e escolha a primeira data a compartilhar. O padrão é hoje. Use o aparelho
+principal para conectar a integração. Tanto a versão clássica quanto a 2.0
+buscam os pedidos enquanto a página estiver aberta e destrancada.
+
+O arquivo `caderno-automacao/check-in.json` fica legível no GitHub privado.
+Ele contém as categorias ativas, as marcações a partir da data escolhida e
+o estado de fechamento dos dias. Tarefas, agenda, notas gerais e credenciais
+ficam fora dele. Mantenha o repositório privado, pois o Git guarda versões
+anteriores mesmo depois de desconectar ou mudar a data inicial.
+
+O assistente lê `categories` e `days`, registra apenas o que o usuário informou
+e acrescenta um objeto a `requests`, usando o SHA atual para evitar sobrepor
+outra atualização. Cada pedido tem `id` único, `date` em `AAAA-MM-DD` e
+`changes` com objetos `category` (ID da categoria), `value` (novo valor) e
+`previous` (valor lido em `days[date].values`, ou `null` se vazio). Use números
+para horas, escalas e contagens, `true` para marcar e texto para campos livres.
+O app aplica o pedido inteiro se os valores anteriores baterem. Depois remove
+o pedido da fila e informa `applied` ou `conflict` em `results`, com o mesmo ID.
+`applied` confirma a gravação. Um pedido ainda na fila aguarda o app abrir.
 
 ---
 

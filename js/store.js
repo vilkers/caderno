@@ -198,9 +198,15 @@ const subs = new Set();
 export const subscribe = fn => { subs.add(fn); return () => subs.delete(fn); };
 
 const persist = debounce(async () => {
-  if (!session) return;
-  try { await vault.write(session, state); }
-  catch (e) { console.error('falha ao salvar', e); emitOnly('save-error'); }
+  if (!session) return false;
+  try {
+    await vault.write(session, state);
+    return true;
+  } catch (e) {
+    console.error('falha ao salvar', e);
+    emitOnly('save-error');
+    return false;
+  }
 }, 400);
 
 function emitOnly(reason) { subs.forEach(fn => fn(reason)); }
@@ -733,19 +739,29 @@ export function setSync(patch) {
   persist();
 }
 
+export function setChatGPT(config) {
+  state.settings.chatGPT = config;
+  emitOnly('chatgpt');
+  persist();
+}
+
 /* ── Import / export ───────────────────────────────────────── */
 export function exportJSON() {
-  return JSON.stringify({ ...state, exportedAt: new Date().toISOString(), app: 'caderno' }, null, 2);
+  return JSON.stringify({ ...syncDoc(), exportedAt: new Date().toISOString(), app: 'caderno' }, null, 2);
 }
 export function importJSON(text) {
   const data = JSON.parse(text);
   if (!data || typeof data !== 'object' || !('days' in data)) throw new Error('formato');
-  replaceAll(data);
+  replaceAll({
+    ...data,
+    settings: { ...data.settings, sync: state.settings.sync, chatGPT: state.settings.chatGPT },
+  });
 }
-/** O que vai para o arquivo do repositório (sem o token de sincronia). */
+/** Cópia portátil sem credenciais nem configurações locais de integração. */
 export function syncDoc() {
   const doc = structuredClone(state);
-  doc.settings = { ...doc.settings, sync: undefined };
+  delete doc.settings.sync;
+  delete doc.settings.chatGPT;
   return doc;
 }
 
