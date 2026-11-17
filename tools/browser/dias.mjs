@@ -1,4 +1,4 @@
-/* Terapia toda terça, tarefa com data, e criar tocando no dia. */
+/* Terapia toda terça: cobrança por dia da semana, gaveta e chips de dia. */
 import { chromium, pastaDeShots, BASE } from './_comum.mjs';
 const SHOT = pastaDeShots('ux');
 const b = await chromium.launch();
@@ -86,47 +86,9 @@ console.log('depois de ligar quinta:', await p.evaluate(async()=>{
 await p.screenshot({path:SHOT+'/d1-editor.png', fullPage:true});
 for(let i=0;i<3;i++){ if(await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(250);}
 
-// ── tarefa com data
-await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(700);
-await p.fill('.todoadd input','Levar o Estojo no vet'); await p.keyboard.press('Enter'); await p.waitForTimeout(600);
-await p.click('.todo .todo__data'); await p.waitForTimeout(600);
-console.log('folha de data:', await p.$eval('#sheetTitle', n=>n.textContent), '| atalhos:', await p.$$eval('#sheetBody .chip', ns=>ns.map(n=>n.textContent).join('/')));
-await p.click('#sheetBody .chip:has-text("hoje")'); await p.waitForTimeout(700);
-console.log('a data ocupou o lugar do ícone:', await p.$eval('.todo .todo__data', n=>n.textContent.trim()));
-await p.screenshot({path:SHOT+'/d2-tarefa.png'});
-
-// ── ela aparece no calendário e no hoje
-await p.click('.nav__item[data-view="mes"]'); await p.waitForTimeout(800);
-console.log('marcas de tarefa no calendário:', await p.$$eval('.cal__tf', ns=>ns.length),
-            '| legenda:', await p.$$eval('.legend__i', ns=>ns.length));
-await p.click('.nav__item[data-view="hoje"]'); await p.waitForTimeout(800);
-console.log('no hoje:', await p.$eval('.todo__sel', n=>n.textContent).catch(()=>'—'));
-
-// ── criar tocando no dia
-await p.click('.nav__item[data-view="mes"]'); await p.waitForTimeout(800);
-await p.click('.cal__day:not(.is-out):nth-child(20)'); await p.waitForTimeout(700);
-console.log('prévia tem "novo neste dia":', await p.$$eval('#sheetBody .micro', ns=>ns.map(n=>n.textContent)).then(a=>a.includes('NOVO NESTE DIA')));
-console.log('portas:', await p.$$eval('#sheetBody .chips .chip', ns=>ns.map(n=>n.textContent).join(' / ')));
-await p.click('#sheetBody .chip:has-text("tarefa")'); await p.waitForTimeout(400);
-await p.fill('#sheetBody .todoadd input','Comprar ração'); await p.keyboard.press('Enter'); await p.waitForTimeout(800);
-console.log('tarefa criada pelo calendário:', await p.evaluate(async()=>{
-  const s=await import('./js/store.js');
-  const t=s.listTodos().find(x=>x.text==='Comprar ração'); return t? `${t.text} → ${t.due}` : 'NÃO CRIOU';}));
-console.log('marcas de tarefa agora:', await p.$$eval('.cal__tf', ns=>ns.length));
-
-// conta pelo calendário
-await p.click('.cal__day:not(.is-out):nth-child(22)'); await p.waitForTimeout(700);
-await p.click('#sheetBody .chip:has-text("conta")'); await p.waitForTimeout(700);
-console.log('form de conta abriu:', await p.$eval('#sheetTitle', n=>n.textContent),
-            '| campos:', await p.$$eval('#sheetBody .field .micro', ns=>ns.map(n=>n.textContent).join(' | ')));
-await p.fill('#sheetBody input[aria-label="Nome"]','IPVA');
-await p.fill('#sheetBody input[aria-label="Valor"]','480,50');
-await p.click('#sheetBody .btn--solid'); await p.waitForTimeout(800);
-console.log('conta criada:', await p.evaluate(async()=>{
-  const s=await import('./js/store.js');
-  const a=s.listAgenda().find(x=>x.label==='IPVA');
-  return a? `${a.label} · ${a.repete} · ${a.data} · ${a.valor}` : 'NÃO CRIOU';}));
-await p.screenshot({path:SHOT+'/d3-calendario.png', fullPage:true});
+/* Tarefa com data, as marcas de tarefa no calendário e criar tarefa ou
+   conta tocando num dia do Mês saíram daqui: tarefas mudaram para o app
+   tarefas/ e contas para financeiro/. */
 
 console.log('erros:', erros.length?erros.join('\n'):'nenhum');
 await b.close();
