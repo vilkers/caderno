@@ -55,7 +55,7 @@ body.financeiro:not(.entry) {
 .spending-name { display: flex; justify-content: space-between; gap: 9px; overflow-wrap: anywhere; font-size: .87rem; }
 .spending-track { display: flex; overflow: hidden; height: 6px; border-radius: 8px; background: #ecefe8; margin-top: 6px; }
 .spending-track > span { width: var(--width); background: #a65a44; }
-.reference-balance summary { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 34px; cursor: pointer; }
+.reference-balance summary { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; cursor: pointer; }
 .reference-balance summary span::before { content: '+'; margin-right: 6px; color: var(--accent); }
 .reference-balance[open] summary span::before { content: '–'; }
 .reference-lines { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 7px; font-size: .9rem; }
