@@ -14,17 +14,23 @@ await p.waitForTimeout(900);
 for (let i=0;i<4;i++){ if (await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300);} 
 
 await p.click('#menuBtn'); await p.waitForTimeout(700);
-console.log('menu:', await p.$$eval('.menuitem .row__t', ns=>ns.map(n=>n.textContent).join(' · ')));
+const itensMenu = await p.$$eval('.menuitem .row__t', ns=>ns.map(n=>n.textContent));
+console.log('menu:', itensMenu.join(' · '));
+// a marcação rápida saiu do menu (vinha de pessoal.mjs, arquivado)
+if (itensMenu.some(t=>/marcação rápida/i.test(t))) errs.push('o menu ainda tem marcação rápida');
 console.log('itens que nascem fora da tela:', await p.evaluate(()=>{
   const alt = innerHeight;
   return [...document.querySelectorAll('.menuitem')].filter(n=>n.getBoundingClientRect().top > alt).length;
 }));
 await p.screenshot({path:SHOT+'/m1-menu.png'});
-await p.keyboard.press('Escape'); await p.waitForTimeout(400);
-await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(600);
-await p.click('.aba:has-text("Contas")'); await p.waitForTimeout(800);
+/* Antes a tela secundária de teste era Lista → Contas. Contas e tarefas
+   mudaram para financeiro/ e tarefas/; a revisão da semana, aberta pelo
+   menu, é uma secundária que continua no Caderno. */
+await p.click('.menuitem:has-text("Revisão da semana")'); await p.waitForTimeout(900);
 
-console.log('topo em tela secundária:', await p.$eval('#identNome', n=>n.textContent), '|', await p.$eval('#topDate', n=>n.textContent), '| seta:', await p.$$eval('.ident__voltar', n=>n.length));
+const setaSecundaria = await p.$$eval('.ident__voltar', n=>n.length);
+console.log('topo em tela secundária:', await p.$eval('#identNome', n=>n.textContent), '|', await p.$eval('#topDate', n=>n.textContent), '| seta:', setaSecundaria);
+if (!setaSecundaria) errs.push('a tela secundária não mostrou a seta de voltar');
 await p.screenshot({path:SHOT+'/m2-topo-secundaria.png'});
 // rola até o fim e volta pelo topo (que é fixo)
 await p.evaluate(()=>window.scrollTo(0, document.documentElement.scrollHeight)); await p.waitForTimeout(500);
