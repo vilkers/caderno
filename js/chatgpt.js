@@ -101,19 +101,31 @@ export async function readWalletForConnection(c) {
 
 export async function addWalletItemForConnection(c, list, item, active = () => true) {
   if (!['receivables', 'payments'].includes(list)) throw new Error('Escolha renda ou despesa.');
+  return saveWalletItem(c, list, item, null, active);
+}
+
+export function saveWalletSubscription(c, item, previous, active) {
+  return saveWalletItem(c, 'subscriptions', item, previous, active);
+}
+
+async function saveWalletItem(c, list, item, previous, active = () => true) {
   const branch = await privateRepo(c);
   for (let attempt = 0; attempt < 3; attempt++) {
     if (!active()) throw new Error('Destranque o Grana para voltar à Carteira.');
     const record = await readWalletFile(c, branch);
-    const found = record.data[list].find(existing => existing.id === item.id);
-    if (found) {
-      if (['title', 'amountCents', 'status', 'date'].every(key => (found[key] ?? null) === item[key])) return record;
-      throw new Error('Esta tentativa já registrou outro lançamento. Confira a Carteira antes de continuar.');
+    const entries = record.data[list] || [];
+    const found = entries.find(existing => existing.id === item.id);
+    const matches = (recorded, expected) => recorded && expected &&
+      Object.keys(expected).every(key => (recorded[key] ?? (key === 'active' ? true : null)) === (expected[key] ?? null));
+    if (matches(found, item)) return record;
+    if ((found || previous) && !matches(found, previous)) {
+      throw new Error('O registro mudou na Carteira. Atualize o Grana antes de tentar novamente.');
     }
     if (list === 'payments' && item.date && !item.date.startsWith(record.data.paymentMonth + '-')) {
       throw new Error('A data da despesa precisa estar no mês vigente da Carteira.');
     }
-    const data = { ...record.data, [list]: [...record.data[list], item] };
+    const updated = found ? entries.map(existing => existing.id === item.id ? { ...existing, ...item } : existing) : [...entries, item];
+    const data = { ...record.data, [list]: updated };
     store.centralWalletPlan(data);
     if (!active()) throw new Error('Destranque o Grana para voltar à Carteira.');
     let res;

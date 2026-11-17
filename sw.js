@@ -1,12 +1,12 @@
 /* sw.js — cache do casco do app para uso offline.
    Os dados nunca passam por aqui: ficam cifrados no localStorage. */
 
-const CACHE = 'caderno-v32';
+const CACHE = 'caderno-v33';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css', './css/fonts.css', './css/companions.css', './css/financeiro.css',
   './tarefas/', './tarefas/index.html', './tarefas/main.js', './tarefas/flow.js', './tarefas/layout.css', './tarefas/manifest.webmanifest',
-  './financeiro/', './financeiro/index.html', './financeiro/main.js', './financeiro/overview.js', './financeiro/manifest.webmanifest',
+  './financeiro/', './financeiro/index.html', './financeiro/main.js', './financeiro/overview.js', './financeiro/experience.js', './financeiro/subscriptions.js', './financeiro/manifest.webmanifest',
   './assets/fonts/archivo-latin.woff2', './assets/fonts/archivo-latin-ext.woff2',
   './assets/fonts/jetbrainsmono-latin.woff2', './assets/fonts/jetbrainsmono-latin-ext.woff2',
   './js/main.js', './js/store.js', './js/vault.js', './js/biometria.js', './js/utils.js',

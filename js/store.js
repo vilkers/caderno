@@ -1,3 +1,4 @@
+import { normalizeSubscriptions } from '../financeiro/subscriptions.js';
 /* store.js — estado, valores padrão, persistência cifrada e eventos.
 
    Modelo v2: todo item (dia, categoria, tarefa) carrega `updatedAt`, e
@@ -820,14 +821,15 @@ function walletItems(items, statuses, paymentMonth) {
 }
 
 export function centralWalletPlan(data) {
-  const { version, date, balance, invested, balanceEstimated, paymentMonth, receivables, payments } = data || {};
+  const { version, date, balance, invested, balanceEstimated, paymentMonth, receivables, payments, subscriptions } = data || {};
   if (version !== 1 || !validWallet({ date, balance, invested }) || typeof balanceEstimated !== 'boolean'
       || typeof paymentMonth !== 'string' || !walletDate(`${paymentMonth}-01`)) {
     throw new Error('Confira o saldo e o mês das contas no arquivo da Central.');
   }
   return { date, balance, invested, balanceEstimated, paymentMonth,
     receivables: walletItems(receivables, ['pending', 'received']),
-    payments: walletItems(payments, ['pending', 'paid'], paymentMonth) };
+    payments: walletItems(payments, ['pending', 'paid'], paymentMonth),
+    subscriptions: normalizeSubscriptions(subscriptions) };
 }
 
 export async function applyCentralWallet({ data, sha, source }, { reset = false } = {}) {
