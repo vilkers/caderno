@@ -1,4 +1,7 @@
-import { chromium, pastaDeShots, BASE } from './_comum.mjs';
+/* Arquivado em 17/11/2026: a lista de tarefas saiu do Caderno e mudou para o
+   app tarefas/. O arrasto de categorias continua coberto por arrastar-cat.mjs.
+   Fica fora da bateria (tools/testar.sh só roda tools/browser/*.mjs). */
+import { chromium, pastaDeShots, BASE } from '../_comum.mjs';
 const errs=[];
 const b = await chromium.launch();
 const p = await b.newPage({ viewport:{width:440,height:956} });

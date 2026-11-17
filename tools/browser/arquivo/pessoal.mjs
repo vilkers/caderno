@@ -1,4 +1,7 @@
-import { chromium, pastaDeShots, BASE } from './_comum.mjs';
+/* Arquivado em 17/11/2026: contas, assinaturas e carteira saíram do Caderno e
+   mudaram para o app financeiro/. Fica fora da bateria (tools/testar.sh só
+   roda tools/browser/*.mjs). */
+import { chromium, pastaDeShots, BASE } from '../_comum.mjs';
 const SHOT = pastaDeShots('shots');
 const errs=[];
 const b = await chromium.launch();
