@@ -35,7 +35,11 @@ const st = await p.evaluate(async () => {
 });
 console.log('status do dia:', st);
 console.log('painel:', await p.$eval('.status__t', n=>n.textContent));
-console.log('chips do que falta:', await p.$$eval('.falta', n=>n.map(x=>x.textContent.trim())));
+/* Os chips `.falta` no painel saíram: agora o próprio cartão do hábito
+   pendente ganha `.falta-hoje` e sobe para o começo da fila. */
+const pendentesNaTela = await p.$$eval('.entry.falta-hoje .entry__label', n=>n.map(x=>x.textContent.trim()));
+console.log('cartões do que falta:', pendentesNaTela);
+if ([...pendentesNaTela].sort().join('|') !== [...st.faltando].sort().join('|')) errs.push('os cartões pendentes não batem com dayStatus().faltando');
 console.log('metas da semana no topo:', await p.$$eval('.mini__n', n=>n.map(x=>x.textContent.trim())));
 
 // o topo não pode ficar embaixo da ilha dinâmica
@@ -51,10 +55,14 @@ console.log('topo/nav:', topo, topo.textoComeçaEm >= 59 ? '→ abaixo da ilha �
 await p.screenshot({path:SHOT+'/s1-iphone-hoje.png'});
 
 // marca o remédio e confere "tudo em ordem"
-await p.click('.falta >> nth=0'); await p.waitForTimeout(700);
+const antesDeMarcar = await p.$eval('.status__t', n=>n.textContent);
 await p.evaluate(()=>{ const c=[...document.querySelectorAll('.entry')].find(e=>e.textContent.includes('Remédio')); c.querySelector('.tog').click(); });
 await p.waitForTimeout(900);
-console.log('depois de marcar:', await p.$eval('.status__t', n=>n.textContent));
+const depoisDeMarcar = await p.$eval('.status__t', n=>n.textContent);
+console.log('depois de marcar:', depoisDeMarcar);
+if (depoisDeMarcar === antesDeMarcar) errs.push('marcar o remédio não mexeu no painel do dia');
+const remedioPendente = await p.evaluate(()=>[...document.querySelectorAll('.entry')].find(e=>e.textContent.includes('Remédio'))?.classList.contains('falta-hoje'));
+if (remedioPendente) errs.push('o remédio marcado continua como pendente');
 
 // painel de metas
 await p.click('#menuBtn'); await p.waitForTimeout(400);
