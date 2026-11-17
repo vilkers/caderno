@@ -8,8 +8,7 @@
 import { el, nf } from '../utils.js';
 import { cartoes, PERIODOS } from '../resumo.js';
 import { countUp, motionOn, onSwipe } from '../ui.js';
-import { anel, barras, colunas, malha, trilha, barraProgresso } from '../graficos.js';
-import { LEVELS } from '../badges.js';
+import { anel, barras, colunas, malha, trilha } from '../graficos.js';
 
 export function render(ctx) {
   const periodo = ctx.resumoPeriodo || 'tudo';
@@ -179,8 +178,6 @@ function grafico(g) {
     caixa.append(lista);
   } else if (g.tipo === 'trilha') {
     caixa.append(trilha(g.n, { max: 21, atraso: espera }));
-  } else if (g.tipo === 'escada') {
-    caixa.append(escada(g, espera));
   } else if (g.tipo === 'placar') {
     caixa.append(el('div.card__placar', {}, g.itens.map(([n, l], i) => {
       const num = el('span.card__placar-n.num', { text: motionOn() ? '0' : String(n) });
@@ -189,27 +186,4 @@ function grafico(g) {
     })));
   }
   return caixa;
-}
-
-/* A régua dos oito níveis, com você em algum degrau dela. */
-function escada(g, espera) {
-  const caixa = el('div.card__escada');
-  LEVELS.forEach((nivel, i) => {
-    const degrau = el('span.card__degrau' + (i < g.atual ? '.is-feito' : i === g.atual ? '.is-atual' : ''), {
-      title: nivel.name,
-      style: { '--i': String(i), height: `${40 + i * 11}px` },
-    });
-    caixa.append(degrau);
-  });
-  return el('div.card__g-linha', {}, [
-    caixa,
-    el('div.card__escada-pe', {}, [
-      barraProgresso(g.pct, { atraso: espera + 200 }),
-      el('p.micro', {
-        text: g.atual + 1 < LEVELS.length
-          ? `${Math.round(g.pct * 100)}% ATÉ ${LEVELS[g.atual + 1].name.toUpperCase()}`
-          : 'ÚLTIMO DEGRAU DA RÉGUA',
-      }),
-    ]),
-  ]);
 }

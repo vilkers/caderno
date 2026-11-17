@@ -1,7 +1,7 @@
 {
   "name": "Caderno",
   "short_name": "Caderno",
-  "description": "Agenda pessoal de rotina, hábitos e afazeres. Local e cifrado.",
+  "description": "Diário pessoal de rotina e hábitos. Local e cifrado.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -23,18 +23,6 @@
       "short_name": "Marcar",
       "url": "./?v=hoje",
       "description": "Abrir direto o check-in de hoje"
-    },
-    {
-      "name": "Contas do mês",
-      "short_name": "Contas",
-      "url": "./?v=agenda",
-      "description": "Contas, cartões e o que vence este mês"
-    },
-    {
-      "name": "Organização pessoal",
-      "short_name": "Pessoal",
-      "url": "./?v=lista",
-      "description": "Afazeres, assinaturas e carteira"
     },
     {
       "name": "Preencher a semana",

@@ -6,14 +6,12 @@ import * as vault from './vault.js';
 import * as biometria from './biometria.js';
 import * as sync from './sync.js';
 import * as chatGPT from './chatgpt.js';
-import * as googleTasks from './google-tasks.js';
-import * as badges from './badges.js';
 import * as lembrete from './lembrete.js';
 import { applyPalette } from './palettes.js';
-import { toast, bindScramble, openSheet, closeSheet, stagger, motionOn, revelarAoRolar, observarTopo, fundoVivo } from './ui.js';
+import { toast, bindScramble, openSheet, closeSheet, motionOn, revelarAoRolar, observarTopo, fundoVivo } from './ui.js';
 import { icon } from './icons.js';
 import { avatar } from './avatar.js';
-import { el, debounce } from './utils.js';
+import { el } from './utils.js';
 
 import * as viewToday from './views/today.js';
 import * as viewMonth from './views/month.js';
@@ -25,25 +23,19 @@ import * as viewResumo from './views/resumo.js';
 import * as viewRevisao from './views/revisao.js';
 import * as viewFechaMes from './views/fechames.js';
 import * as viewSettings from './views/settings.js';
-import { abrirPaleta } from './views/paleta.js';
 
 const VIEWS = {
-  hoje: viewToday, mes: viewMonth, lista: viewTodos, metas: viewMetas,
+  hoje: viewToday, mes: viewMonth, legado: viewTodos, metas: viewMetas,
   insights: viewInsights, ajustes: viewSettings, perfil: viewPerfil,
   resumo: viewResumo, revisao: viewRevisao, fechames: viewFechaMes,
 };
-/* embaixo fica a rotina; o resto se alcança pelo topo e pelo menu */
-/* Metas saiu da barra e Insights entrou. Meta se ajusta uma vez por semana —
-   e já se ajusta dentro da Revisão, com − e + ao lado do resultado. Padrões é
-   o que se abre à toa. Os atalhos do ícone instalado já diziam isso. */
-const PRIMARIAS = ['hoje', 'mes', 'lista', 'insights'];
+const PRIMARIAS = ['hoje', 'mes', 'insights'];
 
 /* ── Contexto compartilhado entre as telas ─────────────────── */
 const ctx = {
   view: 'hoje',
   day: todayKey(),
   range: 30,
-  todoTab: 'abertas',
   monthFilter: null,
   monthMode: 'mes',
   weekAnchor: null,
@@ -76,7 +68,7 @@ let medirFundo = () => {};
 /* ── Pintura ───────────────────────────────────────────────── */
 
 /**
- * Para onde a tela vai. Entre as quatro de baixo é lateral, na ordem em que
+ * Para onde a tela vai. Entre as três telas de baixo é lateral, na ordem em que
  * elas aparecem na barra; entrar numa tela secundária afunda e sair dela
  * sobe. O movimento passa a dizer onde você está indo — antes toda troca era
  * o mesmo wipe, que não informava nada.
@@ -103,7 +95,7 @@ function pintarAgora() {
   ctx.softRefresh = null;              // cada tela instala o seu, se quiser
   if (ctx.view !== 'resumo') document.body.classList.remove('modo-imersivo');
   if (ctx.view !== 'revisao') ctx.revisaoSemana = null;   // não guarda semana de ontem
-  if (ctx.view !== 'lista') ctx.pessoalMes = null;        // nem mês de ontem
+  if (ctx.view !== 'legado') ctx.pessoalMes = null;
   main.replaceChildren(VIEWS[ctx.view].render(ctx));
   main.scrollTop = 0;
   window.scrollTo({ top: 0, behavior: 'auto' });   // antes de medir a dobra
@@ -231,8 +223,7 @@ function enterApp() {
   ctx.view = 'hoje';
   aplicarAtalhoDaURL();
   if (carteira) {
-    ctx.view = 'lista';
-    ctx.pessoalAba = 'carteira';
+    ctx.view = 'legado';
     history.replaceState(null, '', location.pathname);
   }
   history.replaceState({ view: ctx.view }, '');
@@ -267,7 +258,6 @@ function enterApp() {
 let refreshChatGPT;
 
 function doLock() {
-  googleTasks.disconnect();
   store.flush();
   if (sync.configured()) sync.syncNow({ silent: true }).catch(() => {});
   store.lockVault();
@@ -278,14 +268,12 @@ function doLock() {
   toast('trancado');
 }
 
-/** Atalhos do app instalado: ./?v=hoje | lista | semana | insights */
+/** Atalhos do app instalado: ./?v=hoje | semana | insights */
 function aplicarAtalhoDaURL() {
   const v = new URLSearchParams(location.search).get('v');
   if (!v) return;
   if (v === 'semana') { ctx.view = 'mes'; ctx.monthMode = 'semana'; }
   else if (v === 'rapido') ctx.view = 'hoje';   // avisos antigos ainda apontam pra cá
-  else if (v === 'agenda') { ctx.view = 'lista'; ctx.pessoalAba = 'contas'; }
-  else if (v === 'lista') { ctx.view = 'lista'; ctx.pessoalAba = 'tarefas'; }
   else if (VIEWS[v]) ctx.view = v;
   history.replaceState(null, '', location.pathname);
 }
@@ -340,7 +328,7 @@ function wire() {
     if ($('#app').hidden) return;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const keys = { 1: 'hoje', 2: 'mes', 3: 'lista', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo', 9: 'revisao' };
+    const keys = { 1: 'hoje', 2: 'mes', 3: 'insights', 4: 'metas', 5: 'insights', 6: 'ajustes', 7: 'perfil', 8: 'resumo', 9: 'revisao' };
     if (keys[e.key]) { ctx.go(keys[e.key]); return; }
     if (e.key === 'Escape' && ctx.view !== 'hoje' && $('#sheet').hidden) { ctx.voltar(); return; }
     if (ctx.view === 'hoje') {
@@ -369,10 +357,7 @@ function wire() {
   refreshChatGPT = chatGPT.start(() => {
     paint();
     toast('check-in do ChatGPT registrado');
-  }, () => { if (ctx.view === 'lista' && ctx.pessoalAba === 'carteira') paint(); });
-  googleTasks.start(() => { if (ctx.view === 'lista') paint(); });
-
-  store.subscribe(reason => { if (reason !== 'badges') conferirConquistas(); });
+  }, () => { if (ctx.view === 'legado') paint(); });
   store.subscribe(reason => {
     if (reason === 'settings' || reason === 'categories') {
       document.documentElement.dataset.motion = store.state.settings.motion ? 'on' : 'off';
@@ -384,62 +369,14 @@ function wire() {
   });
 }
 
-/* ── Conquistas ────────────────────────────────────────────── */
-const conferirConquistas = debounce(() => {
-  if (!store.isUnlocked()) return;
-  const novas = badges.claim();
-  const resumo = badges.summary();
-  const subiu = resumo.level.i > (store.state.levelSeen || 0);
-
-  if (!novas.length && !subiu) return;
-  if (subiu) store.state.levelSeen = resumo.level.i;
-  store.emit('badges');
-
-  // subir de nível é raro: merece a tela. Conquista é aviso que não atrapalha.
-  if (subiu) celebrar(novas, resumo);
-  else {
-    toast(`✦ ${novas[0].name}${novas.length > 1 ? ` +${novas.length - 1}` : ''}`, {
-      action: 'ver', ms: 6000,
-      onAction: () => celebrar(novas, resumo),
-    });
-  }
-}, 900);
-
-function celebrar(novas, resumo) {
-  const subiu = resumo.level.i > 0 && resumo.level.i === (store.state.levelSeen || 0);
-  openSheet(subiu ? 'Subiu de nível' : (novas.length > 1 ? `${novas.length} conquistas` : 'Conquista'), close => [
-    subiu ? el('div.award.award--level', {}, [
-      el('span.award__e', { text: '✦' }),
-      el('div', {}, [
-        el('p.award__n', { text: resumo.level.name }),
-        el('p.award__d', { text: resumo.level.lore }),
-      ]),
-    ]) : null,
-    ...novas.map(b => el('div.award', {}, [
-      el('span.award__e', { text: b.emoji }),
-      el('div', {}, [
-        el('p.award__n', { text: b.name }),
-        el('p.award__d', { text: b.desc }),
-      ]),
-    ])),
-    el('p.micro', { text: `${resumo.level.name.toUpperCase()} · ${resumo.xp} XP · ${resumo.ganhas}/${resumo.total} CONQUISTAS` }),
-    el('div.sheet__actions', {}, [
-      el('button.btn', { type: 'button', onclick: () => { close(); ctx.go('insights'); } }, [el('span', { text: 'ver todas' })]),
-      el('button.btn.btn--solid', { type: 'button', onclick: close }, [el('span', { text: 'valeu' })]),
-    ]),
-  ].filter(Boolean));
-}
-
 /* ── Identidade no topo ────────────────────────────────────── */
 const NOME_DA_TELA = {
   ajustes: 'Ajustes', perfil: 'Perfil', resumo: 'Retrospectiva',
   revisao: 'Revisão da semana', metas: 'Metas',
+  fechames: 'Revisão do mês', legado: 'Dados anteriores',
 };
 
-/* Em tela secundária a barra de cima troca de papel: em vez de "quem sou eu",
-   ela responde "onde estou e como saio". Antes dizia "Caderno · HOJE" mesmo
-   quando você estava na carteira de julho, e a única saída era o botão de
-   voltar lá do topo do conteúdo — que some assim que você rola. */
+/* Na tela secundária, o topo indica o destino e oferece o botão Voltar. */
 function pintaIdentidade() {
   const secundaria = !PRIMARIAS.includes(ctx.view);
   const btn = $('#identBtn');
@@ -480,29 +417,34 @@ function menuSheet() {
       el('span.atalho__seta', { text: '→' }),
     ]);
 
-    /* Perfil, Insights e Metas saíram: os três já estão a um toque no avatar,
-       no ícone do topo e na barra de baixo. Caderno 2.0 e a grade de paleta
-       vivem em Ajustes. O menu é o que NÃO tem outra porta. */
     return [
-      grupo('LEITURA', [
+      grupo('REVISÃO', [
         item('estrela', 'Retrospectiva', () => ir('resumo')),
         item('revisao', 'Revisão da semana', () => ir('revisao')),
-        item('balanco', 'Fechar o mês', () => ir('fechames')),
-      ]),
-      grupo('COBRANÇA', [
-        item('metas', 'Metas e cobrança', () => ir('metas')),
+        item('balanco', 'Revisão do mês', () => ir('fechames')),
+        item('metas', 'Metas', () => ir('metas')),
       ]),
       grupo('CADERNO', [
         item('ajustes', 'Ajustes', () => ir('ajustes')),
-        item('paleta', 'Paleta', () => { close(); abrirPaleta(() => paint()); }),
-      ]),
-      grupo('COFRE', [
+
         sync.configured() ? item('nuvem', 'Sincronizar agora', async () => {
           close();
           try { await sync.syncNow(); toast('sincronizado'); }
           catch (err) { toast(err.message, { ms: 5000 }); }
         }) : null,
         item('cadeado', 'Trancar', () => { close(); doLock(); }),
+      ]),
+      grupo('OUTROS APPS', [
+        el('a.menuitem', { href: './tarefas/' }, [
+          el('span.menuitem__i', {}, [icon('lista', 18)]),
+          el('span.row__t', { text: 'Tarefas' }),
+          el('span.atalho__seta', { text: '→' }),
+        ]),
+        el('a.menuitem', { href: './financeiro/' }, [
+          el('span.menuitem__i', {}, [icon('balanco', 18)]),
+          el('span.row__t', { text: 'Grana' }),
+          el('span.atalho__seta', { text: '→' }),
+        ]),
       ]),
     ];
   });
@@ -525,6 +467,12 @@ function paintSync(st) {
 
 /* ── Arranque ──────────────────────────────────────────────── */
 function boot() {
+  const shortcut = new URLSearchParams(location.search).get('v');
+  const hasWalletUpdate = new URLSearchParams(location.hash.slice(1)).has('carteira');
+  if (!hasWalletUpdate && (shortcut === 'lista' || shortcut === 'agenda')) {
+    location.replace(shortcut === 'lista' ? './tarefas/' : './financeiro/');
+    return;
+  }
   const meta = vault.readMeta();
   applyPalette(meta.palette || 'noir');
   wire();

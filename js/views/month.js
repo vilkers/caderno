@@ -13,8 +13,7 @@ import * as store from '../store.js';
 import { num, did, isReduce, loggedDays, goalProgress, dayStatus } from '../analysis.js';
 import { anel, colunas, linha, tomDoDia } from '../graficos.js';
 import { stagger, onSwipe, openSheet, toast } from '../ui.js';
-import { iconBtn, control, fmtH, check } from './today.js';
-import { editarCompromisso } from './agendaform.js';
+import { iconBtn, control, fmtH } from './today.js';
 
 export function render(ctx) {
   const modo = ctx.monthMode === 'semana' ? 'semana' : 'mes';
@@ -203,16 +202,7 @@ function rotuloSemana(dias) {
     : `${a.getDate()} ${mesA} – ${b.getDate()} ${mesB}`;
 }
 
-/* ══ MÊS ════════════════════════════════════════════════════ */
-/* O ponto por categoria dizia pouco: dez bolinhas iguais não são leitura,
-   são poeira. Agora cada dia carrega três informações, cada uma com uma
-   forma própria:
-
-     anel   — quanto do que era obrigatório naquele dia foi fechado;
-     coluna — quantas marcações o dia teve (o volume, comparado ao mês);
-     ponto  — tinha compromisso do mês caindo ali (conta, cartão, NF).
-
-   Filtrando uma categoria, tudo isso dá lugar ao mapa de calor dela. */
+/* ── Mês · progresso da rotina e frequência ─────────────────── */
 function renderMonth(view, ctx) {
   const weekStart = store.state.settings.weekStart ?? 1;
   const cur = parseKey(ctx.day);
@@ -252,19 +242,15 @@ function renderMonth(view, ctx) {
   const fCat = filter ? cats.find(c => c.id === filter) : null;
   const maxVal = fCat ? Math.max(1, ...cells.map(c => num(fCat, c.key))) : 1;
   const maxMarcas = Math.max(1, ...cells.map(c => Object.keys(store.getDay(c.key)?.v || {}).length));
-  const mesChave = `${year}-${String(month + 1).padStart(2, '0')}`;
-  const compromissos = store.agendaDoMes(mesChave);
 
   for (const c of cells) {
     const rec = store.getDay(c.key);
     const marcas = Object.keys(rec?.v || {}).length;
-    const doDia = compromissos.filter(a => a.data === c.key);
     const st = fCat ? null : dayStatus(c.key);
 
     const cell = el('button.cal__day' + (c.out ? '.is-out' : '') + (store.hasEntry(c.key) ? '.has-data' : ''), {
       type: 'button',
       'aria-label': longDay(c.key),
-      title: doDia.length ? doDia.map(a => a.label).join(' · ') : '',
       onclick: () => previaDoDia(c.key, ctx),
     });
     if (c.key === hoje) cell.classList.add('is-today');
@@ -297,21 +283,6 @@ function renderMonth(view, ctx) {
         }));
       }
       if (rec?.closed) cell.classList.add('is-fechado');
-      /* Tarefa com dia marcado: quadradinho vazado no canto de cima à
-         esquerda — o único canto livre (anel no meio, volume na base,
-         compromisso à direita). Quadrado já é tarefa no app (.todo__box) e
-         círculo já é compromisso (.agitem__check); a forma não é arbitrária. */
-      const tarefas = store.todosDoDia(c.key);
-      if (tarefas.length && !c.out) {
-        cell.append(el('span.cal__tf', {
-          title: tarefas.map(t => t.text).join(' · '),
-        }));
-      }
-      if (doDia.length) {
-        cell.append(el('span.cal__ag' + (doDia.every(a => store.agendaFeito(a, mesChave)) ? '.is-ok' : ''), {
-          text: doDia.length > 1 ? String(doDia.length) : '',
-        }));
-      }
     }
     grid.append(cell);
   }
@@ -357,8 +328,7 @@ function renderMonth(view, ctx) {
         ]
       : [
           stat(monthKeys.filter(k => store.getDay(k)?.closed).length, 'dias fechados'),
-          stat(compromissos.length, 'compromissos do mês'),
-          stat(compromissos.filter(a => store.agendaFeito(a, mesChave)).length, 'já resolvidos'),
+          stat(loggedDays(monthKeys), 'dias registrados'),
         ]),
   ]));
 
@@ -376,23 +346,19 @@ function legenda(fCat) {
   return el('div.legend', {}, [
     el('span.legend__i', {}, [el('span.legend__anel'), 'quanto do obrigatório do dia fechou']),
     el('span.legend__i', {}, [el('span.legend__vol'), 'quantas marcações teve']),
-    el('span.legend__i', {}, [el('span.cal__ag', { style: { position: 'static' } }), 'compromisso do mês']),
-    el('span.legend__i', {}, [el('span.cal__tf', { style: { position: 'static' } }), 'tarefa marcada pro dia']),
   ]);
 }
 
 /* ── Prévia do dia ─────────────────────────────────────────── */
 /* Tocar num dia abria o check-in direto e tirava você do mês. Agora abre
-   uma prévia: dá pra ver, marcar o compromisso e só então entrar. */
+   uma prévia da rotina sem sair do mês. */
 function previaDoDia(k, ctx) {
   const cats = store.activeCategories();
-  const mes = k.slice(0, 7);
 
   openSheet(longDay(k), close => {
     const rec = store.getDay(k);
     const st = dayStatus(k);
     const marcadas = cats.filter(c => store.respondida(c, k));
-    const doDia = store.agendaDoMes(mes).filter(a => a.data === k);
     const corpo = [];
 
     corpo.push(el('div.previa__topo', {}, [
@@ -421,92 +387,6 @@ function previaDoDia(k, ctx) {
     }
 
     if (rec?.note) corpo.push(el('p.previa__nota', { text: rec.note }));
-
-    const tarefasDoDia = store.listTodos().filter(t => t.due === k);
-    if (doDia.length || tarefasDoDia.length) {
-      corpo.push(el('p.micro', { style: { marginTop: 'var(--s-4)' }, text: 'NESTE DIA' }));
-      const lista = el('div.agenda');
-      doDia.forEach(item => {
-        const feito = store.agendaFeito(item, mes);
-        const linhaEl = el('div.agitem.agitem--curto' + (feito ? '.is-feito' : ''));
-        linhaEl.append(...[
-          el('button.agitem__check', {
-            type: 'button', 'aria-pressed': String(feito), 'aria-label': `Marcar ${item.label}`,
-            onclick: e => {
-              store.marcarAgenda(item.id, mes, !feito);
-              e.currentTarget.setAttribute('aria-pressed', String(!feito));
-              e.currentTarget.firstChild.textContent = !feito ? '✓' : '';
-              linhaEl.classList.toggle('is-feito', !feito);
-              toast(feito ? 'desmarcado' : 'resolvido ✓');
-            },
-          }, [el('span', { text: feito ? '✓' : '' })]),
-          el('span.agitem__t', {}, [
-            el('span.agitem__e', { text: item.emoji || '•' }),
-            el('span', { text: item.label }),
-          ]),
-        ].filter(Boolean));
-        lista.append(linhaEl);
-      });
-      tarefasDoDia.forEach(t => {
-        const linhaEl = el('div.agitem.agitem--curto' + (t.done ? '.is-feito' : ''));
-        linhaEl.append(
-          el('button.todo__box', {
-            type: 'button', 'aria-label': `${t.done ? 'Reabrir' : 'Concluir'} ${t.text}`,
-            onclick: e => {
-              store.updateTodo(t.id, { done: !t.done });
-              t.done = !t.done;
-              linhaEl.classList.toggle('is-feito', t.done);
-              e.currentTarget.classList.toggle('is-on', t.done);
-              toast(t.done ? 'feito' : 'reaberta');
-            },
-          }, [check()]),
-          el('span.agitem__t', {}, [el('span', { text: t.text })]),
-        );
-        lista.append(linhaEl);
-      });
-      corpo.push(lista);
-    }
-
-    /* Criar direto do dia. "Que tipo é" deixa de ser um select dentro do
-       formulário e vira o botão que se aperta — o dia já foi respondido
-       pelo toque, e o resto do formulário encolhe conforme o tipo. */
-    corpo.push(el('p.micro', { style: { marginTop: 'var(--s-5)' }, text: 'NOVO NESTE DIA' }));
-    const linhaNovo = el('div.chips');
-    const abrirForm = tipo => {
-      close();
-      editarCompromisso(null, () => ctx.rerender(), {
-        tipo, fluxo: store.AGENDA_TIPOS[tipo]?.fluxo || 'saida',
-        repete: 'unico', data: k,
-        emoji: { evento: '📌', conta: '💸', renda: '💰' }[tipo] || '📌',
-      });
-    };
-    [['evento', '📌 evento'], ['conta', '💸 conta'], ['renda', '💰 entrada']].forEach(([tipo, rot]) =>
-      linhaNovo.append(el('button.chip', { type: 'button', onclick: () => abrirForm(tipo), text: rot })));
-
-    /* Tarefa não abre formulário nenhum: o campo abre aqui mesmo. */
-    const campoT = el('input', {
-      type: 'text', placeholder: 'O que precisa ser feito?', 'aria-label': 'Nova tarefa',
-      autocomplete: 'off', enterkeyhint: 'done',
-    });
-    const caixaT = el('div.todoadd', { hidden: true }, [
-      campoT,
-      el('button.btn.btn--sm.btn--solid', { type: 'button', onclick: () => criarTarefa() }, [el('span', { text: 'Add' })]),
-    ]);
-    const criarTarefa = () => {
-      const nova = store.addTodo(campoT.value, { due: k });
-      if (!nova) return;
-      campoT.value = '';
-      toast(`tarefa marcada pra ${longDay(k)}`);
-      close();
-      ctx.rerender();
-    };
-    campoT.addEventListener('keydown', e => { if (e.key === 'Enter') criarTarefa(); });
-    linhaNovo.append(el('button.chip', {
-      type: 'button',
-      onclick: () => { caixaT.hidden = false; campoT.focus(); },
-      text: '✓ tarefa',
-    }));
-    corpo.push(linhaNovo, caixaT);
 
     corpo.push(el('div.sheet__actions', {}, [
       el('button.btn', {

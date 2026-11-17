@@ -3,9 +3,8 @@
    Nome, foto e uma linha sua; do lado, o que o caderno sabe sobre você em
    números. Tudo cifrado como o resto — a foto não sai do cofre. */
 
-import { el, longDay, keyOf, nf } from '../utils.js';
+import { el } from '../utils.js';
 import * as store from '../store.js';
-import { summary as placar } from '../badges.js';
 import { logStreak, loggedDays } from '../analysis.js';
 import { avatar, fotoDeArquivo } from '../avatar.js';
 import { toast, confirmSheet } from '../ui.js';
@@ -13,7 +12,6 @@ import { toast, confirmSheet } from '../ui.js';
 export function render(ctx) {
   const view = el('div.view');
   const p = store.state.profile || {};
-  const b = placar();
 
   view.append(el('div.vhead', {}, [
     el('div.vhead__l', {}, [
@@ -94,8 +92,6 @@ export function render(ctx) {
   view.append(el('div.stats', { style: { marginTop: '1.6rem' } }, [
     stat(dias.length, 'dias registrados'),
     stat(logStreak(), 'sequência atual'),
-    stat(`${b.level.i + 1}/8`, b.level.name.toLowerCase()),
-    stat(`${b.ganhas}/${b.total}`, 'conquistas'),
   ]));
 
   /* Aqui existia um bloco "DO SEU JEITO" repetindo cinco destinos do menu,

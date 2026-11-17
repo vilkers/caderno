@@ -1,21 +1,13 @@
-/* views/fechames.js — o ritual de fechar o mês.
+/* Revisão mensal da rotina e anotação de fechamento. */
 
-   A semana já tinha o dela: o mês virava a página em silêncio. E o mês é
-   onde mora o que a semana não vê — quanto entrou, quanto saiu, o que ficou
-   atrasado, e se a rotina andou mais ou menos que no mês passado.
-
-   Mesmo desenho da revisão semanal de propósito: mesmo painel de uma linha,
-   mesma anotação, mesmo botão que fecha e reabre. Dois rituais parecidos são
-   um ritual só, aprendido uma vez. */
-
-import { el, nf, moeda, cifra, monthKey, monthLabel, todayKey, parseKey, keyOf, daysInMonth, plural } from '../utils.js';
+import { el, nf, monthKey, monthLabel, todayKey, parseKey, keyOf, daysInMonth, plural } from '../utils.js';
 import * as store from '../store.js';
 import { num, did, isReduce, mesPendente } from '../analysis.js';
 import { iconBtn } from './today.js';
-import { toast, confirmSheet, stagger } from '../ui.js';
+import { toast, confirmSheet } from '../ui.js';
 
 export function render(ctx) {
-  const mes = ctx.fechaMes || mesPendente(todayKey()) || mesAnterior(monthKey(), 0);
+  const mes = ctx.fechaMes || mesPendente(todayKey(), { rotina: true }) || mesAnterior(monthKey(), 0);
   const anterior = mesAnterior(mes, 1);
   const review = store.getReview(mes);
   const fechado = !!review?.fechadoEm;
@@ -38,25 +30,9 @@ export function render(ctx) {
     ]),
   ]));
 
-  /* ── o mês em uma linha ── */
-  const c = store.contasDoMes(mes);
-  const cAntes = store.contasDoMes(anterior);
-  const sobra = c.totalEntrada - c.totalSaida;
-  const sobraAntes = cAntes.totalEntrada - cAntes.totalSaida;
   const dias = diasDoMes(mes);
   const registrados = dias.filter(k => store.hasEntry(k)).length;
   const registradosAntes = diasDoMes(anterior).filter(k => store.hasEntry(k)).length;
-
-  view.append(el('div.totalzao', {}, [
-    el('p.micro', { text: sobra >= 0 ? 'SOBROU NO MÊS' : 'FALTOU NO MÊS' }),
-    el('p.totalzao__n.num' + (sobra < 0 ? '.is-neg' : ''), {}, cifra(Math.abs(sobra))),
-    el('p.nota-pe', {
-      text: `${moeda(c.totalEntrada)} entrou · ${moeda(c.totalSaida)} saiu`
-        + (cAntes.totalEntrada || cAntes.totalSaida
-          ? ` — ${monthLabel(anterior).split(' ')[0].toLowerCase()} fechou em ${sobraAntes < 0 ? '−' : ''}${moeda(Math.abs(sobraAntes))}.`
-          : ''),
-    }),
-  ]));
 
   /* ── a rotina, no mesmo painel da revisão da semana ── */
   view.append(el('div.status' + (registrados >= dias.length - 2 ? '.is-ok' : ''), { style: { margin: 'var(--s-4) 0' } }, [
@@ -100,52 +76,6 @@ export function render(ctx) {
     view.append(lista);
   }
 
-  /* ── o que ficou pendurado ──
-     Não é lista de vergonha: é a única chance de decidir o que fazer com o
-     que passou, antes de o mês seguinte encobrir. */
-  const pendentes = store.agendaDoMes(mes)
-    .filter(a => a.tipo !== 'assinatura' && !store.agendaFeito(a, mes));
-  if (pendentes.length) {
-    /* Somar o que você não pagou com o que não te pagaram dá um número que
-       não quer dizer nada. São duas dívidas de direções opostas, e só uma
-       delas é sua. */
-    const soma = lista => lista.reduce((t, a) => t + (Number(a.valor) || 0), 0);
-    const aPagar = pendentes.filter(a => store.fluxoDe(a) === 'saida');
-    const aReceber = pendentes.filter(a => store.fluxoDe(a) !== 'saida');
-    view.append(el('div.section__h.grupoh.is-urgente', {}, [
-      el('p.micro', { text: 'FICOU SEM RESOLVER' }),
-      el('span.micro.grupoh__n', {
-        text: [
-          soma(aPagar) ? `${moeda(soma(aPagar), { cents: 2 })} não pago` : '',
-          soma(aReceber) ? `${moeda(soma(aReceber), { cents: 2 })} não caiu` : '',
-        ].filter(Boolean).join(' · '),
-      }),
-    ]));
-    const lista = el('div.agenda');
-    pendentes.forEach(item => {
-      const entra = store.fluxoDe(item) === 'entrada';
-      lista.append(el('div.agitem' + (entra ? '' : '.is-atrasado'), {}, [
-        el('button.agitem__check', {
-          type: 'button', 'aria-pressed': 'false',
-          'aria-label': `Marcar ${item.label} como ${entra ? 'recebido' : 'pago'}`,
-          onclick: () => { store.marcarAgenda(item.id, mes, true); toast(entra ? 'caiu ✓' : 'resolvido ✓'); ctx.rerender(); },
-        }, [el('span', { text: '' })]),
-        el('span.agitem__l', {}, [
-          el('span.agitem__t', {}, [
-            el('span.agitem__e', { text: item.emoji || '•' }),
-            el('span', { text: item.label }),
-          ]),
-          el('span.micro.agitem__d', { text: `dia ${item.dia} · ${entra ? 'não caiu' : 'não pago'}` }),
-        ]),
-        item.valor
-          ? el('span.agitem__v.num' + (entra ? '.is-entra' : ''), { text: (entra ? '+' : '') + moeda(item.valor, { cents: 2 }) })
-          : null,
-      ].filter(Boolean)));
-    });
-    view.append(lista);
-    stagger(lista, '.agitem');
-  }
-
   /* ── anotação ── */
   const nota = el('textarea.note', {
     rows: 3, placeholder: 'Como foi o mês? O que você quer diferente no próximo? (opcional)',
@@ -175,8 +105,6 @@ export function render(ctx) {
               fechadoEm: Date.now(),
               nota: nota.value.trim(),
               dias: registrados,
-              entrou: c.totalEntrada, saiu: c.totalSaida, sobra,
-              pendentes: pendentes.length,
             });
             toast('mês fechado');
             ctx.fechaMes = mes;

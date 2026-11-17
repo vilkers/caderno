@@ -1,7 +1,7 @@
 /* analysis.js — leitura dos dados: sequências, metas, padrões,
    comparações entre categorias e sugestões em texto. Tudo local. */
 
-import { state, hasEntry, listCategories, listAgenda, listTodos, cadencia, cobraNoDia, respondida, getReview } from './store.js';
+import { state, hasEntry, listCategories, listAgenda, cadencia, cobraNoDia, respondida, getReview } from './store.js';
 import { addDays, todayKey, parseKey, lastNDays, weekOfKey, weekKey, WD, WD_LONG, nf, plural } from './utils.js';
 
 /* ── Base ──────────────────────────────────────────────────── */
@@ -38,13 +38,13 @@ export function semanaPendente(hoje = todayKey(), inicioSemana = 1) {
  * sozinha. Sem isso o app cobraria um ano inteiro de meses de quem instalou
  * ontem.
  */
-export function mesPendente(hoje = todayKey()) {
+export function mesPendente(hoje = todayKey(), { rotina = false } = {}) {
   const d = parseKey(hoje);
   d.setDate(1); d.setMonth(d.getMonth() - 1);
   const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   if (getReview(mes)?.fechadoEm) return null;
   const teveDia = Object.keys(state.days || {}).some(k => k.startsWith(mes) && hasEntry(k));
-  const teveConta = listAgenda().some(a => !a.pausado
+  const teveConta = !rotina && listAgenda().some(a => !a.pausado
     && (a.repete === 'unico' ? (a.data || '').startsWith(mes) : true));
   return teveDia || teveConta ? mes : null;
 }
@@ -359,13 +359,6 @@ export function suggestions(limit = 7) {
       out.push({ kind: 'cruzamento', title: `${b.emoji} ${b.label} × ${n.emoji} ${n.label}`, weight: 6,
         text: `Nos dias com ${b.label.toLowerCase()}, ${n.label.toLowerCase()} fica em <b>${fmtVal(n, c.with)}</b>; sem, <b>${fmtVal(n, c.without)}</b>. (${c.nWith} vs ${c.nWithout} dias)` });
     }
-  }
-
-  /* 7. afazeres esquecidos */
-  const velhas = listTodos().filter(t => !t.done && Date.now() - t.createdAt > 12 * 864e5);
-  if (velhas.length) {
-    out.push({ kind: 'lista', title: 'Lista de afazeres', weight: 5,
-      text: `<b>${plural(velhas.length, 'tarefa aberta', 'tarefas abertas')}</b> há mais de 12 dias. Se não vai fazer, apagar também é decidir.` });
   }
 
   const seen = new Set();

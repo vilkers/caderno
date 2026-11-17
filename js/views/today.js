@@ -4,11 +4,10 @@
    A faixa de dias no topo existe pro caso mais comum de esquecimento:
    voltar dois, três dias e preencher o que ficou em branco. */
 
-import { el, humanDay, longDay, todayKey, addDays, clamp, nf, plural, keyOf, parseKey, weekKey, monthKey, moeda, WD } from '../utils.js';
+import { el, humanDay, longDay, todayKey, addDays, clamp, nf, plural, keyOf, parseKey, weekKey, WD } from '../utils.js';
 import * as store from '../store.js';
 import { currentStreak, unidadeStreak, goalProgress, isReduce, dayStatus, weekGoals, semanaPendente } from '../analysis.js';
 import { toast, stagger, onSwipe, confirmSheet } from '../ui.js';
-import { summary as badgeSummary } from '../badges.js';
 
 const STRIP_DAYS = 10;
 
@@ -19,27 +18,17 @@ export function render(ctx) {
   const view = el('div.view');
   const isFuture = day > todayKey();
 
-  /* ── cabeçalho + navegação de dia ── */
-  const nav = el('div.daynav', {}, [
-    iconBtn('M15 6l-6 6 6 6', () => ctx.setDay(addDays(day, -1)), 'Dia anterior'),
-    el('span.daynav__label', { text: humanDay(day) }),
-    iconBtn('M9 6l6 6-6 6', () => ctx.setDay(addDays(day, 1)), 'Próximo dia'),
-  ]);
   const picker = el('input.daypick', {
     type: 'date', value: day, max: addDays(todayKey(), 1), 'aria-label': 'Escolher data',
   });
   picker.addEventListener('change', () => { if (picker.value) ctx.setDay(picker.value); });
-  nav.append(picker);
-  if (day !== todayKey()) {
-    nav.append(el('button.chip', { onclick: () => ctx.setDay(todayKey()), text: 'hoje' }));
-  }
 
-  view.append(el('div.vhead', {}, [
-    el('div.vhead__l', {}, [
-      el('p.micro', { text: '01 — CHECK-IN' }),
-      el('h2.display.h-lg', { text: tituloDoDia(day) }),
+  view.append(el('div.vhead.vhead--checkin', {}, [
+    el('div.vhead__l', {}, [el('h2.display.h-lg', { text: tituloDoDia(day) })]),
+    el('div.vhead__r', {}, [
+      picker,
+      day !== todayKey() ? el('button.chip', { type: 'button', onclick: () => ctx.setDay(todayKey()), text: 'hoje' }) : null,
     ]),
-    el('div.vhead__r', {}, [nav]),
   ]));
 
   /* ── faixa dos últimos dias ── */
@@ -80,67 +69,40 @@ export function render(ctx) {
     }));
   }
 
-  /* ── status do dia: o que falta, e nada além disso ── */
-  const painel = el('div.status');
+  const painel = el('div.status.status--compact', { 'aria-live': 'polite' });
   const semana = el('div.semana');
+  const acoes = el('div.wrap.checkin-acoes');
+  const fechar = el('button.btn.btn--solid', { type: 'button', onclick: () => {
+    const reabrir = !!store.getDay(day)?.closed;
+    store.closeDay(day, !reabrir);
+    toast(reabrir ? 'dia reaberto' : 'dia fechado');
+    pintaStatus();
+  } }, [el('span')]);
+  const repetir = el('button.btn.btn--sm', {
+    type: 'button', onclick: () => repetirDiaAnterior(day, ctx),
+  }, [el('span', { text: 'Repetir dia anterior' })]);
+  if (!isFuture) acoes.append(fechar, repetir);
 
-  /** Repintado a cada marcação — é o retorno imediato de "tá em ordem?". */
   const pintaStatus = () => {
     const st = dayStatus(day);
-    const fechadoAgora = !!store.getDay(day)?.closed;
-    painel.classList.toggle('is-ok', st.ok || st.vazio);
-    painel.replaceChildren();
-
+    const fechado = !!store.getDay(day)?.closed;
+    fechar.firstChild.textContent = fechado ? 'Reabrir dia' : 'Fechar dia';
+    fechar.classList.toggle('btn--solid', !fechado);
+    repetir.hidden = fechado || st.ok || !st.faltando.length;
+    painel.classList.toggle('is-ok', fechado || st.ok || st.vazio);
     const bar = el('div.progress__bar');
-    painel.append(el('div.status__topo', {}, [
-      el('div', {}, [
-        el('p.micro', { text: fechadoAgora ? 'DIA FECHADO' : 'STATUS DO DIA' }),
-        el('p.status__t', {
-          text: st.vazio ? 'Nada obrigatório hoje'
-            : st.ok ? 'Tudo em ordem'
-            : `Falta marcar ${st.faltando.length} de ${st.total}`,
-        }),
-      ]),
-      el('div.wrap', {}, [
-        !st.ok && !isFuture && st.faltando.length
-          ? el('button.btn.btn--sm', { type: 'button', onclick: () => repetirDiaAnterior(day, ctx) },
-              [el('span', { text: 'repetir ontem' })])
-          : null,
-        el('button.btn' + (fechadoAgora ? '.btn--solid' : ''), {
-          type: 'button',
-          onclick: () => {
-            store.closeDay(day, !fechadoAgora);
-            toast(fechadoAgora ? 'dia reaberto' : 'dia fechado');
-            pintaStatus();
-          },
-        }, [el('span', { text: fechadoAgora ? 'FECHADO ✓' : 'FECHAR O DIA' })]),
-      ]),
-    ]));
+    painel.replaceChildren(
+      el('p.status__t', { text: fechado ? 'Dia fechado'
+        : st.vazio ? 'Nada obrigatório hoje'
+        : st.ok ? 'Hábitos em dia'
+        : `Falta marcar ${plural(st.faltando.length, 'hábito', 'hábitos')}` }),
+      ...(!st.vazio ? [
+        el('span.micro', { text: `${st.feitas.length}/${st.total}` }),
+        el('div.progress', { 'aria-hidden': 'true' }, [bar]),
+      ] : []),
+    );
+    requestAnimationFrame(() => { bar.style.width = `${Math.round(st.pct * 100)}%`; });
 
-    if (!st.vazio) {
-      painel.append(el('div.progress', {}, [bar]));
-      requestAnimationFrame(() => { bar.style.width = `${Math.round(st.pct * 100)}%`; });
-    }
-
-    if (st.faltando.length) {
-      painel.append(el('div.status__faltas', {}, st.faltando.map(c =>
-        el('button.falta', {
-          type: 'button',
-          onclick: () => {
-            const alvo = entries.querySelector(`[data-cat="${c.id}"]`);
-            alvo?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            alvo?.classList.remove('pisca'); void alvo?.offsetWidth; alvo?.classList.add('pisca');
-          },
-          text: `${c.emoji || '•'} ${c.label}`,
-        }))));
-    }
-
-    const sub = [];
-    if (!st.vazio) sub.push(`${st.feitas.length}/${st.total} obrigatórias`);
-    if (st.extras.length) sub.push(plural(st.extras.length, 'extra marcada', 'extras marcadas'));
-    if (sub.length) painel.append(el('p.micro.status__sub', { text: sub.join(' · ').toUpperCase() }));
-
-    // o fio de aviso dos cartões acompanha
     entries.querySelectorAll('[data-cat]').forEach(card => {
       const c = store.catById(card.dataset.cat);
       card.classList.toggle('falta-hoje', !!c && store.cobraNoDia(c, day) && !store.respondida(c, day));
@@ -177,24 +139,7 @@ export function render(ctx) {
     })));
   };
 
-  /* a régua do "menos fudido", sempre à mão */
-  const b = badgeSummary();
-  const xpBar = el('i');
-  const linhaNivel = el('button.levelline', {
-    type: 'button', onclick: () => ctx.go('insights'), title: 'Ver conquistas',
-  }, [
-    el('span.micro', { text: `NÍVEL ${b.level.i + 1}` }),
-    el('span.levelline__n', { text: b.level.name }),
-    el('span.levelline__bar', {}, [xpBar]),
-    el('span.micro', { text: `${b.ganhas}/${b.total} ✦` }),
-  ]);
-  requestAnimationFrame(() => { xpBar.style.width = `${Math.round(b.level.pct * 100)}%`; });
-
   view.append(painel);
-
-  /* ── o que o mês cobra hoje ── */
-  const doDia = compromissosDoDia(day, ctx);
-  if (doDia) view.append(doDia);
 
   /* toda marcação atualiza o status e as metas sem repintar a tela inteira */
   ctx.softRefresh = () => { pintaStatus(); pintaSemana(); };
@@ -217,116 +162,36 @@ export function render(ctx) {
   const naGaveta = cat => store.cadencia(cat) === 'diaria'
     && !store.cobraNoDia(cat, day) && !store.respondida(cat, day);
   const guardadas = cats.filter(naGaveta);
-  cats.filter(c => !naGaveta(c)).forEach(cat => entries.append(entryCard(cat, day, ctx)));
+  const pendencias = new Set(dayStatus(day).faltando.map(cat => cat.id));
+  const visiveis = cats.filter(c => !naGaveta(c));
+  [...visiveis.filter(cat => pendencias.has(cat.id)), ...visiveis.filter(cat => !pendencias.has(cat.id))]
+    .forEach(cat => entries.append(entryCard(cat, day, ctx)));
   if (guardadas.length) entries.append(gaveta(guardadas, day, ctx));
 
   /* ── nota do dia ── */
-  const note = el('textarea.note', { placeholder: 'Como foi o dia? (opcional)', rows: 3 });
+  const note = el('textarea.note', { 'aria-label': 'Anotação do dia', placeholder: 'Como foi o dia? (opcional)', rows: 3 });
   note.value = rec.note || '';
   let noteT;
   note.addEventListener('input', () => {
     clearTimeout(noteT);
     noteT = setTimeout(() => store.setNote(day, note.value.trim()), 400);
   });
-  entries.append(el('div.entry.entry--wide', {}, [
+  const anotacao = el('div.entry.entry--wide', {}, [
     el('div.entry__top', {}, [
       el('div.entry__id', {}, [el('span.entry__emoji', { text: '✍️' }), el('span.entry__label', { text: 'Anotação' })]),
       el('span.micro', { text: 'OPCIONAL' }),
     ]),
     el('div.entry__ctl', {}, [note]),
-  ]));
-  view.append(entries, semana, linhaNivel, ...avisos);
-
-  /* ── afazeres em aberto ──
-     Ordem: as marcadas pra hoje, depois as que passaram do dia, depois as
-     soltas. Sempre fora do progresso do dia — tarefa se empurra pra frente
-     por definição, e ser cobrado por "comprar ração" treina você a ignorar
-     o painel, que é a peça mais cara do app. */
-  const comData = t => (t.due === day ? 0 : t.due && t.due < day ? 1 : 2);
-  const abertas = [...store.openTodos()]
-    .sort((a, b) => comData(a) - comData(b) || (a.due || '').localeCompare(b.due || ''))
-    .slice(0, 3);
-  if (abertas.length) {
-    view.append(el('div.section', { style: { marginTop: 'var(--s-7)' } }, [
-      el('div.section__h', {}, [el('p.micro', { text: 'NA LISTA HOJE' })]),
-      el('div.todos', {}, abertas.map(t => el('div.todo', {}, [
-        el('button.todo__box', {
-          'aria-label': 'Concluir',
-          onclick: e => {
-            store.updateTodo(t.id, { done: true });
-            e.currentTarget.closest('.todo').classList.add('is-leaving');
-            toast('feito', { action: 'desfazer', onAction: () => { store.updateTodo(t.id, { done: false }); ctx.rerender(); } });
-            setTimeout(() => ctx.rerender(), 320);
-          },
-        }, [check()]),
-        el('span.todo__txt', { text: t.text }),
-        t.due === day
-          ? el('span.micro.todo__sel', { text: 'HOJE' })
-          : t.due && t.due < day
-            ? el('span.micro.todo__sel.is-atrasada', { text: 'ERA PRA ' + humanDay(t.due).toUpperCase() })
-            : null,
-      ].filter(Boolean)))),
-      el('button.btn.btn--sm.btn--ghost', { style: { marginTop: 'var(--s-3)' }, onclick: () => ctx.go('lista') },
-        [el('span', { text: `ver todas (${store.openTodos().length})` })]),
-    ]));
-  }
+  ]);
+  view.append(entries);
+  if (!isFuture) view.append(acoes);
+  view.append(anotacao, semana, ...avisos);
 
   pintaStatus();
   pintaSemana();
   stagger(entries, ':scope > .entry');
   onSwipe(view, { left: () => ctx.setDay(addDays(day, 1)), right: () => ctx.setDay(addDays(day, -1)) });
   return view;
-}
-
-/* ── Compromissos do mês que caem hoje ─────────────────────── */
-/* Não entram no status do dia de propósito: pagar o aluguel não é hábito,
-   e misturar as duas coisas faria o progresso da rotina mentir de novo. */
-function compromissosDoDia(day, ctx) {
-  const mes = monthKey(day);
-  // assinatura debita sozinha: ela não tem nada a pedir de você hoje
-  const doMes = store.agendaDoMes(mes).filter(a => a.tipo !== 'assinatura');
-  const doDia = doMes.filter(a => a.data === day);
-  const atrasados = day === todayKey()
-    ? doMes.filter(a => a.data && a.data < day && !store.agendaFeito(a, mes))
-    : [];
-  const itens = [...atrasados, ...doDia];
-  if (!itens.length) return null;
-
-  const caixa = el('div.hojeagenda');
-  caixa.append(el('div.hojeagenda__h', {}, [
-    el('p.micro', { text: atrasados.length ? 'DO MÊS · TEM COISA ATRASADA' : 'DO MÊS, HOJE' }),
-    el('button.chip', {
-      type: 'button',
-      /* 'agenda' saiu do roteador quando a tela virou aba de Pessoal — este
-         botão passou a não fazer nada. Agora leva pra aba certa. */
-      onclick: () => { ctx.pessoalAba = 'contas'; ctx.go('lista'); },
-      text: 'ver o mês',
-    }),
-  ]));
-
-  itens.forEach(item => {
-    const feito = store.agendaFeito(item, mes);
-    const atrasado = item.data < day && !feito;
-    const linha = el('div.agitem.agitem--curto' + (feito ? '.is-feito' : '') + (atrasado ? '.is-atrasado' : ''));
-    linha.append(...[
-      el('button.agitem__check', {
-        type: 'button', 'aria-pressed': String(feito), 'aria-label': `Marcar ${item.label}`,
-        onclick: () => {
-          store.marcarAgenda(item.id, mes, !feito);
-          toast(feito ? 'desmarcado' : 'resolvido ✓');
-          ctx.rerender();
-        },
-      }, [el('span', { text: feito ? '✓' : '' })]),
-      el('span.agitem__t', {}, [
-        el('span.agitem__e', { text: item.emoji || '•' }),
-        el('span', { text: item.label }),
-      ]),
-      atrasado ? el('span.micro.agitem__d', { text: `venceu dia ${item.dia}` }) : null,
-      item.valor ? el('span.agitem__v.num', { text: moeda(item.valor) }) : null,
-    ].filter(Boolean));
-    caixa.append(linha);
-  });
-  return caixa;
 }
 
 /* ── Faixa de dias ─────────────────────────────────────────── */

@@ -86,14 +86,58 @@ export async function readCentralWallet() {
   return record;
 }
 
-export async function readWalletForConnection(c) {
-  const branch = await privateRepo(c);
+async function readWalletFile(c, branch) {
   const res = await github(c, `/contents/${WALLET_PATH}?ref=${encodeURIComponent(branch)}`);
   if (!res.ok) throw new Error(res.status === 404 ? 'A Carteira ainda não foi preparada neste repositório privado.' : 'Não consegui consultar a Carteira na Central.');
   const file = await res.json();
   const data = decodeDocument(file);
   store.centralWalletPlan(data);
   return { data, sha: file.sha, source: `${c.owner}/${c.repo}`.toLowerCase() };
+}
+
+export async function readWalletForConnection(c) {
+  return readWalletFile(c, await privateRepo(c));
+}
+
+export async function addWalletItemForConnection(c, list, item, active = () => true) {
+  if (!['receivables', 'payments'].includes(list)) throw new Error('Escolha renda ou despesa.');
+  const branch = await privateRepo(c);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (!active()) throw new Error('Destranque o Grana para voltar à Carteira.');
+    const record = await readWalletFile(c, branch);
+    const found = record.data[list].find(existing => existing.id === item.id);
+    if (found) {
+      if (['title', 'amountCents', 'status', 'date'].every(key => (found[key] ?? null) === item[key])) return record;
+      throw new Error('Esta tentativa já registrou outro lançamento. Confira a Carteira antes de continuar.');
+    }
+    if (list === 'payments' && item.date && !item.date.startsWith(record.data.paymentMonth + '-')) {
+      throw new Error('A data da despesa precisa estar no mês vigente da Carteira.');
+    }
+    const data = { ...record.data, [list]: [...record.data[list], item] };
+    store.centralWalletPlan(data);
+    if (!active()) throw new Error('Destranque o Grana para voltar à Carteira.');
+    let res;
+    try {
+      res = await github(c, `/contents/${WALLET_PATH}`, {
+        method: 'PUT', body: { message: 'Registrar lançamento na Carteira', content: encode(JSON.stringify(data, null, 2)), branch, sha: record.sha },
+      });
+    } catch {
+      // A linha pode ter sido gravada mesmo se a conexão caiu antes da resposta.
+      continue;
+    }
+    if (res.ok) {
+      try {
+        const { content } = await res.json();
+        if (typeof content?.sha === 'string' && content.sha) return { ...record, data, sha: content.sha };
+      } catch { /* Uma nova leitura confirma a escrita pelo ID. */ }
+      continue;
+    }
+    if ([401, 403, 404].includes(res.status)) {
+      throw new Error('Esta conexão não conseguiu gravar na Carteira. Confira o acesso de escrita no repositório privado conectado ao Caderno.');
+    }
+    if (res.status !== 409 && res.status !== 422 && res.status < 500) break;
+  }
+  throw new Error('Não consegui confirmar o lançamento. Confira a Carteira e tente novamente neste formulário.');
 }
 
 export async function refreshCentralWallet() {

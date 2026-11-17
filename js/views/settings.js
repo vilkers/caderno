@@ -9,12 +9,12 @@ import * as vault from '../vault.js';
 import * as biometria from '../biometria.js';
 import * as sync from '../sync.js';
 import * as chatGPT from '../chatgpt.js';
-import * as googleTasks from '../google-tasks.js';
 import * as lembrete from '../lembrete.js';
 import { PALETTES } from '../palettes.js';
 import { toast, openSheet, confirmSheet, stagger, interruptor } from '../ui.js';
 import { listaArrastavel } from '../arrastar.js';
 import { abrirPaleta } from './paleta.js';
+import { mostrarTransferencia, migrarTarefasDireto } from './todos.js';
 
 export function render(ctx) {
   const view = el('div.view');
@@ -22,19 +22,10 @@ export function render(ctx) {
 
   view.append(el('div.vhead', {}, [
     el('div.vhead__l', {}, [
-      el('p.micro', { text: '06 — AJUSTES' }),
+      el('p.micro', { text: 'CADERNO' }),
       el('h2.display.h-lg', { text: 'AJUSTES' }),
     ]),
   ]));
-
-  view.append(section('SINCRONIA · BANCO DE DADOS', syncBox(ctx)));
-  view.append(section('CHECK-IN COM CHATGPT', chatGPTBox(ctx)));
-  view.append(section('GOOGLE TASKS', googleTasksBox(ctx)));
-
-  view.append(section('VERSÃO 2.0', el('div', {}, [
-    row('Caderno 2.0 — pixel', 'A mesma rotina em forma de fase: blocos, moedas, mundos e troféus. Mesmos dados, mesma senha.',
-      el('a.btn.btn--sm.btn--solid', { href: './retro/' }, [el('span', { text: 'jogar' })])),
-  ])));
 
   /* ── Paleta ── */
   view.append(section('PALETA', el('div', {}, [
@@ -97,6 +88,25 @@ export function render(ctx) {
       el('button.btn.btn--sm', { type: 'button', onclick: () => editHint(ctx) }, [el('span', { text: 'editar' })])),
     row('Trancar agora', 'Fecha a sessão e volta para a tela de senha.',
       el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.lock() }, [el('span', { text: 'trancar' })])),
+  ])));
+
+  view.append(section('SINCRONIA · BANCO DE DADOS', syncBox(ctx)));
+  view.append(section('CHECK-IN COM CHATGPT', chatGPTBox(ctx)));
+
+  view.append(section('DADOS DOS OUTROS APPS', el('div', {}, [
+    row('Tarefas anteriores', 'Transfira as tarefas que ainda estão abertas no Caderno.',
+      el('div.wrap', {}, [
+        el('button.btn.btn--sm', { type: 'button', onclick: () => mostrarTransferencia(false) },
+          [el('span', { text: 'Gerar código para Tarefas' })]),
+        el('button.btn.btn--sm', { type: 'button', onclick: migrarTarefasDireto },
+          [el('span', { text: 'Migrar para Google Tasks' })]),
+      ])),
+    row('Carteira', 'Gere um código cifrado para conectar o Grana à Carteira.',
+      el('button.btn.btn--sm', { type: 'button', onclick: () => mostrarTransferencia(true) },
+        [el('span', { text: 'Conectar app Financeiro' })])),
+    row('Histórico', 'Veja as tarefas e contas guardadas antes da separação.',
+      el('button.btn.btn--sm', { type: 'button', onclick: () => ctx.go('legado') },
+        [el('span', { text: 'Ver dados anteriores' })])),
   ])));
 
   /* ── Dados ── */
@@ -324,69 +334,6 @@ function syncSheet(ctx) {
           },
         }, [el('span', { text: 'salvar e sincronizar' })]),
       ]),
-    ];
-  });
-}
-
-function googleTasksBox(ctx) {
-  const clientId = store.state.settings.googleTasks?.clientId || '';
-  const connected = googleTasks.authorized();
-  return el('div', {}, [
-    row('Lista Caderno', connected ? 'Títulos, prazos e conclusões sincronizados enquanto o app está aberto.'
-      : 'Envie as tarefas abertas com prazo para uma lista no Google Tasks.', el('button.btn.btn--sm', {
-      type: 'button', onclick: async e => {
-        if (!googleTasks.authorized()) { googleTasksSheet(ctx, clientId); return; }
-        const button = e.currentTarget;
-        button.disabled = true;
-        try { await googleTasks.sync(); toast('Google Tasks atualizado'); }
-        catch (err) { toast(err.message, { ms: 5500 }); }
-        finally { button.disabled = false; }
-      },
-    }, [el('span', { text: connected ? 'sincronizar' : (clientId ? 'reconectar' : 'conectar') })])),
-    ...(clientId ? [row('Desconectar', 'Encerra a sincronização neste aparelho.', el('button.btn.btn--sm', {
-      type: 'button', onclick: () => {
-        googleTasks.disconnect();
-        store.setSetting('googleTasks', undefined);
-        ctx.rerender();
-      },
-    }, [el('span', { text: 'desconectar' })]))] : []),
-  ]);
-}
-
-function googleTasksSheet(ctx, previous) {
-  openSheet('Conectar Google Tasks', close => {
-    const input = el('input', { type: 'text', value: previous, placeholder: '…apps.googleusercontent.com', spellcheck: 'false', autocapitalize: 'none' });
-    const status = el('p.micro', { role: 'status' });
-    const button = el('button.btn.btn--solid', {
-      type: 'button', disabled: true,
-      onclick: async () => {
-        const clientId = input.value.trim();
-        if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(clientId)) {
-          status.textContent = 'Insira o ID do cliente OAuth (Aplicativo da Web).';
-          return;
-        }
-        button.disabled = true;
-        status.textContent = 'Aguardando autorização…';
-        try {
-          await googleTasks.authorize(clientId);
-          if (!button.isConnected || !store.isUnlocked()) { googleTasks.disconnect(); return; }
-          status.textContent = 'Sincronizando tarefas…';
-          const result = await googleTasks.sync();
-          if (!result) throw new Error('Destranque e autorize novamente.');
-          store.setSetting('googleTasks', { clientId });
-          close();
-          ctx.rerender();
-          toast(`${result.sent} enviadas · ${result.received} recebidas`);
-        } catch (err) { googleTasks.disconnect(); status.textContent = err.message; }
-        finally { button.disabled = false; }
-      },
-    }, [el('span', { text: 'autorizar e sincronizar' })]);
-    googleTasks.loadIdentity().then(() => { button.disabled = false; })
-      .catch(err => { status.textContent = err.message; });
-    return [
-      el('p.muted', { text: 'Use o ID de um cliente OAuth de aplicativo web com Google Tasks API ativada e origem https://vilkers.github.io.' }),
-      field('ID DO CLIENTE OAUTH', input), status,
-      el('div.sheet__actions', {}, [button]),
     ];
   });
 }

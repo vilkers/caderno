@@ -1,0 +1,368 @@
+body.tarefas:not(.entry) #app > h1 {
+  margin-bottom: 16px;
+}
+
+#taskOverview {
+  gap: 12px;
+}
+
+.task-focus {
+  --focus-ink: #fff7ef;
+  --focus-muted: #d9c5b8;
+  --focus-accent: #f7a284;
+  border-radius: 18px;
+  padding: 16px;
+  color: var(--focus-ink);
+  background: #211d1b;
+}
+
+.task-focus-header,
+.task-focus-actions,
+.task-toolbar,
+.task-list-header,
+.task-feedback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.task-focus-header {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.task-focus h2 {
+  color: var(--focus-muted);
+  font-size: .81rem;
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.task-focus-badge {
+  border-radius: 7px;
+  padding: 4px 8px;
+  background: #4f3027;
+  color: #ffd3c3;
+  font-size: .74rem;
+  font-weight: 750;
+}
+
+.task-focus-empty p {
+  margin-top: 8px;
+  color: var(--focus-ink);
+  line-height: 1.45;
+}
+
+.task-swipe {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #214838;
+  touch-action: pan-y pinch-zoom;
+}
+
+.task-swipe-underlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 5px;
+  padding: 13px;
+  color: #e8faee;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.task-swipe-underlay .task-check-mark::after {
+  opacity: 1;
+}
+
+.task-swipe-surface {
+  position: relative;
+  padding: 13px 14px;
+  background: #302622;
+  transform: translateX(var(--drag, 0px));
+  transition: transform 170ms ease-out;
+}
+
+.task-swipe.is-dragging .task-swipe-surface {
+  transition: none;
+}
+
+.task-swipe.is-ready .task-swipe-underlay {
+  background: #286044;
+}
+
+.task-swipe h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  min-width: 0;
+  font-size: clamp(1.35rem, 5.8vw, 1.95rem);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.task-focus-meta {
+  margin-top: 8px;
+  color: var(--focus-muted);
+  font-size: .83rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.task-focus-actions {
+  margin-top: 10px;
+}
+
+.task-focus-actions button.primary {
+  border-color: var(--focus-accent);
+  color: #251a15;
+  background: var(--focus-accent);
+}
+
+.task-focus-actions .task-focus-edit {
+  border-color: #69574e;
+  color: var(--focus-ink);
+  background: transparent;
+}
+
+.task-swipe-hint {
+  display: none;
+  color: var(--focus-muted);
+  font-size: .75rem;
+  line-height: 1.25;
+}
+
+.task-offline-hint {
+  margin-top: 10px;
+  color: var(--focus-muted);
+  font-size: .82rem;
+  line-height: 1.4;
+}
+
+.task-toolbar > button {
+  flex: 1 1 135px;
+}
+
+.task-freshness {
+  font-size: .79rem;
+  margin-top: -4px;
+}
+
+.task-feedback {
+  justify-content: space-between;
+}
+
+.task-feedback:has(.status:empty):not(:has(.task-undo)) {
+  position: absolute;
+}
+
+.task-feedback > .status {
+  min-height: 0;
+  margin: 0;
+  flex: 1 1 180px;
+}
+
+.task-undo {
+  color: var(--accent);
+}
+
+.task-list-panel {
+  padding: 14px;
+}
+
+.task-list-header {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.task-list-picker {
+  min-width: 0;
+  flex: 0 1 195px;
+}
+
+.task-list-picker select {
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.task-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.task-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.task-filters > button {
+  min-width: 0;
+  padding-inline: 2px;
+  font-size: clamp(.685rem, 3.1vw, .9rem);
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-block: 4px;
+}
+
+.task-row:last-child {
+  padding-bottom: 0;
+}
+
+.task-check {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--accent);
+  border-color: transparent;
+  background: transparent;
+}
+
+.task-check-mark {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
+}
+
+.task-check-mark::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  margin-top: -3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(42deg);
+  opacity: 0;
+}
+
+.task-row-done .task-check-mark::after,
+.task-check:hover:not(:disabled) .task-check-mark::after {
+  opacity: 1;
+}
+
+.task-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12px;
+  align-items: center;
+  column-gap: 8px;
+  min-width: 0;
+  padding: 9px 5px;
+  border-color: transparent;
+  background: transparent;
+  text-align: start;
+}
+
+.task-open:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.task-open:hover:not(:disabled) {
+  background: var(--soft);
+}
+
+.task-row .task-title,
+.task-row-meta {
+  grid-column: 1;
+  overflow-wrap: anywhere;
+}
+
+.task-row .task-title {
+  line-height: 1.3;
+}
+
+.task-row-meta {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: .77rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.task-chevron {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  width: 7px;
+  height: 7px;
+  border-top: 1.5px solid var(--accent);
+  border-right: 1.5px solid var(--accent);
+  transform: rotate(45deg);
+}
+
+.task-open:disabled .task-chevron {
+  visibility: hidden;
+}
+
+.task-list-empty {
+  padding-block: 6px;
+  font-size: .87rem;
+}
+
+.task-settings summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  width: fit-content;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .84rem;
+}
+
+.task-settings summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.task-settings[open] summary::before {
+  transform: rotate(45deg);
+}
+
+.task-settings summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (any-pointer: coarse) {
+  .task-swipe {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .task-swipe-hint {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-swipe-surface {
+    transition: none;
+  }
+}

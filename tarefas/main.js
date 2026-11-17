@@ -1,16 +1,18 @@
-import { el, addDays, humanDay, todayKey } from '../js/utils.js';
+import { el, humanDay, todayKey } from '../js/utils.js';
 import { CLIENT_KEY, DEFAULT_CLIENT_ID, loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
 import * as biometria from '../js/biometria.js';
 import * as vault from '../js/vault.js';
 import { TASK_EXPORT, openTransfer } from '../js/companion-transfer.js';
 import { loadBoards, createTask, changeTask, taskFields, dateOf, highPriority, migrationPlan, importCaderno } from './backend.js';
+import { bindCompletionSwipe, taskQueues } from './flow.js';
 
 const FACE_KEY = 'caderno.tarefas.face.v1';
 const SNAPSHOT = 'caderno.tarefas.copia.v1';
 const app = document.querySelector('#app');
 const FILTERS = [['today', 'Hoje'], ['week', 'Semana'], ['open', 'Abertas'], ['done', 'Concluídas']];
 const SYNC_LABEL = 'Sincronizar com Google';
-let grant, faceSecret, syncedAt, syncing;
+let grant, faceSecret, syncedAt, syncing, lastCompletion;
+const pendingTasks = new Set();
 let boards = [], area = '', filter = 'today', epoch = 0, revision = 0;
 let snapshotWrite = Promise.resolve();
 
@@ -40,7 +42,7 @@ async function usingGrant(authorized, operation) {
 
 function resetSession() {
   epoch++;
-  grant = faceSecret = syncedAt = syncing = null;
+  grant = faceSecret = syncedAt = syncing = lastCompletion = null;
   boards = [];
   area = '';
 }
@@ -162,23 +164,6 @@ async function saveTask(listId, task) {
   await rememberTasks();
 }
 
-function visibleTasks() {
-  const today = todayKey();
-  const until = addDays(today, 6);
-  return boards.filter(board => !area || board.id === area).flatMap(board => board.tasks
-    .filter(task => {
-      if (task.deleted) return false;
-      if (task.status === 'completed') return filter === 'done';
-      if (filter === 'done') return false;
-      const date = dateOf(task);
-      if (filter === 'today') return date && date <= today;
-      if (filter === 'week') return date && date <= until;
-      return true;
-    }).map(task => ({ task, board })))
-    .sort((a, b) => (dateOf(a.task) || '9999').localeCompare(dateOf(b.task) || '9999')
-      || Number(highPriority(b.task)) - Number(highPriority(a.task)) || a.task.title.localeCompare(b.task.title));
-}
-
 async function syncGoogle(status) {
   if (syncing) return;
   const active = epoch;
@@ -209,7 +194,7 @@ function showTasks(message = '') {
   if (!faceSecret) { lock(); return; }
   const connected = hasSession();
   const status = el('p.status', { role: 'status', text: message });
-  const tasks = visibleTasks();
+  const { next, shown } = taskQueues(boards, area, filter, todayKey());
   const refresh = el(connected ? 'button' : 'button.primary', {
     type: 'button', text: SYNC_LABEL, onclick: async () => {
       refresh.disabled = true;
@@ -222,50 +207,134 @@ function showTasks(message = '') {
     el('option', { value: '', text: 'Todas as listas' }),
     ...boards.map(board => el('option', { value: board.id, selected: area === board.id, text: board.title })),
   ]);
+  const undo = lastCompletion && statusAction(lastCompletion.task, lastCompletion.board, 'needsAction', {
+    label: 'Desfazer', className: 'button.task-undo', id: 'taskUndo', status,
+  });
   render(el('div.stack', { id: 'taskOverview' }, [
-    !connected && syncedAt ? el('p.muted', { text: 'Última sincronização: ' + new Date(syncedAt).toLocaleString('pt-BR') }) : null,
-    el('div.actions', {}, [
-      refresh,
+    nextTaskCard(next, status, connected),
+    el('div.task-toolbar', {}, [
       connected && boards.length ? el('button.primary', { type: 'button', text: '+ Nova tarefa', onclick: () => editTask() }) : null,
+      refresh,
     ]),
-    status,
-    el('label', {}, ['Lista', picker]),
-    el('section.panel', {}, [
-      el('div.tabs', { role: 'group', 'aria-label': 'Filtro de tarefas' }, FILTERS.map(([id, text]) => el('button', {
+    !connected && syncedAt ? el('p.muted.task-freshness', { text: 'Última sincronização: ' + new Date(syncedAt).toLocaleString('pt-BR') }) : null,
+    el('div.task-feedback', {}, [status, undo]),
+    el('section.panel.task-list-panel', { 'aria-labelledby': 'taskListTitle' }, [
+      el('div.task-list-header', {}, [
+        el('h2', { id: 'taskListTitle', text: 'Tarefas da lista' }),
+        el('label.task-list-picker', {}, [el('span.task-sr-only', { text: 'Lista do Google Tasks' }), picker]),
+      ]),
+      el('div.tabs.task-filters', { role: 'group', 'aria-label': 'Filtro de tarefas' }, FILTERS.map(([id, text]) => el('button', {
         type: 'button', text, 'aria-pressed': String(filter === id), onclick: () => { filter = id; showTasks(); },
       }))),
-      tasks.length ? el('ul.tasks-list', {}, tasks.map(({ task, board }) => taskRow(task, board, status)))
-        : el('p.muted', { text: !boards.length && !connected ? 'Sincronize com o Google para carregar suas listas.'
-          : filter === 'today' ? 'Nada com prazo para hoje. Veja Abertas para incluir tarefas sem prazo.' : 'Nenhuma tarefa neste recorte.' }),
+      shown.length ? el('ul.tasks-list', {}, shown.map(({ task, board }) => taskRow(task, board, status)))
+        : el('p.muted.task-list-empty', { text: !boards.length && !connected ? 'Sincronize com o Google para carregar suas listas.'
+          : filter === 'today' ? 'Sem outras tarefas com prazo até hoje.' : 'Nenhuma outra tarefa nesse filtro.' }),
     ]),
-    el('div.actions', {}, [
-      el('button', { type: 'button', text: 'Importar do Caderno', disabled: !connected, onclick: showImport }),
-      el('button', { type: 'button', text: 'Trancar', onclick: () => lock() }),
+    el('details.task-settings', {}, [
+      el('summary', { text: 'Opções de Tarefas' }),
+      el('div.actions', {}, [
+        el('button', { type: 'button', text: 'Importar do Caderno', disabled: !connected, onclick: showImport }),
+        el('button', { type: 'button', text: 'Trancar', onclick: () => lock() }),
+      ]),
     ]),
   ]));
 }
 
-function taskRow(task, board, status) {
+function taskMeta(task, board) {
   const due = dateOf(task);
-  const completed = task.status === 'completed';
-  const action = el('button', { type: 'button', text: completed ? 'Reabrir' : 'Concluir', disabled: !hasSession(), onclick: async () => {
-    action.disabled = true;
-    try {
+  return [board.title, due ? humanDay(due) : 'Sem prazo', highPriority(task) ? 'Prioridade alta' : ''].filter(Boolean).join(' · ');
+}
+
+function nextTaskCard(next, status, connected) {
+  const heading = el('h2', { id: 'nextTaskTitle', tabindex: '-1', text: 'Próxima tarefa' });
+  if (!next) {
+    return el('section.task-focus.task-focus-empty', { 'aria-labelledby': 'nextTaskTitle' }, [
+      heading, el('p', { text: boards.length ? 'Nenhuma tarefa pendente nesta seleção.' : 'Suas tarefas aparecem aqui depois da sincronização.' }),
+    ]);
+  }
+  const { task, board } = next;
+  const due = dateOf(task);
+  const today = todayKey();
+  const badge = due && due < today ? 'Atrasada' : due === today ? 'Hoje' : null;
+  const complete = statusAction(task, board, 'completed', {
+    label: 'Concluir', className: 'button.primary.task-focus-complete', id: 'taskNextComplete', status,
+  });
+  const hint = el('span', { text: 'Concluir' });
+  const swipe = el('div.task-swipe', {}, [
+    el('div.task-swipe-underlay', { 'aria-hidden': 'true' }, [
+      el('span.task-check-mark'), hint,
+    ]),
+    el('div.task-swipe-surface', {}, [
+      el('h3', { text: task.title }),
+      el('p.task-focus-meta', { text: taskMeta(task, board) }),
+    ]),
+  ]);
+  if (connected) bindCompletionSwipe(swipe, hint, complete);
+  return el('section.task-focus', { 'aria-labelledby': 'nextTaskTitle' }, [
+    el('div.task-focus-header', {}, [heading, badge ? el('span.task-focus-badge', { text: badge }) : null]),
+    swipe,
+    connected
+      ? el('div.task-focus-actions', {}, [
+        complete, el('button.task-focus-edit', { type: 'button', text: 'Editar', onclick: () => editTask(task, board) }),
+        el('span.task-swipe-hint', { text: 'Deslize o cartão para a direita' }),
+      ])
+      : el('p.task-offline-hint', { text: 'Sincronize com o Google para concluir ou editar.' }),
+  ]);
+}
+
+function statusAction(task, board, newStatus, { label, className, id, status, icon }) {
+  const key = JSON.stringify([epoch, board.id, task.id]);
+  const completing = newStatus === 'completed';
+  const button = el(className, {
+    type: 'button', id, text: icon ? null : label,
+    'aria-label': label + ': ' + task.title, title: icon ? label : null,
+    disabled: !hasSession() || pendingTasks.has(key),
+    onclick: async () => {
+      if (pendingTasks.has(key)) return;
+      const restoreFocus = !!id && document.activeElement === button;
       const session = currentSession();
-      const saved = await session.request(token => changeTask(token, board.id, task.id, {
-        status: completed ? 'needsAction' : 'completed',
-      }));
-      if (!session.active()) return;
-      await saveTask(board.id, saved);
-      if (session.active() && action.isConnected) showTasks(completed ? 'Tarefa reaberta.' : 'Tarefa concluída.');
-    } catch (error) { setError(status, error); }
-    finally { action.disabled = false; }
-  } });
-  return el('li.row', {}, [
-    el('div', {}, [el('p.task-title', { text: task.title }), el('p.meta.muted', {
-      text: `${board.title} · ${due ? humanDay(due) : 'Sem prazo'}${!completed && due && due < todayKey() ? ' · Atrasada' : ''}${highPriority(task) ? ' · Prioridade' : ''}`,
-    })]),
-    el('div.task-buttons', {}, [action, el('button', { type: 'button', text: 'Editar', disabled: !hasSession(), onclick: () => editTask(task, board) })]),
+      pendingTasks.add(key);
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      status.classList.remove('error');
+      status.textContent = completing ? 'Concluindo no Google Tasks…' : 'Reabrindo no Google Tasks…';
+      try {
+        const saved = await session.request(token => changeTask(token, board.id, task.id, { status: newStatus }));
+        if (!session.active()) return;
+        await saveTask(board.id, saved);
+        if (!session.active()) return;
+        if (completing) lastCompletion = { task: saved, board };
+        else if (lastCompletion?.task.id === task.id && lastCompletion.board.id === board.id) lastCompletion = null;
+        if (document.querySelector('#taskOverview')) {
+          pendingTasks.delete(key);
+          showTasks(completing ? 'Tarefa concluída.' : 'Tarefa reaberta.');
+          if (restoreFocus) document.querySelector('#taskNextComplete:not(:disabled), #nextTaskTitle')?.focus();
+        }
+      } catch (error) {
+        const currentStatus = document.querySelector('#taskOverview .status');
+        if (session.active() && currentStatus) setError(currentStatus, error);
+      } finally {
+        pendingTasks.delete(key);
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+      }
+    },
+  }, icon ? [el('span.task-check-mark', { 'aria-hidden': 'true' })] : []);
+  return button;
+}
+
+function taskRow(task, board, status) {
+  const completed = task.status === 'completed';
+  const action = statusAction(task, board, completed ? 'needsAction' : 'completed', {
+    label: completed ? 'Reabrir' : 'Concluir', className: 'button.task-check', status, icon: true,
+  });
+  const title = el('span.task-title', { text: task.title });
+  const metadata = el('span.task-row-meta', { text: taskMeta(task, board) });
+  return el(completed ? 'li.task-row.task-row-done' : 'li.task-row', {}, [
+    action,
+    el('button.task-open', {
+      type: 'button', disabled: !hasSession(), 'aria-label': 'Editar: ' + task.title, onclick: () => editTask(task, board),
+    }, [title, metadata, el('span.task-chevron', { 'aria-hidden': 'true' })]),
   ]);
 }
 
@@ -318,7 +387,7 @@ function showImport() {
     finally { submit.disabled = false; }
   } }, [
     el('h2', { text: 'Importar do Caderno' }),
-    el('p.muted', { text: 'No Caderno instalado, abra Pessoal → Tarefas → Preparar migração de tarefas e copie o código cifrado.' }),
+    el('p.muted', { text: 'No Caderno, abra Ajustes → Dados dos outros apps → Gerar código para Tarefas e copie o código cifrado.' }),
     el('label', {}, ['Código do Caderno', code]), el('label', {}, ['Senha escolhida ao gerar o código', password]),
     el('div.actions', {}, [submit, el('button', { type: 'button', text: 'Voltar', onclick: () => showTasks() })]), status,
   ]));

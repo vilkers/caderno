@@ -1,0 +1,63 @@
+body.financeiro:not(.entry) {
+  background: #f1f2eb;
+  --accent: #174f40;
+  --expense: #963f2e;
+}
+.financeiro:not(.entry) main { padding-inline: clamp(16px, 5vw, 32px); }
+.financeiro:not(.entry) h1 { margin-bottom: 18px; }
+.wallet-layout { gap: 12px; }
+.wallet-summary { padding: 20px; }
+.wallet-summary strong { margin: 8px 0 5px; font-size: clamp(2rem, 8vw, 3.7rem); }
+.wallet-date { font-size: .85rem; color: #dcece5; }
+.wallet-balances { margin-top: 17px; padding-top: 14px; border-top: 1px solid #6a9283; }
+.wallet-balances .eyebrow { color: #dcece5; }
+.wallet-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.wallet-add {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 7px 8px;
+  text-align: left;
+  line-height: 1.2;
+  font-size: clamp(.81rem, 3.65vw, .98rem);
+}
+.wallet-add.income { background: #e2eee6; color: var(--accent); border-color: #9fb8ac; }
+.wallet-add.expense { background: #f7e9e2; color: var(--expense); border-color: #d6afa3; }
+.wallet-add-icon { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border: 1px solid currentColor; border-radius: 50%; }
+.wallet-feedback:empty { display: none; }
+.wallet-due { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wallet-due > div { min-width: 0; overflow-wrap: anywhere; }
+.wallet-due-title { font-size: 1.08rem; font-weight: 740; margin-top: 5px; }
+.wallet-due .money { flex-shrink: 0; }
+.flow-panel h2 { margin-top: 4px; }
+.flow-series, .spending-list { display: grid; gap: 14px; }
+.flow-label, .spending-name { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; overflow-wrap: anywhere; }
+.flow-track, .spending-track { display: flex; overflow: hidden; height: 10px; border-radius: 8px; background: #ecefe8; margin-top: 6px; }
+.flow-track > span, .spending-track > span { display: block; width: var(--width); }
+.flow-row.income { --bar: #246450; }
+.flow-row.expense { --bar: #97503c; }
+.flow-segment.settled { background: var(--bar); }
+.flow-segment.pending { background: var(--bar); opacity: .45; }
+.spending-list { padding: 0; margin: 0; list-style: none; }
+.spending-name { font-size: .91rem; }
+.spending-name .money { flex-shrink: 0; }
+.spending-track { height: 7px; }
+.spending-track > span { background: #9e5947; }
+.wallet-footer { margin-top: 5px; }
+.wallet-entry {
+  width: min(calc(100% - 24px), 480px);
+  max-height: 85dvh;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--surface);
+  color: inherit;
+}
+.wallet-entry::backdrop { background: #102217b5; }
+.wallet-entry .status:empty { display: none; }
+@media (max-width: 390px) {
+  .wallet-summary { padding: 17px; }
+  .wallet-entry { padding: 14px; }
+}

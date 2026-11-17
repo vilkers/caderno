@@ -4,10 +4,9 @@
    número que carrega. Cartão sem dado suficiente não entra — retrospectiva
    com "0" em tudo é constrangedora, não é celebração. */
 
-import { state, listCategories, listTodos, hasEntry, getDay, cadencia, agendaDoMes, fluxoDe, listAgenda } from './store.js';
-import { lastNDays, todayKey, addDays, parseKey, WD_LONG, WD, MONTHS, nf, moeda, monthKey } from './utils.js';
+import { state, listCategories, hasEntry, getDay } from './store.js';
+import { lastNDays, todayKey, addDays, parseKey, WD_LONG, WD, MONTHS, nf } from './utils.js';
 import { num, did, isReduce, bestStreak, currentStreak, loggedDays, weekdayProfile } from './analysis.js';
-import { summary as placar } from './badges.js';
 
 export const PERIODOS = [
   { id: '30', label: '30 dias', dias: 30 },
@@ -51,7 +50,6 @@ export function cartoes(periodo = 'tudo') {
   const dias = diasDoPeriodo(periodo);
   const registrados = loggedDays(dias);
   const cats = listCategories().filter(c => !c.archived && c.type !== 'text');
-  const b = placar();
   const out = [];
 
   out.push({
@@ -207,17 +205,6 @@ export function cartoes(periodo = 'tudo') {
     });
   }
 
-  /* missões */
-  const feitas = listTodos().filter(t => t.done).length;
-  if (feitas >= 3) {
-    out.push({
-      id: 'missoes', olho: 'DA LISTA, VOCÊ RISCOU',
-      numero: feitas, sufixo: feitas === 1 ? ' tarefa' : ' tarefas',
-      linhas: ['RISCADAS'],
-      nota: 'sem contar as que você fingiu que não viu',
-    });
-  }
-
   /* dias fechados */
   const fechados = dias.filter(k => getDay(k)?.closed).length;
   if (fechados >= 5) {
@@ -229,48 +216,6 @@ export function cartoes(periodo = 'tudo') {
       g: { tipo: 'anel', pct: fechados / Math.max(1, registrados), legenda: `de ${registrados} dias registrados` },
     });
   }
-
-  /* o que sai todo mês sem você fazer nada */
-  const assinaturas = listAgenda().filter(a => a.tipo === 'assinatura' && a.valor);
-  if (assinaturas.length >= 2) {
-    const porMes = assinaturas.reduce((s, a) => s + Number(a.valor), 0);
-    out.push({
-      id: 'assinaturas', olho: 'DEBITA SOZINHO, TODO MÊS',
-      linhas: [moeda(porMes).toUpperCase()],
-      nota: `${moeda(porMes * 12)} por ano em ${assinaturas.length} assinaturas — o preço de existir online`,
-      g: {
-        tipo: 'barras',
-        itens: [...assinaturas].sort((a, b) => b.valor - a.valor).slice(0, 6).map((a, i) => ({
-          label: `${a.emoji} ${a.label}`, valor: Number(a.valor), texto: moeda(a.valor), destaque: i === 0,
-        })),
-      },
-    });
-  }
-
-  /* o mês pontual: contas, cartões, nota fiscal */
-  const mesAtual = monthKey();
-  const compromissos = agendaDoMes(mesAtual).filter(a => a.tipo !== 'assinatura');
-  if (compromissos.length >= 3) {
-    const resolvidos = compromissos.filter(a => a.marcas?.[mesAtual]?.feito).length;
-    out.push({
-      id: 'compromissos', olho: 'A AGENDA DESTE MÊS',
-      numero: resolvidos, sufixo: ` de ${compromissos.length}`,
-      linhas: ['RESOLVIDOS'],
-      nota: resolvidos === compromissos.length
-        ? 'nenhuma conta esperando por você'
-        : `${compromissos.length - resolvidos} ainda em aberto`,
-      g: { tipo: 'anel', pct: resolvidos / compromissos.length, legenda: 'do mês corrente' },
-    });
-  }
-
-  /* onde você está */
-  out.push({
-    id: 'nivel', olho: `NÍVEL ${b.level.i + 1} DE 8`,
-    linhas: [b.level.name.toUpperCase()],
-    numero: b.xp, sufixo: ' xp',
-    nota: `${b.ganhas} de ${b.total} conquistas · ${b.level.lore}`,
-    g: { tipo: 'escada', atual: b.level.i, pct: b.level.pct, conquistas: [b.ganhas, b.total] },
-  });
 
   /* fecho */
   const nome = (state.profile?.nome || '').trim().split(/\s+/)[0];
@@ -285,7 +230,6 @@ export function cartoes(periodo = 'tudo') {
         [registrados, 'dias'],
         [seqTop || 0, 'seq. recorde'],
         [fechados, 'fechados'],
-        [b.ganhas, 'conquistas'],
       ],
     },
   });
