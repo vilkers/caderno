@@ -4,9 +4,10 @@ const p = await (await b.newContext({ viewport:{width:393,height:852}, hasTouch:
 await p.goto(BASE + '/index.html',{waitUntil:'networkidle'});
 await p.fill('#lockPass','senha1234'); await p.fill('#lockPass2','senha1234'); await p.click('#lockBtn');
 await p.waitForSelector('#app:not([hidden])'); await p.waitForTimeout(700);
-await p.evaluate(async()=>{const s=await import('./js/store.js');
-  s.addTodo('tarefa de teste'); s.addTodo('outra tarefa'); s.addAgenda({emoji:'🏠',label:'Aluguel',tipo:'aluguel',dia:5,valor:2300}); s.emit('replace');});
-await p.waitForTimeout(1200);
+/* Tarefas e contas saíram do Caderno (tarefas/ e financeiro/), então os
+   alvos de "mais", caixa e data da tarefa e o check da agenda não moram
+   mais aqui. Ficam a roleta e o interruptor. */
+await p.waitForTimeout(500);
 for (let i=0;i<4;i++){ if (await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300);} 
 
 /* Um placar de verdade: antes o teste imprimia "errou" e a bateria seguia
@@ -27,24 +28,8 @@ const tocarPerto = async (sel, dy) => {
   await p.waitForTimeout(400);
 };
 
-// "mais" da tarefa: 32px de desenho, 44 de alvo — toque 5px acima e abaixo
-await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(700);
-await tocarPerto('.todo__mais', -5);
-checa('mais da tarefa 5px acima', await p.$eval('#sheet', n=>!n.hidden));
-for(let i=0;i<3;i++){ if(await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300);}
-await tocarPerto('.todo__mais', 5);
-checa('mais da tarefa 5px abaixo', await p.$eval('#sheet', n=>!n.hidden));
-for(let i=0;i<3;i++){ if(await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300);}
-
-// caixa de concluir
-const c1 = await p.evaluate(async()=>{const s=await import('./js/store.js');return !!s.listTodos()[0].done;});
-await tocarPerto('.todo__box', -5);
-const c2 = await p.evaluate(async()=>{const s=await import('./js/store.js');return !!s.listTodos()[0].done;});
-checa('caixa 5px acima', c1 !== c2);
-
 // roleta 0–10: cada valor tem a largura inteira dele como alvo, e o mostrador
 // tem 56px de altura — o medidor de barrinhas de 23px saiu justamente por isso
-await p.click('.nav__item[data-view="hoje"]'); await p.waitForTimeout(700);
 const alvoRoleta = await p.evaluate(()=>{
   const v = document.querySelector('.roleta__v'); if(!v) return null;
   const r = v.getBoundingClientRect();
@@ -62,26 +47,6 @@ await p.evaluate(()=>{
 await p.waitForTimeout(900);
 const depoisRoleta = await p.evaluate(()=>document.querySelector('.roleta__v.is-centro')?.textContent);
 checa('tocar num valor vizinho traz ele pro centro', antesRoleta !== depoisRoleta, ` (${antesRoleta}→${depoisRoleta})`);
-
-// data da tarefa: 32px de desenho, 44 de alvo
-await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(700);
-await p.click('.aba:has-text("Tarefas")').catch(()=>{}); await p.waitForTimeout(600);
-await p.click('.tabs .chip:has-text("todas")').catch(()=>{}); await p.waitForTimeout(600);
-const d1 = await p.evaluate(()=>document.querySelector('#sheet').hidden);
-await tocarPerto('.todo__data', -5);
-await p.waitForTimeout(600);
-const d2 = await p.evaluate(()=>document.querySelector('#sheet').hidden);
-checa('data da tarefa 5px acima', d1 !== d2);
-for(let i=0;i<3;i++){ if(await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300);}
-
-// check da agenda
-await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(600);
-await p.click('.aba:has-text("Contas")'); await p.waitForTimeout(800);
-const mes = new Date().toISOString().slice(0,7);
-const a1 = await p.evaluate(async m=>{const s=await import('./js/store.js');return s.agendaFeito(s.listAgenda()[0],m);}, mes);
-await tocarPerto('.agitem__check', -5);
-const a2 = await p.evaluate(async m=>{const s=await import('./js/store.js');return s.agendaFeito(s.listAgenda()[0],m);}, mes);
-checa('check da agenda 5px acima', a1 !== a2);
 
 // interruptor em ajustes
 await p.click('#menuBtn'); await p.waitForTimeout(300);
