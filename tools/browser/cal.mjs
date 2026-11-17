@@ -19,25 +19,14 @@ await p.evaluate(async () => {
     const v={}; v[by('academia')]= i%2===0; v[by('trabalho')]=6+(i%4); v[by('sono')]=6+(i%3); v[by('passeio')]=1+(i%2);
     if (i%3===0) v[by('bebida')]=2+(i%5);
     store.state.days[keyOf(d)]={v,note: i===1?'dia puxado':'',closed: i%4!==1,updatedAt:Date.now()}; }
-  /* Os dias saem do dia de hoje, não de números fixos: a faixa do check-in
-     só mostra o que vence hoje ou já passou, então um "dia 5" cravado fazia
-     o teste passar em setembro e falhar no dia 4. */
-  const hj = new Date().getDate();
-  const antes = Math.max(1, hj - 2);
-  store.addAgenda({ emoji:'💜', label:'Cartão Nubank', tipo:'cartao', dia:antes, valor:1240 });
-  store.addAgenda({ emoji:'🏠', label:'Aluguel', tipo:'aluguel', dia:hj, valor:2300 });
-  store.addAgenda({ emoji:'🎧', label:'Spotify', tipo:'assinatura', dia:hj, valor:21.9 });
+  /* As contas (addAgenda) e a faixa do mês no Hoje mudaram para o app
+     financeiro/; aqui fica só o calendário de hábitos. */
   store.emit('replace');
 });
 await p.waitForTimeout(1600);
 if (!(await p.$eval('#sheet', n=>n.hidden))) { await p.click('.sheet__actions .btn--solid'); await p.waitForTimeout(400); }
-// faixa do mês no Hoje
-console.log('faixa do mês no hoje:', await p.$$eval('.hojeagenda .agitem', ns=>ns.map(n=>n.innerText.replace(/\n/g,' · ')).join(' | ')) );
-await p.click('.hojeagenda .agitem__check'); await p.waitForTimeout(700);
-console.log('marcou pelo hoje:', await p.evaluate(async()=>{const s=await import('./js/store.js');const m=new Date().toISOString().slice(0,7);return s.listAgenda().filter(a=>s.agendaFeito(a,m)).map(a=>a.label);}));
-
 await p.click('.nav__item[data-view="mes"]'); await p.waitForTimeout(1200);
-console.log('anéis:', await p.$$eval('.cal__anel', n=>n.length), '| colunas:', await p.$$eval('.cal__vol', n=>n.length), '| marcas de agenda:', await p.$$eval('.cal__ag', n=>n.length));
+console.log('anéis:', await p.$$eval('.cal__anel', n=>n.length), '| colunas:', await p.$$eval('.cal__vol', n=>n.length));
 console.log('legenda:', await p.$$eval('.legend__i', ns=>ns.map(n=>n.textContent).join(' | ')));
 console.log('resumo do mês:', await p.$eval('.mesgraf .g-anel__n', n=>n.textContent), await p.$eval('.mesgraf .g-anel__suf', n=>n.textContent), '| colunas semana:', await p.$$eval('.mesgraf .g-coluna', n=>n.length));
 console.log('stats:', await p.$$eval('.stat', ns=>ns.map(n=>n.innerText.replace(/\n/g,' ')).join(' | ')));
