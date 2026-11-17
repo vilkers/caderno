@@ -10,34 +10,29 @@ await p.addStyleTag({content:':root{--sat:59px;--sab:34px}'});
 await p.fill('#lockPass','senha1234'); await p.fill('#lockPass2','senha1234'); await p.click('#lockBtn');
 await p.waitForSelector('#app:not([hidden])'); await p.waitForTimeout(900);
 await p.evaluate(async()=>{const s=await import('./js/store.js');
-  s.addAgenda({emoji:'💜',label:'Cartão Nubank',tipo:'cartao',dia:10,valor:1240});
-  s.addAgenda({emoji:'🏠',label:'Aluguel',tipo:'aluguel',dia:5,valor:2300});
-  s.addAgenda({emoji:'📄',label:'Emitir a NF',tipo:'nf',dia:1});
-  s.addAgenda({emoji:'🎧',label:'Spotify',tipo:'assinatura',dia:5,valor:21.9});
-  s.addAgenda({emoji:'💰',label:'Agência',tipo:'renda',dia:10,valor:5000});
   s.setProfile({nome:'Vilker'}); s.emit('replace');});
 await p.waitForTimeout(1400);
 for (let i=0;i<4;i++){ if (await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300);} 
 
 console.log('barra de baixo:', await p.$$eval('.nav__l', ns=>ns.map(n=>n.textContent).join(' · ')));
 console.log('atalho de insights no topo sumiu:', await p.$$eval('#insightsBtn', n=>n.length) === 0);
-await p.click('.nav__item[data-view="lista"]'); await p.waitForTimeout(800);
-console.log('abas:', await p.$$eval('.aba__t', ns=>ns.map(n=>n.textContent).join(' · ')));
-console.log('resumos:', await p.$$eval('.aba__n', ns=>ns.map(n=>n.textContent).join(' | ')));
-await p.click('.aba:has-text("Contas")'); await p.waitForTimeout(800);
-console.log('contas:', await p.$eval('.vhead h2', n=>n.textContent), '| anel:', await p.$eval('.g-anel__n', n=>n.textContent),
-  '| linhas:', await p.$$eval('.agitem', n=>n.length), '| assinatura fora:', !(await p.$$eval('.agitem__t', ns=>ns.some(n=>/Spotify/.test(n.textContent)))));
-console.log('nav de mês na aba contas:', await p.$$eval('.mesnav', n=>n.length));
-await p.screenshot({path:SHOT+'/x1-contas.png', fullPage:true});
-await p.click('.agitem .agitem__check'); await p.waitForTimeout(700);
-console.log('marcou:', await p.eval ? '' : '', await p.$eval('.g-anel__n', n=>n.textContent));
-// botões de criar dentro da própria aba
-console.log('botões da aba:', await p.$$eval('.painel > .wrap .btn span', ns=>ns.map(n=>n.textContent).join(' · ')));
-// atalho ?v=agenda cai na aba
-await p.goto(BASE + '/index.html?v=agenda',{waitUntil:'networkidle'});
+const barra = await p.$$eval('.nav__item', ns=>ns.map(n=>n.dataset.view));
+if (barra.join(',') !== 'hoje,mes,insights') errs.push('a barra de baixo não é hoje/mes/insights: ' + barra.join(','));
+
+/* A aba Lista (tarefas, contas, assinaturas, carteira) saiu do Caderno:
+   tarefas foram para tarefas/ e o resto para financeiro/. Os atalhos
+   antigos ?v=lista e ?v=agenda agora levam para esses apps. */
+for (const [atalho, destino] of [['lista','/tarefas/'],['agenda','/financeiro/']]) {
+  await p.goto(BASE + '/index.html?v=' + atalho, { waitUntil:'domcontentloaded' });
+  await p.waitForURL(u => u.pathname.endsWith(destino), { timeout: 5000 }).catch(()=>{});
+  const foi = new URL(p.url()).pathname;
+  console.log(`?v=${atalho} leva para:`, foi);
+  if (!foi.endsWith(destino)) errs.push(`?v=${atalho} não levou para ${destino}`);
+}
+await p.goto(BASE + '/index.html',{waitUntil:'networkidle'});
 await p.fill('#lockPass','senha1234'); await p.click('#lockBtn');
 await p.waitForSelector('#app:not([hidden])'); await p.waitForTimeout(1200);
-console.log('?v=agenda cai em:', await p.$eval('.vhead h2', n=>n.textContent), '| aba ativa:', await p.$eval('.aba.is-on .aba__t', n=>n.textContent));
+for (let i=0;i<4;i++){ if (await p.$eval('#sheet',n=>n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300);}
 // insights pela barra
 await p.click('.nav__item[data-view="insights"]'); await p.waitForTimeout(800);
 console.log('insights pela barra:', await p.$eval('.vhead h2', n=>n.textContent), '| topo mostra avatar:', await p.$$eval('#identAv img, #identAv .avatar', n=>n.length) >= 0 ? await p.$$eval('.ident__voltar', n=>n.length) === 0 : false);
