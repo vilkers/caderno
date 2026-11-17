@@ -23,7 +23,10 @@ async function carregarPlaywright() {
   ];
   for (const c of candidatos) {
     try {
-      return await import(c.startsWith('/') ? c : require.resolve(c));
+      const m = await import(c.startsWith('/') ? c : require.resolve(c));
+      // index.js (CommonJS) importado como ESM pode expor tudo só em default
+      const pw = m.chromium ? m : m.default;
+      if (pw?.chromium) return pw;
     } catch { /* tenta o próximo */ }
   }
   throw new Error(

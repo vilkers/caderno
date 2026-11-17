@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Financeiro",
-  "short_name": "Financeiro",
+  "name": "Grana",
+  "short_name": "Grana",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

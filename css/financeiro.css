@@ -97,3 +97,6 @@ body.financeiro:not(.entry) {
 .wallet-entry { width: min(calc(100% - 24px), 480px); max-height: 88dvh; padding: 17px; border: 1px solid var(--line); border-radius: 17px; background: var(--surface); color: inherit; }
 .wallet-entry::backdrop { background: #102217b5; }
 .wallet-entry .status:empty { display: none; }
+.wallet-entry-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.wallet-entry-fields label { min-width: 0; }
+.wallet-entry-fields input, .wallet-entry-fields select { width: 100%; }

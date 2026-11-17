@@ -158,6 +158,10 @@ function openWalletEntry(wallet, type, button) {
     el('option', { value: 'pending', text: isIncome ? 'A receber' : 'A pagar' }),
     el('option', { value: isIncome ? 'received' : 'paid', text: isIncome ? 'Recebida' : 'Paga' }),
   ]);
+  // Lançamento com data de hoje ou passada já aconteceu: começa como pago/recebido.
+  const syncStatus = () => { status.value = date.value && date.value <= today ? (isIncome ? 'received' : 'paid') : 'pending'; };
+  syncStatus();
+  date.addEventListener('change', syncStatus);
   const receipt = el('p.status', { role: 'status' });
   const save = el('button.primary', { type: 'submit', text: `Salvar ${label}` });
   const cancel = el('button', { type: 'button', text: 'Cancelar', onclick: () => dialog.close() });
