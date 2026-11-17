@@ -54,13 +54,20 @@ export function requestGoogleGrant(clientId) {
 }
 
 export async function googleRequest(token, path, method = 'GET', body) {
-  const res = await fetch(`${API}${path}`, {
+  const supply = typeof token === 'function' ? token : null;
+  let access = supply ? await supply() : token;
+  const call = key => fetch(`${API}${path}`, {
     method, cache: 'no-store',
-    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    headers: { Authorization: `Bearer ${key}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body && JSON.stringify(body),
   });
+  let res = await call(access);
+  if (res.status === 401 && supply) {
+    access = await supply(access);
+    res = await call(access);
+  }
   if (res.status === 401) {
-    if (grant?.token === token) grant = null;
+    if (grant?.token === access) grant = null;
     throw new Error('Autorize o Google Tasks novamente.');
   }
   if (!res.ok) throw new Error(`Google Tasks respondeu ${res.status}. Confira o acesso e a API do projeto.`);

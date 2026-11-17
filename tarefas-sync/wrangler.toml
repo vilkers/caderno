@@ -1,0 +1,17 @@
+name = "tarefas-google"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+keep_vars = true
+
+[vars]
+APP_ORIGIN = "https://vilkers.github.io"
+
+[[durable_objects.bindings]]
+name = "SESSIONS"
+class_name = "GoogleSession"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GoogleSession"]
