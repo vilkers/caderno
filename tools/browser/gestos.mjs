@@ -22,7 +22,9 @@ await p.fill('#lockPass', 'senha1234'); await p.fill('#lockPass2', 'senha1234');
 await p.waitForSelector('#app:not([hidden])'); await p.waitForTimeout(900);
 for (let i = 0; i < 3; i++) { if (await p.$eval('#sheet', n => n.hidden)) break; await p.keyboard.press('Escape'); await p.waitForTimeout(300); }
 
-const diaNaTela = () => p.$eval('.daynav__label', n => n.textContent.trim());
+/* O Hoje não tem mais `.daynav__label`: o dia em foco é o valor do seletor
+   de data do cabeçalho do check-in. */
+const diaNaTela = () => p.$eval('.vhead--checkin .daypick', n => n.value);
 
 /* arrasta de lado DENTRO de um elemento e diz se o dia mudou */
 const arrastarDentro = async sel => {
