@@ -1,6 +1,5 @@
 import { el, addDays, humanDay, todayKey } from '../js/utils.js';
 import { CLIENT_KEY, DEFAULT_CLIENT_ID, loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
-import { automaticSync, startPairing, readSession } from './google-session.js';
 import * as biometria from '../js/biometria.js';
 import * as vault from '../js/vault.js';
 import { TASK_EXPORT, openTransfer } from '../js/companion-transfer.js';
@@ -10,52 +9,38 @@ const FACE_KEY = 'caderno.tarefas.face.v1';
 const SNAPSHOT = 'caderno.tarefas.copia.v1';
 const app = document.querySelector('#app');
 const FILTERS = [['today', 'Hoje'], ['week', 'Semana'], ['open', 'Abertas'], ['done', 'Concluídas']];
-let grant, faceSecret, syncedAt, connection, pairing, renewing, checking;
+const SYNC_LABEL = 'Sincronizar com Google';
+let grant, faceSecret, syncedAt, syncing;
 let boards = [], area = '', filter = 'today', epoch = 0, revision = 0;
 let snapshotWrite = Promise.resolve();
 
-const canSync = () => !!connection || hasSession();
-
 function currentSession() {
   const active = epoch;
+  const authorized = grant;
   return {
-    active: () => epoch === active,
-    token: rejected => accessToken(active, rejected),
+    active: () => epoch === active && grant === authorized,
+    request: operation => usingGrant(authorized, operation),
   };
 }
 
-async function accessToken(active, rejected) {
-  if (epoch !== active) throw new Error('Destranque o Tarefas.');
-  if (hasSession() && grant.token !== rejected) return grant.token;
-  if (!connection) {
+async function usingGrant(authorized, operation) {
+  if (authorized?.expires > Date.now() + 15000) {
+    try { return await operation(authorized.token); }
+    catch (error) {
+      if (error.message !== 'Autorize o Google Tasks novamente.') throw error;
+    }
+  }
+  if (grant === authorized) {
     grant = null;
-    throw new Error(automaticSync ? 'Toque em Conectar Google para ativar a sincronização.' : 'Autorize o Google Tasks novamente.');
+    if (document.querySelector('#taskOverview')) showTasks('Toque em Sincronizar com Google para continuar.');
+    await rememberTasks();
   }
-  const linked = connection;
-  if (!renewing) {
-    const request = readSession(linked, rejected).then(session => {
-      if (epoch !== active || connection !== linked) throw new Error('Destranque o Tarefas.');
-      if (!session) throw new Error('A autorização ainda está pendente.');
-      grant = session;
-      return session.token;
-    }).catch(async error => {
-      if (error.revoked && epoch === active && connection === linked) {
-        connection = grant = null;
-        await rememberTasks();
-        if (epoch === active && document.querySelector('#taskOverview')) showTasks(error.message);
-      }
-      throw error;
-    }).finally(() => {
-      if (renewing === request) renewing = null;
-    });
-    renewing = request;
-  }
-  return renewing;
+  throw new Error('Volte à lista e toque em Sincronizar com Google para continuar.');
 }
 
 function resetSession() {
   epoch++;
-  grant = faceSecret = syncedAt = connection = pairing = renewing = checking = null;
+  grant = faceSecret = syncedAt = syncing = null;
   boards = [];
   area = '';
 }
@@ -71,8 +56,12 @@ function hasSession() {
 
 function lock(message = '') {
   resetSession();
-  if (!biometria.armada(FACE_KEY) || !localStorage.getItem(SNAPSHOT)) { login(message); return; }
   const status = el('p.status', { role: 'status', text: message });
+  if (!localStorage.getItem(SNAPSHOT)) {
+    render(el('div.panel.stack', {}, [setupFace(status), status]));
+    document.body.classList.add('entry');
+    return;
+  }
   const face = el('button.primary', { type: 'button', text: 'Entrar com Face ID', onclick: async () => {
     face.disabled = true;
     try {
@@ -83,18 +72,13 @@ function lock(message = '') {
       boards = snapshot.boards;
       syncedAt = snapshot.syncedAt;
       grant = snapshot.grant;
-      connection = automaticSync ? snapshot.connection : null;
-      pairing = automaticSync ? snapshot.pairing : null;
       showTasks();
-      if (!automaticSync) loadIdentity().catch(() => {});
-      if (pairing) checkPairing();
-      else if (canSync()) refreshOverview();
+      loadIdentity().catch(() => {});
+      if (hasSession()) refreshOverview();
     } catch { setError(status, new Error('Não consegui abrir com Face ID. Tente novamente.')); }
     finally { face.disabled = false; }
   } });
-  render(el('div.panel.stack', {}, [face, status,
-    el('details.connection-settings', {}, [el('summary', { text: 'Recuperar acesso' }),
-      el('button', { type: 'button', text: 'Entrar com Google temporariamente', onclick: () => login() })])]));
+  render(el('div.panel.stack', {}, [face, status]));
   document.body.classList.add('entry');
 }
 
@@ -102,7 +86,7 @@ function rememberTasks() {
   if (!faceSecret) return Promise.resolve(false);
   const secret = faceSecret;
   const active = epoch;
-  const snapshot = { boards, syncedAt, grant: !connection && hasSession() ? grant : null, connection, pairing };
+  const snapshot = { boards, syncedAt, grant: hasSession() ? grant : null };
   const write = snapshotWrite.then(async () => {
     if (epoch !== active) return false;
     const sealed = await vault.sealWithPassword(secret, snapshot);
@@ -112,61 +96,6 @@ function rememberTasks() {
   }).catch(() => false);
   snapshotWrite = write;
   return write;
-}
-
-async function beginPairing() {
-  const { active } = currentSession();
-  const pending = await startPairing();
-  if (!active() || connection || pairing) return;
-  pairing = pending;
-  if (!(await rememberTasks())) {
-    if (active() && pairing === pending) pairing = null;
-    throw new Error('Não consegui salvar a conexão no iPhone. Tente novamente.');
-  }
-  if (active()) showTasks();
-}
-
-function checkPairing() {
-  if (!pairing || checking) return checking;
-  const { active } = currentSession();
-  const pending = pairing;
-  const run = async () => {
-    try {
-      if (pending.expires <= Date.now()) {
-        const error = new Error('O tempo para autorizar acabou. Toque em Conectar Google para tentar de novo.');
-        error.pairingEnded = true;
-        throw error;
-      }
-      const session = await readSession(pending);
-      if (!active() || pairing !== pending) return;
-      if (!session) return;
-      const previous = connection;
-      connection = { id: pending.id, secret: pending.secret };
-      pairing = null;
-      if (!(await rememberTasks())) {
-        if (active()) {
-          connection = previous;
-          pairing = pending;
-          showTasks('Não consegui salvar a conexão. Toque em Conferir autorização para tentar de novo.');
-        }
-        return;
-      }
-      if (!active()) return;
-      grant = session;
-      showTasks('Google conectado. Atualizando tarefas…');
-      await refreshOverview('Sincronização automática ativada.');
-    } catch (error) {
-      if (!active() || pairing !== pending) return;
-      if (error.pairingEnded) {
-        pairing = null;
-        await rememberTasks();
-      }
-      if (active()) showTasks(error.message);
-    }
-  };
-  const request = run().finally(() => { if (checking === request) checking = null; });
-  checking = request;
-  return request;
 }
 
 function setupFace(status) {
@@ -188,56 +117,11 @@ function setupFace(status) {
       localStorage.setItem(SNAPSHOT, JSON.stringify(sealed));
       faceSecret = secret;
       showTasks('Face ID ativado.');
+      loadIdentity().catch(() => {});
     } catch { setError(status, new Error('Não consegui ativar o Face ID neste navegador.')); }
     finally { button.disabled = false; }
   } });
   return button;
-}
-
-function login(message = '') {
-  resetSession();
-  if (automaticSync && !biometria.armada(FACE_KEY)) {
-    const status = el('p.status', { role: 'status', text: message });
-    render(el('div.panel.stack', {}, [
-      el('p', { text: 'Ative o Face ID para conectar sua conta Google.' }),
-      setupFace(status), status,
-    ]));
-    document.body.classList.add('entry');
-    return;
-  }
-  const client = el('input', { type: 'text', value: localStorage.getItem(CLIENT_KEY) || DEFAULT_CLIENT_ID, autocomplete: 'off' });
-  const status = el('p.status', { role: 'status', text: message });
-  const submit = el('button.primary', { type: 'submit', text: 'Entrar com Google', disabled: true });
-  const form = el('form.panel.stack', { onsubmit: async event => {
-    event.preventDefault();
-    const clientId = client.value.trim() || DEFAULT_CLIENT_ID;
-    if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(clientId)) {
-      status.textContent = 'Cole o ID de cliente OAuth do tipo Aplicativo da Web.';
-      return;
-    }
-    submit.disabled = true;
-    status.textContent = 'Aguardando autorização…';
-    try {
-      const authorized = await requestGoogleGrant(clientId);
-      const loaded = await loadBoards(authorized.token);
-      if (!form.isConnected) return;
-      localStorage.setItem(CLIENT_KEY, clientId);
-      grant = authorized;
-      boards = loaded;
-      syncedAt = Date.now();
-      if (faceSecret) await rememberTasks();
-      showTasks();
-    } catch (error) { setError(status, error); }
-    finally { submit.disabled = false; }
-  } }, [
-    el('p.muted', { text: 'Entre com a conta onde estão suas listas do Google Tasks.' }),
-    submit,
-    status,
-    el('details.connection-settings', {}, [el('summary', { text: 'Configuração da conexão' }), el('label', {}, ['ID de cliente OAuth', client])]),
-  ]);
-  render(form);
-  document.body.classList.add('entry');
-  loadIdentity().then(() => { submit.disabled = false; }).catch(error => setError(status, error));
 }
 
 function setError(status, error) {
@@ -245,25 +129,17 @@ function setError(status, error) {
   status.textContent = error.message;
 }
 
-async function updateBoards() {
-  const session = currentSession();
+async function updateBoards(authorized = grant) {
+  const active = epoch;
   const started = ++revision;
-  let data;
-  try { data = await loadBoards(session.token); }
-  catch (error) {
-    if (session.active() && !connection && error.message === 'Autorize o Google Tasks novamente.') {
-      grant = null;
-      await rememberTasks();
-      if (session.active() && faceSecret && document.querySelector('#taskOverview')) showTasks(error.message);
-    }
-    throw error;
-  }
-  if (!session.active() || revision !== started) return false;
+  const data = await usingGrant(authorized, loadBoards);
+  if (epoch !== active || revision !== started) return false;
+  grant = authorized;
   boards = data;
   syncedAt = Date.now();
   if (!boards.some(board => board.id === area)) area = '';
   await rememberTasks();
-  return session.active() && revision === started;
+  return epoch === active && revision === started;
 }
 
 async function refreshOverview(message = '') {
@@ -303,85 +179,82 @@ function visibleTasks() {
       || Number(highPriority(b.task)) - Number(highPriority(a.task)) || a.task.title.localeCompare(b.task.title));
 }
 
+async function syncGoogle(status) {
+  if (syncing) return;
+  const active = epoch;
+  syncing = true;
+  try {
+    let authorized = grant;
+    if (!hasSession()) {
+      if (!globalThis.google?.accounts?.oauth2) {
+        status.textContent = 'Carregando a conexão do Google…';
+        await loadIdentity();
+        if (active === epoch && status.isConnected) status.textContent = 'Toque novamente em Sincronizar com Google.';
+        return;
+      }
+      status.textContent = 'Aguardando o Google…';
+      authorized = await requestGoogleGrant(localStorage.getItem(CLIENT_KEY) || DEFAULT_CLIENT_ID);
+    }
+    if (epoch !== active) return;
+    status.textContent = 'Buscando suas tarefas…';
+    if (await updateBoards(authorized) && document.querySelector('#taskOverview')) showTasks('Tarefas sincronizadas.');
+  } catch (error) {
+    if (epoch === active && status.isConnected) setError(status, error);
+  } finally {
+    if (epoch === active) syncing = false;
+  }
+}
+
 function showTasks(message = '') {
-  if (!canSync() && !faceSecret) { lock('Conecte sua conta para consultar suas tarefas.'); return; }
-  const connected = canSync();
+  if (!faceSecret) { lock(); return; }
+  const connected = hasSession();
   const status = el('p.status', { role: 'status', text: message });
   const tasks = visibleTasks();
-  const refresh = el('button', { type: 'button', text: connected || automaticSync ? 'Atualizar' : 'Sincronizar Google', onclick: async () => {
-    refresh.disabled = true;
-    try {
-      if (!canSync() && automaticSync && faceSecret) { showTasks(); return; }
-      if (!canSync()) {
-        if (!globalThis.google?.accounts?.oauth2) { login(); return; }
-        const secret = faceSecret;
-        const refreshed = await requestGoogleGrant(localStorage.getItem(CLIENT_KEY) || DEFAULT_CLIENT_ID);
-        if (faceSecret !== secret || !refresh.isConnected) return;
-        grant = refreshed;
-      }
-      if (await updateBoards()) showTasks('Tarefas conferidas.');
-    }
-    catch (error) { setError(status, error); }
-    finally { refresh.disabled = false; }
-  } });
-  let connectionControl;
-  if (automaticSync && faceSecret && pairing) {
-    const verify = el('button', { type: 'button', text: 'Conferir autorização', onclick: async () => {
-      verify.disabled = true;
-      try {
-        await checkPairing();
-        if (verify.isConnected && !status.textContent) status.textContent = 'Abra Autorizar no Google e permita o acesso.';
-      } finally { verify.disabled = false; }
-    } });
-    connectionControl = el('div.panel.stack', {}, [
-      el('p', { text: 'Para ativar a sincronização automática, autorize o Google e volte pelo ícone Tarefas.' }),
-      el('a', { href: pairing.authorize, target: '_blank', rel: 'noopener noreferrer', text: 'Autorizar no Google' }),
-      verify,
-    ]);
-  } else if (automaticSync && faceSecret && !connection) {
-    const connect = el('button.primary', { type: 'button', text: 'Conectar Google', onclick: async () => {
-      connect.disabled = true;
-      try { await beginPairing(); } catch (error) { setError(status, error); }
-      finally { connect.disabled = false; }
-    } });
-    connectionControl = el('div.actions', {}, [connect]);
-  }
+  const refresh = el(connected ? 'button' : 'button.primary', {
+    type: 'button', text: SYNC_LABEL, onclick: async () => {
+      refresh.disabled = true;
+      status.classList.remove('error');
+      try { await syncGoogle(status); }
+      finally { refresh.disabled = false; }
+    },
+  });
   const picker = el('select', { onchange: event => { area = event.currentTarget.value; showTasks(); } }, [
     el('option', { value: '', text: 'Todas as listas' }),
     ...boards.map(board => el('option', { value: board.id, selected: area === board.id, text: board.title })),
   ]);
   render(el('div.stack', { id: 'taskOverview' }, [
-    !connected ? el('p.muted', { text: syncedAt ? 'Última sincronização: ' + new Date(syncedAt).toLocaleString('pt-BR') + '. Conecte ao Google para editar.' : 'Conecte ao Google para editar.' }) : null,
-    connectionControl,
+    !connected && syncedAt ? el('p.muted', { text: 'Última sincronização: ' + new Date(syncedAt).toLocaleString('pt-BR') }) : null,
     el('div.actions', {}, [
-      el('button.primary', { type: 'button', text: '+ Nova tarefa', disabled: !boards.length || !connected, onclick: () => editTask() }),
-      connected || !automaticSync ? refresh : null,
+      refresh,
+      connected && boards.length ? el('button.primary', { type: 'button', text: '+ Nova tarefa', onclick: () => editTask() }) : null,
     ]),
+    status,
     el('label', {}, ['Lista', picker]),
     el('section.panel', {}, [
       el('div.tabs', { role: 'group', 'aria-label': 'Filtro de tarefas' }, FILTERS.map(([id, text]) => el('button', {
         type: 'button', text, 'aria-pressed': String(filter === id), onclick: () => { filter = id; showTasks(); },
       }))),
       tasks.length ? el('ul.tasks-list', {}, tasks.map(({ task, board }) => taskRow(task, board, status)))
-        : el('p.muted', { text: filter === 'today' ? 'Nada com prazo para hoje. Veja Abertas para incluir tarefas sem prazo.' : 'Nenhuma tarefa neste recorte.' }),
+        : el('p.muted', { text: !boards.length && !connected ? 'Sincronize com o Google para carregar suas listas.'
+          : filter === 'today' ? 'Nada com prazo para hoje. Veja Abertas para incluir tarefas sem prazo.' : 'Nenhuma tarefa neste recorte.' }),
     ]),
     el('div.actions', {}, [
       el('button', { type: 'button', text: 'Importar do Caderno', disabled: !connected, onclick: showImport }),
-      !faceSecret ? setupFace(status) : null,
       el('button', { type: 'button', text: 'Trancar', onclick: () => lock() }),
     ]),
-    status,
   ]));
 }
 
 function taskRow(task, board, status) {
   const due = dateOf(task);
   const completed = task.status === 'completed';
-  const action = el('button', { type: 'button', text: completed ? 'Reabrir' : 'Concluir', disabled: !canSync(), onclick: async () => {
+  const action = el('button', { type: 'button', text: completed ? 'Reabrir' : 'Concluir', disabled: !hasSession(), onclick: async () => {
     action.disabled = true;
     try {
       const session = currentSession();
-      const saved = await changeTask(session.token, board.id, task.id, { status: completed ? 'needsAction' : 'completed' });
+      const saved = await session.request(token => changeTask(token, board.id, task.id, {
+        status: completed ? 'needsAction' : 'completed',
+      }));
       if (!session.active()) return;
       await saveTask(board.id, saved);
       if (session.active() && action.isConnected) showTasks(completed ? 'Tarefa reaberta.' : 'Tarefa concluída.');
@@ -392,7 +265,7 @@ function taskRow(task, board, status) {
     el('div', {}, [el('p.task-title', { text: task.title }), el('p.meta.muted', {
       text: `${board.title} · ${due ? humanDay(due) : 'Sem prazo'}${!completed && due && due < todayKey() ? ' · Atrasada' : ''}${highPriority(task) ? ' · Prioridade' : ''}`,
     })]),
-    el('div.task-buttons', {}, [action, el('button', { type: 'button', text: 'Editar', disabled: !canSync(), onclick: () => editTask(task, board) })]),
+    el('div.task-buttons', {}, [action, el('button', { type: 'button', text: 'Editar', disabled: !hasSession(), onclick: () => editTask(task, board) })]),
   ]);
 }
 
@@ -410,9 +283,9 @@ function editTask(task, board) {
     try {
       const session = currentSession();
       const listId = task ? board.id : listInput.value;
-      const saved = task
-        ? await changeTask(session.token, listId, task.id, taskFields(title.value, due.value))
-        : await createTask(session.token, listId, title.value, due.value);
+      const saved = await session.request(token => task
+        ? changeTask(token, listId, task.id, taskFields(title.value, due.value))
+        : createTask(token, listId, title.value, due.value));
       if (!session.active()) return;
       await saveTask(listId, saved);
       if (session.active() && submit.isConnected) {
@@ -459,7 +332,7 @@ function previewImport(records) {
     status.textContent = 'Migrando tarefas…';
     try {
       const session = currentSession();
-      const count = await importCaderno(session.token, records, session.active);
+      const count = await session.request(token => importCaderno(token, records, session.active));
       if (!session.active() || !apply.isConnected) return;
       filter = 'open';
       showTasks(`${count} tarefas adicionadas. Confira prazos e títulos.`);
@@ -476,9 +349,9 @@ function previewImport(records) {
 }
 
 function refreshOnReturn() {
-  if (document.hidden || !faceSecret || !document.querySelector('#taskOverview')) return;
-  if (pairing) checkPairing();
-  else if (connection && Date.now() - (syncedAt || 0) > 60000) refreshOverview();
+  if (document.hidden || !faceSecret || syncing || !document.querySelector('#taskOverview')) return;
+  if (grant && !hasSession()) showTasks();
+  else if (hasSession() && Date.now() - (syncedAt || 0) > 60000) refreshOverview();
 }
 
 document.addEventListener('visibilitychange', refreshOnReturn);

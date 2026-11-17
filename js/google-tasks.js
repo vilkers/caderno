@@ -16,8 +16,9 @@ export function loadIdentity() {
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
-    script.onload = resolve;
-    script.onerror = () => { script.remove(); reject(new Error('Não consegui carregar o login do Google.')); };
+    const fail = () => { script.remove(); reject(new Error('Não consegui carregar a conexão do Google.')); };
+    script.onload = () => globalThis.google?.accounts?.oauth2 ? resolve() : fail();
+    script.onerror = fail;
     document.head.append(script);
   }).catch(err => { identity = null; throw err; });
   return identity;
@@ -47,27 +48,20 @@ export function requestGoogleGrant(clientId) {
         resolve({ token: response.access_token, expires: Date.now() + Number(response.expires_in) * 1000 });
       },
       error_callback: error => reject(new Error(error.type === 'popup_failed_to_open'
-        ? 'Abra o Tarefas no Safari e toque em Entrar com Google.'
-        : 'O login foi fechado. Toque em Entrar com Google para tentar de novo.')),
+        ? 'O navegador bloqueou a janela do Google. Permita pop-ups e tente novamente.'
+        : 'A janela do Google foi fechada. Tente novamente.')),
     }).requestAccessToken({ prompt: '' });
   });
 }
 
 export async function googleRequest(token, path, method = 'GET', body) {
-  const supply = typeof token === 'function' ? token : null;
-  let access = supply ? await supply() : token;
-  const call = key => fetch(`${API}${path}`, {
+  const res = await fetch(`${API}${path}`, {
     method, cache: 'no-store',
-    headers: { Authorization: `Bearer ${key}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body && JSON.stringify(body),
   });
-  let res = await call(access);
-  if (res.status === 401 && supply) {
-    access = await supply(access);
-    res = await call(access);
-  }
   if (res.status === 401) {
-    if (grant?.token === access) grant = null;
+    if (grant?.token === token) grant = null;
     throw new Error('Autorize o Google Tasks novamente.');
   }
   if (!res.ok) throw new Error(`Google Tasks respondeu ${res.status}. Confira o acesso e a API do projeto.`);
