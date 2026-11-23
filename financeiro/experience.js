@@ -140,7 +140,7 @@ export function projectedBalances(wallet, month = wallet.paymentMonth) {
           el('strong', { text: money(item.amountCents) }),
         ])),
       el('div', {}, [el('span', { text: 'Contas pendentes com valor' }), el('strong', { text: '− ' + money(projectedExpenses) })]),
-      el('div', {}, [el('span', { text: 'Aplicações previstas (conta → investimento)' }), el('strong', { text: '− ' + money(transferAmount) })]),
+      transferAmount > 0n ? el('div', {}, [el('span', { text: 'Aplicações previstas (conta → investimento)' }), el('strong', { text: '− ' + money(transferAmount) })]) : null,
     ]),
     uncertainTotal > 0n ? el('div.projected-alternative', {}, [
       el('strong', { text: 'Sem o recebimento da On Filmes' }),
@@ -181,7 +181,7 @@ export function reserveForecast(wallet, month = wallet.paymentMonth) {
       el('div', {}, [el('span', { text: 'Saldo de referência' }), el('strong', { text: money(wallet.balance) })]),
       el('div', {}, [el('span', { text: 'Recebimentos incluídos no cenário' }), el('strong', { text: money(upcomingIncome) })]),
       el('div', {}, [el('span', { text: 'Contas previstas' }), el('strong', { text: money(upcomingBills) })]),
-      el('div', {}, [el('span', { text: 'Aplicações planejadas' }), el('strong', { text: money(applications) })]),
+      applications > 0n ? el('div', {}, [el('span', { text: 'Aplicações planejadas' }), el('strong', { text: money(applications) })]) : null,
     ]),
     unknown.length ? el('p.reserve-warning', { text: 'A completar: ' + unknown.map(item => item.title).join(', ') + '.' }) : null,
     el('p.reserve-footnote', { text: 'Neste cenário, On Filmes e salário são considerados já recebidos para calcular o caixa de dezembro; o saldo de hoje não muda. Aplicação não é despesa.' }),
