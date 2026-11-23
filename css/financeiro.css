@@ -126,3 +126,15 @@ body.financeiro:not(.entry) {
 .subscription-row { min-height: 58px; }
 .subscription-row:focus-visible { outline: 2px solid #174f40; outline-offset: 2px; }
 .reference-balance { margin-top: 4px; }
+
+
+.subscription-search { width: 100%; min-height: 46px; border: 1px solid #cad8cd; border-radius: 12px; padding: 10px 13px; background: #fffefa; color: #243f34; font-size: 16px; }
+.subscription-search:focus { outline: 2px solid #174f40; outline-offset: 2px; }
+.subscription-group[hidden], .subscription-group li[hidden] { display: none !important; }
+.balance-priority { gap: 8px; }
+.balance-primary, .balance-secondary, .pending-receivable { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.balance-primary { padding: 6px 0 10px; border-bottom: 1px solid var(--line); }
+.balance-primary strong { font-size: clamp(1.45rem, 6vw, 2rem); letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.balance-primary span, .balance-secondary span { color: var(--muted); font-size: .83rem; }
+.balance-secondary strong, .pending-receivable strong { font-variant-numeric: tabular-nums; }
+.pending-receivable { padding: 7px 0; }
