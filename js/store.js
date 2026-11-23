@@ -812,7 +812,7 @@ function walletItems(items, statuses, paymentMonth) {
     const { id, title, amountCents, date, status, note, month } = item || {};
     if (typeof id !== 'string' || !/^[a-z0-9_-]{1,80}$/.test(id) || ids.has(id) || typeof title !== 'string'
       || !title.trim() || title.length > 120 || !(Number.isSafeInteger(amountCents) && amountCents > 0 || paymentMonth && amountCents === null)
-      || !statuses.includes(status) || (date != null && (!walletDate(date) || (paymentMonth && !date.startsWith(paymentMonth))))) {
+      || !statuses.includes(status) || (date != null && (!walletDate(date) || (paymentMonth && !date.startsWith(month || paymentMonth))))) {
       throw new Error('Há um lançamento inválido ou repetido na Carteira da Central.');
     }
     if (month !== undefined && (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month))) throw new Error('Mês inválido.');
