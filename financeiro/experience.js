@@ -86,8 +86,22 @@ export function spendingCalendar(wallet) {
   ]);
 }
 
+export function spendingBreakdown(wallet) {
+  const summary = wallet.spendingSummary;
+  if (!summary?.categories?.length) return null;
+  const month = monthLabel(summary.month);
+  return el('section.panel.stack', { 'aria-label': 'Despesas por categoria' }, [
+    el('div.view-heading', {}, [el('h2', { text: 'Gastos por categoria' }), el('span.finance-period', { text: month })]),
+    ...summary.categories.map(item => el('div.spending-category-row', {}, [
+      el('span', { text: item.label }),
+      el('strong', { text: money(item.amountCents) }),
+    ])),
+    el('p.finance-hint', { text: 'Resumo de novembro; não descontado novamente do saldo atual.' }),
+  ]);
+}
+
 const filters = ['Todos', 'Rendas', 'Despesas'];
-export function movements(wallet, filter, change, add) {
+export function movements(wallet, filter, change, add, editPayment = () => {}) {
   const rows = [
     ...wallet.receivables.map(item => ({ ...item, kind: 'Rendas' })),
     ...wallet.payments.map(item => ({ ...item, kind: 'Despesas' })),
@@ -110,7 +124,8 @@ export function movements(wallet, filter, change, add) {
         const income = item.kind === 'Rendas';
         return el('li.finance-record', {}, [
           el('span.record-symbol.' + (income ? 'income' : 'expense'), { text: income ? '+' : '−', 'aria-hidden': 'true' }),
-          el('div', {}, [el('strong', { text: item.title }), el('p', { text: [income ? 'Renda' : 'Despesa', heading === 'Previstos' && item.date ? humanDay(item.date) : ''].filter(Boolean).join(' · ') })]),
+          el('div', {}, [el('strong', { text: item.title }), el('p', { text: [income ? 'Renda' : 'Despesa', heading === 'Previstos' && item.date ? humanDay(item.date) : '', item.note || ''].filter(Boolean).join(' · ') }),
+            !income && item.status === 'pending' ? el('button.plan-edit', { type: 'button', text: item.amountCents === null ? 'Definir valor' : 'Editar valor', onclick: () => editPayment(item) }) : null]),
           el('strong.record-money', { text: item.amountCents === null ? 'A definir' : money(income ? item.amountCents : -item.amountCents) }),
         ]);
       })),
