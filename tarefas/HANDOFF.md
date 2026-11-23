@@ -24,7 +24,7 @@ cartão principal no topo e oferecer um calendário que abre e fecha por botão.
 - Gesto: apenas no cartão principal. Captura o pointer no início, permite mouse
   e toque, usa limite de 32% da largura (máximo 96px), cancela com rolagem vertical
   ou cancelamento do navegador e mantém os botões Concluir e Desfazer.
-- Cache PWA: `caderno-v39`, incluindo o novo módulo `tarefas/calendar.js`.
+- Cache PWA: `caderno-v40`, incluindo o novo módulo `tarefas/calendar.js`.
 
 ## Validação
 
