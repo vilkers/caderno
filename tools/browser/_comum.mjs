@@ -23,7 +23,9 @@ async function carregarPlaywright() {
   ];
   for (const c of candidatos) {
     try {
-      return await import(c.startsWith('/') ? c : require.resolve(c));
+      const loaded = await import(c.startsWith('/') ? c : require.resolve(c));
+      const playwright = loaded.chromium ? loaded : loaded.default;
+      if (playwright?.chromium) return playwright;
     } catch { /* tenta o próximo */ }
   }
   throw new Error(
@@ -32,6 +34,11 @@ async function carregarPlaywright() {
 }
 
 export const { chromium } = await carregarPlaywright();
+// Use an existing system browser in environments without a bundled download.
+if (process.env.CADERNO_BROWSER_PATH) {
+  const launch = chromium.launch.bind(chromium);
+  chromium.launch = (options = {}) => launch({ executablePath: process.env.CADERNO_BROWSER_PATH, ...options });
+}
 
 /** Onde as capturas vão parar. Sobrescreva com CADERNO_SHOTS=/algum/lugar. */
 export function pastaDeShots(nome = 'shots') {

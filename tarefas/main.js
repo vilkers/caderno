@@ -1,10 +1,11 @@
-import { el, humanDay, todayKey } from '../js/utils.js';
+import { el, humanDay, todayKey, addDays } from '../js/utils.js';
 import { CLIENT_KEY, DEFAULT_CLIENT_ID, loadIdentity, requestGoogleGrant } from '../js/google-tasks.js';
 import * as biometria from '../js/biometria.js';
 import * as vault from '../js/vault.js';
 import { TASK_EXPORT, openTransfer } from '../js/companion-transfer.js';
-import { loadBoards, createTask, changeTask, taskFields, dateOf, highPriority, migrationPlan, importCaderno } from './backend.js';
+import { loadBoards, createTask, changeTask, editorFields, editableNotes, dateOf, highPriority, migrationPlan, importCaderno } from './backend.js';
 import { bindCompletionSwipe, taskQueues } from './flow.js';
+import { calendarPanel } from './calendar.js';
 
 const FACE_KEY = 'caderno.tarefas.face.v1';
 const SNAPSHOT = 'caderno.tarefas.copia.v1';
@@ -15,6 +16,8 @@ let grant, faceSecret, syncedAt, syncing, lastCompletion;
 const pendingTasks = new Set();
 let boards = [], area = '', filter = 'today', epoch = 0, revision = 0;
 let snapshotWrite = Promise.resolve();
+let calendarOpen = false;
+const calendarState = { month: todayKey().slice(0, 7), day: todayKey() };
 
 function currentSession() {
   const active = epoch;
@@ -45,6 +48,7 @@ function resetSession() {
   grant = faceSecret = syncedAt = syncing = lastCompletion = null;
   boards = [];
   area = '';
+  calendarOpen = false;
 }
 
 function render(...content) {
@@ -210,6 +214,23 @@ function showTasks(message = '') {
   const undo = lastCompletion && statusAction(lastCompletion.task, lastCompletion.board, 'needsAction', {
     label: 'Desfazer', className: 'button.task-undo', id: 'taskUndo', status,
   });
+  const calendarSlot = el('div.task-calendar-slot', { hidden: !calendarOpen });
+  const fillCalendar = () => calendarSlot.replaceChildren(calendarPanel(boards, area, calendarState, {
+    row: (task, board) => taskRow(task, board, status),
+    create: day => editTask(null, null, day), connected,
+  }));
+  if (calendarOpen) fillCalendar();
+  const calendarToggle = el('button.task-calendar-toggle', {
+    type: 'button', text: '📅 Calendário', 'aria-expanded': String(calendarOpen), 'aria-controls': 'taskCalendarSlot',
+    onclick: () => {
+      calendarOpen = !calendarOpen;
+      calendarToggle.setAttribute('aria-expanded', String(calendarOpen));
+      calendarSlot.hidden = !calendarOpen;
+      if (calendarOpen) fillCalendar();
+      else calendarSlot.replaceChildren();
+    },
+  });
+  calendarSlot.id = 'taskCalendarSlot';
   render(el('div.stack', { id: 'taskOverview' }, [
     nextTaskCard(next, status, connected),
     el('div.task-toolbar', {}, [
@@ -218,6 +239,8 @@ function showTasks(message = '') {
     ]),
     !connected && syncedAt ? el('p.muted.task-freshness', { text: 'Última sincronização: ' + new Date(syncedAt).toLocaleString('pt-BR') }) : null,
     el('div.task-feedback', {}, [status, undo]),
+    el('div.task-list-tools', {}, [calendarToggle]),
+    calendarSlot,
     el('section.panel.task-list-panel', { 'aria-labelledby': 'taskListTitle' }, [
       el('div.task-list-header', {}, [
         el('h2', { id: 'taskListTitle', text: 'Tarefas da lista' }),
@@ -242,7 +265,7 @@ function showTasks(message = '') {
 
 function taskMeta(task, board) {
   const due = dateOf(task);
-  return [board.title, due ? humanDay(due) : 'Sem prazo', highPriority(task) ? 'Prioridade alta' : ''].filter(Boolean).join(' · ');
+  return [board.title, due ? humanDay(due) : 'Sem prazo', highPriority(task) ? '⭐ Prioridade alta' : '', editableNotes(task) ? '📝 Notas' : ''].filter(Boolean).join(' · ');
 }
 
 function nextTaskCard(next, status, connected) {
@@ -338,23 +361,57 @@ function taskRow(task, board, status) {
   ]);
 }
 
-function editTask(task, board) {
-  const title = el('input', { value: task?.title || '', required: true, maxlength: 1024 });
-  const due = el('input', { type: 'date', value: task ? dateOf(task) : '' });
+const EMOJIS = ['💼', '🎨', '💡', '🎬', '💻', '📞', '📩', '📝', '📚', '🎵', '💰', '🏠', '🛒', '🍽️', '💪', '🧠', '🐶', '❤️', '⭐', '✅'];
+
+function emojiPicker(input, target) {
+  const picker = el('details.task-emoji-picker');
+  picker.append(
+    el('summary', { text: '🙂 Emoji', 'aria-label': 'Inserir emoji ' + target }),
+    el('div.task-emoji-grid', { role: 'group', 'aria-label': 'Emojis ' + target }, EMOJIS.map(emoji => el('button', {
+      type: 'button', text: emoji, 'aria-label': `Inserir ${emoji} ${target}`,
+      onclick: () => {
+        input.setRangeText(emoji, input.selectionStart ?? input.value.length, input.selectionEnd ?? input.value.length, 'end');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        picker.open = false;
+        input.focus({ preventScroll: true });
+      },
+    }))),
+  );
+  return picker;
+}
+
+function editTask(task, board, initialDue = '') {
+  const title = el('input', { id: 'taskEditTitle', value: task?.title || '', required: true, maxlength: 1024, autocomplete: 'off' });
+  const due = el('input', { id: 'taskEditDue', type: 'date', value: task ? dateOf(task) : initialDue });
+  const notes = el('textarea', { id: 'taskEditNotes', rows: 4, maxlength: 8192, placeholder: 'Detalhes, links, próximos passos…', text: editableNotes(task) });
+  const priority = el('select', { id: 'taskEditPriority' }, [
+    el('option', { value: 'normal', selected: !highPriority(task || {}), text: 'Normal' }),
+    el('option', { value: 'high', selected: highPriority(task || {}), text: '⭐ Alta' }),
+  ]);
+  const progress = el('select', { id: 'taskEditStatus' }, [
+    el('option', { value: 'needsAction', selected: task?.status !== 'completed', text: 'Pendente' }),
+    el('option', { value: 'completed', selected: task?.status === 'completed', text: '✅ Concluída' }),
+  ]);
   const status = el('p.status', { role: 'status' });
   const submit = el('button.primary', { type: 'submit', text: task ? 'Salvar alterações' : 'Criar tarefa' });
-  const listInput = el('select', {}, boards.map(item => el('option', {
+  const listInput = el('select', { id: 'taskEditList' }, boards.map(item => el('option', {
     value: item.id, selected: item.id === (board?.id || area), text: item.title,
   })));
-  render(el('form.panel.stack', { onsubmit: async event => {
+  const form = el('form.panel.stack.task-editor', { onsubmit: async event => {
     event.preventDefault();
-    submit.disabled = true;
+    if (submit.disabled) return;
+    const controls = [...form.elements];
+    controls.forEach(control => { control.disabled = true; });
+    form.setAttribute('aria-busy', 'true');
+    status.classList.remove('error');
+    status.textContent = 'Salvando no Google Tasks…';
     try {
       const session = currentSession();
       const listId = task ? board.id : listInput.value;
+      const fields = editorFields(task, title.value, due.value, notes.value, priority.value === 'high', task ? progress.value : 'needsAction');
       const saved = await session.request(token => task
-        ? changeTask(token, listId, task.id, taskFields(title.value, due.value))
-        : createTask(token, listId, title.value, due.value));
+        ? changeTask(token, listId, task.id, fields)
+        : createTask(token, listId, fields.title, due.value, fields.notes));
       if (!session.active()) return;
       await saveTask(listId, saved);
       if (session.active() && submit.isConnected) {
@@ -362,11 +419,21 @@ function editTask(task, board) {
         showTasks(task ? 'Alterações salvas no Google Tasks.' : 'Tarefa criada no Google Tasks.');
       }
     } catch (error) { setError(status, error); }
-    finally { submit.disabled = false; }
+    finally { controls.forEach(control => { control.disabled = false; }); form.removeAttribute('aria-busy'); }
   } }, [el('h2', { text: task ? 'Editar tarefa' : 'Nova tarefa' }),
-    el('label', {}, ['Título', title]), el('label', {}, ['Prazo', due]),
-    task ? null : el('label', {}, ['Lista', listInput]),
-    el('div.actions', {}, [submit, el('button', { type: 'button', text: 'Voltar', onclick: () => showTasks() })]), status]));
+    task ? el('p.muted', { text: board.title }) : null,
+    el('label', { for: 'taskEditTitle', text: 'Título' }), title, emojiPicker(title, 'no título'),
+    el('label', { for: 'taskEditNotes', text: 'Notas' }), notes, emojiPicker(notes, 'nas notas'),
+    el('label', { for: 'taskEditDue', text: '📅 Prazo' }), due,
+    el('div.task-date-shortcuts', { role: 'group', 'aria-label': 'Atalhos de prazo' }, [
+      ['Hoje', 0], ['Amanhã', 1], ['Em 1 semana', 7], ['Sem prazo', null],
+    ].map(([text, days]) => el('button', { type: 'button', text, onclick: () => { due.value = days === null ? '' : addDays(todayKey(), days); } }))),
+    el('div.task-editor-grid', {}, [
+      el('label', { for: 'taskEditPriority' }, ['Prioridade', priority]),
+      task ? el('label', { for: 'taskEditStatus' }, ['Estado', progress]) : el('label', { for: 'taskEditList' }, ['Lista', listInput]),
+    ]),
+    el('div.actions', {}, [submit, el('button', { type: 'button', text: 'Voltar', onclick: () => showTasks() })]), status]);
+  render(form);
 }
 
 function showImport() {

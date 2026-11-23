@@ -26,17 +26,22 @@ export function taskQueues(boards, area, filter, today) {
 export function bindCompletionSwipe(track, hint, action) {
   let drag;
   const release = () => {
+    const pointerId = drag?.pointerId;
     drag = null;
+    if (pointerId !== undefined && track.hasPointerCapture(pointerId)) track.releasePointerCapture(pointerId);
     track.classList.remove('is-dragging', 'is-ready');
     track.style.removeProperty('--drag');
     hint.textContent = 'Concluir';
   };
   track.addEventListener('pointerdown', event => {
-    if (action.disabled || !event.isPrimary || event.button !== 0 || event.pointerType === 'mouse') return;
+    if (action.disabled || !event.isPrimary || event.button !== 0) return;
     const { pointerId, clientX, clientY } = event;
-    const threshold = Math.min(140, track.clientWidth * .48);
+    const threshold = Math.min(96, track.clientWidth * .32);
     if (!threshold) return;
     drag = { pointerId, clientX, clientY, threshold, moving: false };
+    // Keep the gesture on the track even when the pointer leaves its children.
+    // Vertical scrolling remains native (pan-y).
+    track.setPointerCapture(pointerId);
   });
   track.addEventListener('pointermove', event => {
     if (event.pointerId !== drag?.pointerId) return;
@@ -46,9 +51,9 @@ export function bindCompletionSwipe(track, hint, action) {
       if (deltaX < -10 || (deltaY > 12 && deltaY >= deltaX)) { release(); return; }
       if (deltaX < 10 || deltaX < deltaY * 1.4) return;
       drag.moving = true;
-      track.setPointerCapture(event.pointerId);
       track.classList.add('is-dragging');
     }
+    if (event.cancelable) event.preventDefault();
     const ready = deltaX >= drag.threshold;
     track.classList.toggle('is-ready', ready);
     track.style.setProperty('--drag', Math.max(0, Math.min(deltaX, track.clientWidth)) + 'px');
@@ -58,7 +63,7 @@ export function bindCompletionSwipe(track, hint, action) {
     if (event.pointerId !== drag?.pointerId) return;
     const finish = drag.moving && event.clientX - drag.clientX >= drag.threshold;
     release();
-    if (finish) action.click();
+    if (finish && !action.disabled) action.click();
   });
   for (const eventName of ['pointercancel', 'lostpointercapture']) {
     track.addEventListener(eventName, event => { if (event.pointerId === drag?.pointerId) release(); });
