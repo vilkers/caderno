@@ -104,6 +104,55 @@ export async function addWalletItemForConnection(c, list, item, active = () => t
   return saveWalletItem(c, list, item, null, active);
 }
 
+export async function saveInvestmentTransfer(c, item, previous, active = () => true) {
+  const branch = await privateRepo(c);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (!active()) throw new Error('Destranque o Grana para continuar.');
+    const record = await readWalletFile(c, branch);
+    const entries = record.data.transfers || [];
+    const found = entries.find(entry => entry.id === item.id);
+    const fields = ['id', 'title', 'amountCents', 'destination', 'date', 'month', 'status'];
+    const matches = (a, b) => !!(a && b) && fields.every(key => (a[key] ?? null) === (b[key] ?? null));
+    if (matches(found, item)) return record;
+    if ((found || previous) && !matches(found, previous))
+      throw new Error('Esta transferência mudou. Atualize a carteira antes de editar.');
+    if (found?.status === 'completed' || found?.status === 'cancelled')
+      throw new Error('Uma transferência concluída ou cancelada não pode ser alterada.');
+    if (!Number.isSafeInteger(item.amountCents) || item.amountCents <= 0
+      || !['planned', 'completed', 'cancelled'].includes(item.status))
+      throw new Error('Informe valor e situação válidos.');
+    const destination = record.data.investmentAccounts?.find(account => account.id === item.destination);
+    if (!destination) throw new Error('Escolha um investimento cadastrado.');
+    if (item.status === 'completed' && !item.date)
+      throw new Error('Informe a data de realização.');
+    let data = { ...record.data, transfers: found
+      ? entries.map(entry => entry.id === item.id ? { ...entry, ...item } : entry)
+      : [...entries, item] };
+    if (item.status === 'completed') {
+      // Aplicação já realizada = transferência interna, NÃO gasto nem renda.
+      if (item.amountCents > data.balance) throw new Error('O valor supera o saldo em conta. Atualize o saldo antes de confirmar.');
+      data = { ...data, balance: data.balance - item.amountCents,
+        invested: data.invested + item.amountCents,
+        investmentAccounts: data.investmentAccounts.map(account =>
+          account.id === item.destination ? { ...account, amountCents: account.amountCents + item.amountCents } : account),
+      };
+    }
+    store.centralWalletPlan(data);
+    if (!active()) throw new Error('Destranque o Grana para continuar.');
+    const response = await github(c, `/contents/${WALLET_PATH}`, {
+      method: 'PUT', body: { message: item.status === 'completed' ? 'Efetivar transferência para investimento' : 'Planejar transferência para investimento',
+        content: encode(JSON.stringify(data, null, 2)), branch, sha: record.sha },
+    });
+    if (response.ok) {
+      const body = await response.json();
+      if (body?.content?.sha) return { ...record, data, sha: body.content.sha };
+    } else if ([401,403,404].includes(response.status))
+      throw new Error('A conexão não possui autorização para gravar na Carteira.');
+    else if (![409,422].includes(response.status)) throw new Error('Não foi possível salvar a transferência.');
+  }
+  throw new Error('Houve atualização simultânea. Atualize a Carteira e tente de novo.');
+}
+
 export function updateWalletIncomeForConnection(c, item, previous, active) {
   return saveWalletItem(c, 'receivables', item, previous, active);
 }
