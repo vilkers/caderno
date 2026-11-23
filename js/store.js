@@ -809,14 +809,15 @@ function walletItems(items, statuses, paymentMonth) {
   if (!Array.isArray(items) || items.length > 200) throw new Error('Confira os lançamentos da Carteira na Central.');
   const ids = new Set();
   return items.map(item => {
-    const { id, title, amountCents, date, status } = item || {};
+    const { id, title, amountCents, date, status, note } = item || {};
     if (typeof id !== 'string' || !/^[a-z0-9_-]{1,80}$/.test(id) || ids.has(id) || typeof title !== 'string'
       || !title.trim() || title.length > 120 || !(Number.isSafeInteger(amountCents) && amountCents > 0 || paymentMonth && amountCents === null)
       || !statuses.includes(status) || (date != null && (!walletDate(date) || (paymentMonth && !date.startsWith(paymentMonth))))) {
       throw new Error('Há um lançamento inválido ou repetido na Carteira da Central.');
     }
     ids.add(id);
-    return { id, title: title.trim(), amountCents, date: date ?? null, status };
+    if (note !== undefined && (typeof note !== 'string' || note.length > 500)) throw new Error('Observação inválida na Carteira.');
+    return { id, title: title.trim(), amountCents, date: date ?? null, status, ...(note ? { note } : {}) };
   });
 }
 
@@ -829,7 +830,16 @@ export function centralWalletPlan(data) {
   return { date, balance, invested, balanceEstimated, paymentMonth,
     receivables: walletItems(receivables, ['pending', 'received']),
     payments: walletItems(payments, ['pending', 'paid'], paymentMonth),
-    subscriptions: normalizeSubscriptions(subscriptions) };
+    subscriptions: normalizeSubscriptions(subscriptions),
+    investmentAccounts: Array.isArray(data.investmentAccounts) && data.investmentAccounts.length <= 20
+      && data.investmentAccounts.every(entry => typeof entry.label === 'string' && entry.label.length <= 70
+        && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
+      && data.investmentAccounts.reduce((sum, entry) => sum + entry.amountCents, 0) === invested
+      ? data.investmentAccounts.map(entry => ({ label: entry.label, amountCents: entry.amountCents, estimated: entry.estimated === true })) : [],
+    spendingSummary: data.spendingSummary && /^\\d{4}-\\d{2}$/.test(data.spendingSummary.month || '')
+      && Array.isArray(data.spendingSummary.categories)
+      && data.spendingSummary.categories.every(entry => typeof entry.label === 'string' && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
+      ? { month: data.spendingSummary.month, categories: data.spendingSummary.categories.map(entry => ({ label: entry.label, amountCents: entry.amountCents })) } : null };
 }
 
 export async function applyCentralWallet({ data, sha, source }, { reset = false } = {}) {
