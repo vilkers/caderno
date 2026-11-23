@@ -176,7 +176,7 @@ async function saveWalletItem(c, list, item, previous, active = () => true) {
     // (ex.: "kind": "Rendas"), que não existem no JSON e não são conflito.
     const fields = list === 'subscriptions'
       ? ['id', 'title', 'amountCents', 'currency', 'day', 'card', 'active']
-      : ['id', 'title', 'amountCents', 'date', 'status', 'month', 'note'];
+      : ['id', 'title', 'amountCents', 'date', 'status', 'month', 'note', 'assured'];
     const matches = (recorded, expected) => Boolean(recorded && expected) &&
       fields.every(key => {
         const fallback = key === 'active' ? true : null;
