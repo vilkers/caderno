@@ -104,6 +104,10 @@ export async function addWalletItemForConnection(c, list, item, active = () => t
   return saveWalletItem(c, list, item, null, active);
 }
 
+export function updateWalletIncomeForConnection(c, item, previous, active) {
+  return saveWalletItem(c, 'receivables', item, previous, active);
+}
+
 export function updateWalletPaymentForConnection(c, item, previous, active) {
   return saveWalletItem(c, 'payments', item, previous, active);
 }
