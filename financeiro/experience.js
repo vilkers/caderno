@@ -107,7 +107,12 @@ export function projectedBalances(wallet, month = wallet.paymentMonth) {
   const projectedExpenses = [...futurePayments, ...undatedPayments].reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
   const balance = BigInt(wallet.balance);
   const invested = BigInt(wallet.invested);
-  const closing = balance + projectedIncome - projectedExpenses;
+  const plannedTransfers = (wallet.transfers || []).filter(item => item.status === 'planned'
+    && ((item.date && item.date > wallet.date && item.date <= closingDate)
+      || (!item.date && item.month <= month)));
+  const transferAmount = plannedTransfers.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
+  const closing = balance + projectedIncome - projectedExpenses - transferAmount;
+  const investedClosing = invested + transferAmount;
   const missing = wallet.payments.filter(item => item.status === 'pending' && item.amountCents === null
     && (item.month || item.date?.slice(0, 7) || wallet.paymentMonth) <= month);
   const uncertain = futureIncomes.filter(item => item.title.toLocaleLowerCase('pt-BR').includes('on filmes'));
@@ -119,51 +124,61 @@ export function projectedBalances(wallet, month = wallet.paymentMonth) {
     ]),
     el('div.projected-total', {}, [
       el('span', { text: 'Patrimônio total previsto' }),
-      el('strong', { text: money(closing + invested) }),
+      el('strong', { text: money(closing + investedClosing) }),
     ]),
     el('div.projected-accounts', {}, [
       el('div', {}, [el('span', { text: 'Na conta' }), el('strong', { text: money(closing) })]),
-      el('div', {}, [el('span', { text: 'Investido (valor atual)' }), el('strong', { text: money(invested) })]),
+      el('div', {}, [el('span', { text: 'Investido projetado' }), el('strong', { text: money(investedClosing) })]),
     ]),
     el('div.projected-bridge', {}, [
       el('div', {}, [el('span', { text: 'Saldo de referência' }), el('strong', { text: money(balance) })]),
       el('div', {}, [el('span', { text: 'Entradas pendentes até o fim do mês' }), el('strong', { text: '+ ' + money(projectedIncome) })]),
       el('div', {}, [el('span', { text: 'Contas pendentes com valor' }), el('strong', { text: '− ' + money(projectedExpenses) })]),
+      el('div', {}, [el('span', { text: 'Aplicações previstas (conta → investimento)' }), el('strong', { text: '− ' + money(transferAmount) })]),
     ]),
     uncertainTotal > 0n ? el('div.projected-alternative', {}, [
       el('strong', { text: 'Sem o recebimento da On Filmes' }),
       el('div', {}, [el('span', { text: 'Conta' }), el('strong', { text: money(closing - uncertainTotal) })]),
-      el('div', {}, [el('span', { text: 'Patrimônio' }), el('strong', { text: money(closing + invested - uncertainTotal) })]),
+      el('div', {}, [el('span', { text: 'Patrimônio' }), el('strong', { text: money(closing + investedClosing - uncertainTotal) })]),
     ]) : null,
     el('p.projected-note', { text: missing.length
-      ? 'Ainda não inclui ' + missing.map(item => item.title).join(', ') + ' (sem valor definido). Não soma assinaturas novamente às faturas.'
+      ? 'Ainda não inclui ' + missing.map(item => item.title).join(', ') + ' (sem valor definido). Aplicações transferem dinheiro entre conta e investimentos, sem alterar o patrimônio. Assinaturas não são somadas novamente às faturas.'
       : 'Valores dependem de recebimentos e pagamentos efetivos. Assinaturas não são duplicadas nas faturas.' }),
   ]);
   return detail;
 }
 
 export function reserveForecast(wallet, month = wallet.paymentMonth) {
-  const incomes = wallet.receivables.filter(item => item.status === 'pending' && item.date?.startsWith(month + '-'));
-  const expenses = wallet.payments.filter(item => (item.month || item.date?.slice(0,7) || wallet.paymentMonth) === month && item.status === 'pending');
-  const knownExpenses = expenses.reduce((sum, item) => sum + BigInt(item.amountCents ?? 0), 0n);
-  const income = incomes.reduce((sum, item) => sum + BigInt(item.amountCents ?? 0), 0n);
-  const gap = knownExpenses - income;
-  const deficit = gap > 0n ? gap : 0n;
-  const missing = expenses.filter(item => item.amountCents === null);
-  const note = missing.length ? 'Ainda falta informar: ' + missing.map(item => item.title).join(', ') + '.' : 'Todas as despesas previstas deste mês têm valor informado.';
-  return el('section.reserve-forecast' + (deficit > 0n ? '.is-negative' : '.is-positive'), { 'aria-label': 'Previsão de complemento do orçamento' }, [
+  const cutoff = month + '-31';
+  const incomes = wallet.receivables.filter(item => item.status === 'pending' && item.date && item.date > wallet.date && item.date <= cutoff);
+  const expenses = wallet.payments.filter(item => item.status === 'pending' && item.amountCents !== null &&
+    ((item.date && item.date > wallet.date && item.date <= cutoff) || (!item.date && (item.month || wallet.paymentMonth) <= month)));
+  const transfers = (wallet.transfers || []).filter(item => item.status === 'planned'
+    && ((item.date && item.date > wallet.date && item.date <= cutoff) || (!item.date && item.month <= month)));
+  const upcomingIncome = incomes.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
+  const upcomingBills = expenses.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
+  const applications = transfers.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
+  const finalCash = BigInt(wallet.balance) + upcomingIncome - upcomingBills - applications;
+  const needed = finalCash < 0n ? -finalCash : 0n;
+  const unknown = wallet.payments.filter(item => item.status === 'pending' && item.amountCents === null && (item.month || wallet.paymentMonth) <= month);
+  return el('section.reserve-forecast' + (needed > 0n ? '.is-negative' : '.is-positive'), { 'aria-label': 'Cobertura de caixa do mês' }, [
     el('div.reserve-heading', {}, [
-      el('div', {}, [el('p.reserve-kicker', { text: 'PLANEJAMENTO / ' + monthLabel(month).toUpperCase() }), el('h2', { text: 'Reserva necessária' })]),
-      el('span.reserve-status', { text: missing.length ? 'Parcial' : 'Calculado' }),
+      el('div', {}, [el('p.reserve-kicker', { text: 'CAIXA / ' + monthLabel(month).toUpperCase() }),
+        el('h2', { text: needed > 0n ? 'Resgate necessário' : 'Caixa suficiente' })]),
+      el('span.reserve-status', { text: unknown.length ? 'Parcial' : 'Calculado' }),
     ]),
-    el('strong.reserve-amount', { text: money(deficit) }),
-    el('p.reserve-description', { text: deficit > 0n ? 'Complemento mínimo para pagar as contas conhecidas com a renda prevista.' : 'A renda prevista cobre as despesas com valor informado.' }),
+    el('strong.reserve-amount', { text: needed > 0n ? money(needed) : money(finalCash) }),
+    el('p.reserve-description', { text: needed > 0n
+      ? 'Valor faltante na conta após despesas e aplicações previstas, considerando as entradas pendentes.'
+      : 'Saldo previsto após contas e aplicações. Não há necessidade estimada de resgate com os valores conhecidos.' }),
     el('div.reserve-details', {}, [
-      el('div', {}, [el('span', { text: 'Renda prevista' }), el('strong', { text: money(income) })]),
-      el('div', {}, [el('span', { text: 'Contas previstas' }), el('strong', { text: money(knownExpenses) })]),
+      el('div', {}, [el('span', { text: 'Saldo de referência' }), el('strong', { text: money(wallet.balance) })]),
+      el('div', {}, [el('span', { text: 'Entradas previstas' }), el('strong', { text: money(upcomingIncome) })]),
+      el('div', {}, [el('span', { text: 'Contas previstas' }), el('strong', { text: money(upcomingBills) })]),
+      el('div', {}, [el('span', { text: 'Aplicações planejadas' }), el('strong', { text: money(applications) })]),
     ]),
-    el('p.reserve-warning', { text: note }),
-    el('p.reserve-footnote', { text: 'Não inclui receitas sem data, como On Filmes, nem assinaturas que podem estar nas faturas. Não é um débito automático nem exige resgate se houver saldo em conta.' }),
+    unknown.length ? el('p.reserve-warning', { text: 'A completar: ' + unknown.map(item => item.title).join(', ') + '.' }) : null,
+    el('p.reserve-footnote', { text: 'A On Filmes ainda está pendente; confira também o cenário sem esse recebimento acima. Aplicação não é despesa e não altera o patrimônio.' }),
   ]);
 }
 
