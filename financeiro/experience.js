@@ -79,7 +79,7 @@ export function spendingCalendar(wallet, month = wallet.paymentMonth) {
     return el(day === todayKey() ? 'i.is-today' : 'i', { style: { '--bar': portion(total, max) + '%' } });
   }));
   return el('section.panel.spending-calendar', {}, [
-    el('div.view-heading', {}, [el('h2', { text: 'Despesas por dia' }), el('span.finance-period', { text: monthLabel(wallet.paymentMonth) })]),
+    el('div.view-heading', {}, [el('h2', { text: 'Despesas por dia' }), el('span.finance-period', { text: monthLabel(month) })]),
     el('div.spending-plot', {}, [plot, cursor]),
     el('div.spending-scale', { 'aria-hidden': 'true' }, [el('span', { text: '1' }), el('span', { text: '15' }), el('span', { text: String(length) })]),
     summary,
@@ -89,9 +89,9 @@ export function spendingCalendar(wallet, month = wallet.paymentMonth) {
 export function spendingBreakdown(wallet, month = wallet.paymentMonth) {
   const summary = wallet.spendingSummary;
   if (!summary?.categories?.length || summary.month !== month) return null;
-  const month = monthLabel(summary.month);
+  const headingMonth = monthLabel(summary.month);
   return el('section.panel.stack', { 'aria-label': 'Despesas por categoria' }, [
-    el('div.view-heading', {}, [el('h2', { text: 'Gastos por categoria' }), el('span.finance-period', { text: month })]),
+    el('div.view-heading', {}, [el('h2', { text: 'Gastos por categoria' }), el('span.finance-period', { text: headingMonth })]),
     ...summary.categories.map(item => el('div.spending-category-row', {}, [
       el('span', { text: item.label }),
       el('strong', { text: money(item.amountCents) }),
