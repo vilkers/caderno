@@ -329,7 +329,7 @@ function showWallet(wallet, message = '') {
         el('span.money', { text: next.amountCents === null ? 'A definir' : brl(next.amountCents) }),
       ]) : null,
       expensesChart(overview),
-      el('details.panel.reference-balance', {}, [
+      el('details.panel.reference-balance', { open: true }, [
         el('summary', {}, [el('span', { text: 'Patrimônio de referência' }), el('strong', { text: brl(BigInt(wallet.balance) + BigInt(wallet.invested)) })]),
         el('p.meta.muted', { text: humanDay(wallet.date) + (wallet.balanceEstimated ? ' · saldo em conta estimado' : '') }),
         el('div.reference-lines', {}, [
