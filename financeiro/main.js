@@ -147,7 +147,7 @@ function openWalletEntry(wallet, type, button, selected = null) {
   const label = isIncome ? 'renda' : 'despesa';
   const title = el('input', { type: 'text', name: 'title', maxlength: 120, required: true, autofocus: true });
   const amount = el('input', { type: 'text', name: 'amount', inputmode: 'decimal', placeholder: '0,00', maxlength: 24, required: true });
-  const currentMonth = wallet.paymentMonth;
+  const currentMonth = selected?.month || selected?.date?.slice(0,7) || selectedMonth;
   const date = el('input', { type: 'date', name: 'date' });
   const today = todayKey();
   if (!isIncome) {
@@ -157,7 +157,7 @@ function openWalletEntry(wallet, type, button, selected = null) {
     date.min = first;
     date.max = addDays(`${nextMonth}-01`, -1);
   }
-  if (isIncome || today.startsWith(currentMonth + '-')) date.value = today;
+  if (isIncome && selectedMonth === today.slice(0,7) || !isIncome && today.startsWith(currentMonth + '-')) date.value = today;
   if (selected) { title.value = selected.title; amount.value = selected.amountCents == null ? '' : (selected.amountCents / 100).toFixed(2).replace('.', ','); date.value = selected.date || ''; }
   const status = el('select', { name: 'status' }, [
     el('option', { value: 'pending', text: isIncome ? 'A receber' : 'A pagar' }),
