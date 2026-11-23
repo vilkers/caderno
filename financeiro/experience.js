@@ -140,40 +140,171 @@ export function movements(wallet, filter, change, add, editPayment = () => {}, e
   ]);
 }
 
+const SUBS_META = {
+  'sub-spotify': ['Entretenimento', 'spotify.com', '#1ed760', '#092a18'],
+  'sub-youtube': ['Entretenimento', 'youtube.com', '#ff0033', '#fff'],
+  'sub-google-one': ['Nuvem & software', 'one.google.com', '#e7f0ff', '#24498b'],
+  'sub-icloud': ['Nuvem & software', 'icloud.com', '#eaf4ff', '#20579b'],
+  'sub-claude': ['IA & criação', 'claude.ai', '#d97757', '#fff'],
+  'sub-globoplay': ['Entretenimento', 'globoplay.globo.com', '#ee1739', '#fff'],
+  'sub-uber-one': ['Serviços', 'uber.com', '#111111', '#fff'],
+  'sub-ifood': ['Serviços', 'ifood.com.br', '#e91a32', '#fff'],
+  'sub-meli-plus': ['Serviços', 'mercadolivre.com.br', '#ffe600', '#222'],
+  'sub-savee': ['IA & criação', 'savee.it', '#eae9e5', '#252525'],
+  'sub-psn': ['Entretenimento', 'playstation.com', '#1559b5', '#fff'],
+  'sub-cargo-collective': ['IA & criação', 'cargo.site', '#252525', '#fff'],
+  'sub-clube-livelo': ['Pontos & milhas', 'livelo.com.br', '#6e45b9', '#fff'],
+  'sub-smiles': ['Pontos & milhas', 'smiles.com.br', '#fae667', '#242424'],
+  'sub-magnific': ['IA & criação', 'magnific.ai', '#272347', '#fff'],
+  'sub-vivo': ['Conectividade', 'vivo.com.br', '#622eaa', '#fff'],
+  'sub-amazon-prime': ['Entretenimento', 'primevideo.com', '#d9f6fb', '#09537b'],
+  'sub-smartfit': ['Saúde & bem-estar', 'smartfit.com.br', '#ffde00', '#1b1b1b'],
+  'sub-chatgpt': ['IA & criação', 'chatgpt.com', '#dcf0e7', '#134c39'],
+  'sub-google-work-mestiza': ['Nuvem & software', 'workspace.google.com', '#e7f0ff', '#24498b'],
+};
+const CATEGORY_ORDER = ['IA & criação', 'Entretenimento', 'Nuvem & software', 'Pontos & milhas', 'Conectividade', 'Saúde & bem-estar', 'Serviços', 'Outros'];
+const subCategory = item => SUBS_META[item.id]?.[0] || 'Outros';
+const formatSubAmount = (amount, currency) => {
+  if (amount === null) return 'A definir';
+  const full = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency || 'BRL' }).format(amount / 100);
+  return full.replace(/\u00a0/g, ' ');
+};
+function subscriptionIcon(item) {
+  const meta = SUBS_META[item.id];
+  const letters = item.title.trim().split(/\\s+/).slice(0, 2).map(word => word.charAt(0)).join('').toUpperCase();
+  const logo = el('span.subs-logo', { style: { '--logo-bg': meta?.[2] || '#e0e7e1', '--logo-fg': meta?.[3] || '#264534' }, 'aria-hidden': 'true' }, [
+    el('span.subs-monogram', { text: letters }),
+  ]);
+  if (meta?.[1]) {
+    const img = el('img', { src: 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(meta[1]) + '&sz=64', alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+    img.addEventListener('load', () => { if (img.naturalWidth > 0) logo.classList.add('logo-loaded'); });
+    img.addEventListener('error', () => { img.remove(); logo.classList.remove('logo-loaded'); });
+    logo.append(img);
+  }
+  return logo;
+}
+
 export function subscriptions(records, open) {
-  const { groups, totals, incomplete } = subscriptionGroups(records, todayKey());
-  const add = el('button.primary', { type: 'button', text: '+ Nova assinatura', onclick: () => open(null, add) });
-  const search = el('input.subscription-search', { type: 'search', placeholder: 'Buscar assinatura', 'aria-label': 'Buscar assinatura',
-    oninput: () => {
-      const query = search.value.trim().toLocaleLowerCase('pt-BR');
-      for (const row of root.querySelectorAll('.subscription-row')) {
-        row.closest('li').hidden = !row.textContent.toLocaleLowerCase('pt-BR').includes(query);
-      }
-      for (const group of root.querySelectorAll('.subscription-group')) {
-        group.hidden = ![...group.querySelectorAll('li')].some(item => !item.hidden);
-      }
-    } });
-  const root = el('section.stack', { 'aria-label': 'Assinaturas' }, [
-    el('section.finance-hero', {}, [
-      el('div.finance-title', {}, [el('h2', { text: 'Assinaturas' }), el('span.finance-period', { text: 'Mensais' })]),
-      totals.size ? el('div.subscription-totals', {}, [...totals].map(([currency, value]) => el('strong', { text: money(value, currency) }))) : null,
-      el('p.finance-hint', { text: 'Total conhecido de assinaturas ativas' + (incomplete ? ' · ' + incomplete + ' valor(es) a confirmar' : '') + '. Não descontado novamente do saldo.' }),
+  const { incomplete } = subscriptionGroups(records, todayKey());
+  const countActive = records.filter(item => item.active).length;
+  const known = records.filter(item => item.active && item.amountCents !== null);
+  const totals = known.reduce((sum, item) => sum + (item.currency === 'BRL' ? item.amountCents : 0), 0);
+  let category = 'Todas';
+  let sort = 'categoria';
+  let query = '';
+  const add = el('button.subs-new', { type: 'button', text: '+ Nova', onclick: () => open(null, add) });
+  const list = el('div.subs-results', {});
+  const resultCount = el('p.subs-result-count', { role: 'status' });
+  const categoryNames = CATEGORY_ORDER.filter(name => records.some(item => subCategory(item) === name));
+  const categories = ['Todas', ...categoryNames];
+  const pills = el('div.subs-category-scroll', { role: 'group', 'aria-label': 'Filtrar assinaturas por categoria' });
+  const search = el('input.subscription-search', {
+    type: 'search', placeholder: 'Buscar serviço', 'aria-label': 'Buscar assinatura',
+    oninput: () => { query = search.value.trim().toLocaleLowerCase('pt-BR'); redraw(); },
+  });
+  const sorter = el('select.subs-sort', { 'aria-label': 'Ordenar assinaturas', onchange: () => { sort = sorter.value; redraw(); } }, [
+    el('option', { value: 'categoria', text: 'Por categoria' }),
+    el('option', { value: 'maior', text: 'Maior valor' }),
+    el('option', { value: 'menor', text: 'Menor valor' }),
+    el('option', { value: 'az', text: 'Nome A–Z' }),
+    el('option', { value: 'cartao', text: 'Por cartão' }),
+  ]);
+  const categoryTotals = CATEGORY_ORDER.map(name => {
+    const members = records.filter(item => item.active && subCategory(item) === name);
+    return { name, count: members.length, amount: members.reduce((sum, item) => sum + (item.currency === 'BRL' ? item.amountCents || 0 : 0), 0) };
+  }).filter(item => item.count);
+  const top = Math.max(1, ...categoryTotals.map(entry => entry.amount));
+  const summary = el('section.subs-overview', { 'aria-label': 'Resumo das assinaturas' }, [
+    el('div.subs-overview-top', {}, [
+      el('div', {}, [el('span.subs-eyebrow', { text: 'ASSINATURAS / MÊS' }),
+        el('strong.subs-amount', { text: formatSubAmount(totals, 'BRL') }),
+        el('p.subs-hero-hint', { text: 'Total conhecido · ' + countActive + ' ativas' + (incomplete ? ' · ' + incomplete + ' sem valor' : '') })]),
+      el('span.subs-hero-mark', { text: '↗', 'aria-hidden': 'true' }),
+    ]),
+    el('div.subs-year-strip', {}, [
+      el('span', { text: 'Equivalente em 12 meses' }),
+      el('strong', { text: formatSubAmount(totals * 12, 'BRL') }),
+    ]),
+    el('p.subs-small-note', { text: 'Estimativa, sem valores pendentes. Não descontada do saldo nem somada às faturas.' }),
+  ]);
+  const categoryChart = el('section.subs-category-breakdown', {}, [
+    el('div.subs-section-title', {}, [el('h3', { text: 'Onde pesa mais' }), el('span', { text: 'por categoria' })]),
+    ...categoryTotals.sort((a,b) => b.amount - a.amount).map(entry =>
+      el('div.subs-bar-row', {}, [
+        el('div.subs-bar-heading', {}, [
+          el('span', { text: entry.name }),
+          el('strong', { text: formatSubAmount(entry.amount, 'BRL') }),
+        ]),
+        el('div.subs-bar-track', { 'aria-hidden': 'true' },
+          [el('span', { style: { '--share': (entry.amount / top * 100).toFixed(2) + '%' } })]),
+      ])),
+  ]);
+  const makeItem = item => {
+    const edit = el('button.subs-service', { type: 'button', 'aria-label': 'Editar ' + item.title, onclick: () => open(item, edit) }, [
+      subscriptionIcon(item),
+      el('span.subs-service-copy', {}, [
+        el('strong.subs-service-name', { text: item.title }),
+        el('span.subs-service-meta', { text: [
+          item.active ? (item.day ? 'Dia ' + item.day : 'Dia a definir') : 'Pausada',
+          item.card || null,
+        ].filter(Boolean).join(' · ') }),
+      ]),
+      el('span.subs-service-end', {}, [
+        el('strong.subs-service-price' + (item.amountCents === null ? '.is-missing' : ''), { text: formatSubAmount(item.amountCents, item.currency) }),
+        el('small', { text: item.active ? (item.amountCents === null ? 'completar' : '/ mês') : 'pausada' }),
+      ]),
+      el('span.subs-service-chevron', { text: '›', 'aria-hidden': 'true' }),
+    ]);
+    return el('div.subs-service-wrap', {}, [edit]);
+  };
+  function redraw() {
+    pills.replaceChildren(...categories.map(name => {
+      const count = name === 'Todas' ? records.length : records.filter(item => subCategory(item) === name).length;
+      return el('button.subs-category-pill', {
+        type: 'button', text: name + ' ' + count, 'aria-pressed': String(category === name),
+        onclick: () => { category = name; redraw(); },
+      });
+    }));
+    let rows = records.filter(item => (category === 'Todas' || subCategory(item) === category)
+      && (!query || [item.title, subCategory(item), item.card].join(' ').toLocaleLowerCase('pt-BR').includes(query)));
+    const byValue = (a, b, sign) => ((a.amountCents === null) - (b.amountCents === null)) || sign * ((a.amountCents ?? 0) - (b.amountCents ?? 0));
+    const alphabetical = (a, b) => a.title.localeCompare(b.title, 'pt-BR');
+    if (sort === 'maior') rows.sort((a,b) => byValue(a,b,-1) || alphabetical(a,b));
+    else if (sort === 'menor') rows.sort((a,b) => byValue(a,b,1) || alphabetical(a,b));
+    else if (sort === 'az') rows.sort(alphabetical);
+    else if (sort === 'cartao') rows.sort((a,b) => (a.card || 'zzzz').localeCompare(b.card || 'zzzz', 'pt-BR') || alphabetical(a,b));
+    else rows.sort((a,b) => CATEGORY_ORDER.indexOf(subCategory(a)) - CATEGORY_ORDER.indexOf(subCategory(b)) || alphabetical(a,b));
+    const groups = new Map();
+    for (const item of rows) {
+      const group = sort === 'categoria' ? subCategory(item) : sort === 'cartao' ? (item.card || 'Cartão a definir') : 'Serviços';
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(item);
+    }
+    list.replaceChildren(...[...groups].map(([name, members]) => el('section.subs-list-group', {}, [
+      el('div.subs-group-heading', {}, [
+        el('h3', { text: name }),
+        el('span', { text: members.length + (members.length === 1 ? ' serviço' : ' serviços') }),
+      ]),
+      el('div.subs-service-list', {}, members.map(makeItem)),
+    ])), !rows.length ? el('p.subs-empty', { text: 'Nenhuma assinatura encontrada.' }) : null);
+    resultCount.textContent = rows.length + (rows.length === 1 ? ' assinatura' : ' assinaturas');
+  }
+  const root = el('section.subs-page', { 'aria-label': 'Assinaturas' }, [
+    summary,
+    categoryChart,
+    el('div.subs-list-heading', {}, [
+      el('div', {}, [el('h2', { text: 'Seus serviços' }), resultCount]),
       add,
     ]),
     search,
-    ...groups.map(group => el('section.panel.finance-records.subscription-group', {}, [
-      el('h3', { text: group.card }),
-      el('ul', {}, group.rows.map(item => {
-        const edit = el('button.subscription-row', { type: 'button', 'aria-label': 'Editar assinatura: ' + item.title, onclick: () => open(item, edit) }, [
-          el('span.record-symbol.expense', { 'aria-hidden': 'true', text: '↻' }),
-          el('span', {}, [el('strong', { text: item.title }), el('span.subscription-date', { text: !item.active ? 'Pausada' : item.next ? 'Próxima: ' + humanDay(item.next) : 'Dia a definir' })]),
-          el('strong.record-money', { text: item.amountCents === null ? 'Valor a definir' : money(item.amountCents, item.currency) }),
-        ]);
-        return el('li', {}, [edit]);
-      })),
-    ])),
-    !groups.length ? el('p.panel.muted', { text: 'Nenhuma assinatura cadastrada.' }) : null,
+    pills,
+    el('div.subs-sort-wrap', {}, [
+      el('span', { text: 'ORDENAR' }),
+      sorter,
+    ]),
+    list,
   ]);
+  redraw();
   return root;
 }
 
