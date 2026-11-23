@@ -143,14 +143,25 @@ export function movements(wallet, filter, change, add, editPayment = () => {}, e
 export function subscriptions(records, open) {
   const { groups, totals, incomplete } = subscriptionGroups(records, todayKey());
   const add = el('button.primary', { type: 'button', text: '+ Nova assinatura', onclick: () => open(null, add) });
-  return el('section.stack', { 'aria-label': 'Assinaturas' }, [
+  const search = el('input.subscription-search', { type: 'search', placeholder: 'Buscar assinatura', 'aria-label': 'Buscar assinatura',
+    oninput: () => {
+      const query = search.value.trim().toLocaleLowerCase('pt-BR');
+      for (const row of root.querySelectorAll('.subscription-row')) {
+        row.closest('li').hidden = !row.textContent.toLocaleLowerCase('pt-BR').includes(query);
+      }
+      for (const group of root.querySelectorAll('.subscription-group')) {
+        group.hidden = ![...group.querySelectorAll('li')].some(item => !item.hidden);
+      }
+    } });
+  const root = el('section.stack', { 'aria-label': 'Assinaturas' }, [
     el('section.finance-hero', {}, [
       el('div.finance-title', {}, [el('h2', { text: 'Assinaturas' }), el('span.finance-period', { text: 'Mensais' })]),
       totals.size ? el('div.subscription-totals', {}, [...totals].map(([currency, value]) => el('strong', { text: money(value, currency) }))) : null,
       el('p.finance-hint', { text: 'Total conhecido de assinaturas ativas' + (incomplete ? ' · ' + incomplete + ' valor(es) a confirmar' : '') + '. Não descontado novamente do saldo.' }),
       add,
     ]),
-    ...groups.map(group => el('section.panel.finance-records', {}, [
+    search,
+    ...groups.map(group => el('section.panel.finance-records.subscription-group', {}, [
       el('h3', { text: group.card }),
       el('ul', {}, group.rows.map(item => {
         const edit = el('button.subscription-row', { type: 'button', 'aria-label': 'Editar assinatura: ' + item.title, onclick: () => open(item, edit) }, [
@@ -163,6 +174,7 @@ export function subscriptions(records, open) {
     ])),
     !groups.length ? el('p.panel.muted', { text: 'Nenhuma assinatura cadastrada.' }) : null,
   ]);
+  return root;
 }
 
 export function bindQuickAdd(menu) {
