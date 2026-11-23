@@ -2,7 +2,7 @@ import { addDays, el, humanDay, monthLabel, todayKey } from '../js/utils.js';
 import { centralWalletPlan } from '../js/store.js';
 import { addWalletItemForConnection, readWalletForConnection, saveWalletSubscription, updateWalletPaymentForConnection, updateWalletIncomeForConnection } from '../js/chatgpt.js';
 import { monthOverview, parseCents } from './overview.js';
-import { bindQuickAdd, currencies, money as brl, movements, river, spendingCalendar, spendingBreakdown, reserveForecast, subscriptions } from './experience.js';
+import { bindQuickAdd, currencies, money as brl, movements, river, spendingCalendar, spendingBreakdown, reserveForecast, projectedBalances, subscriptions } from './experience.js';
 import { normalizeSubscriptions } from './subscriptions.js';
 import { FINANCE_ACCESS, openTransfer } from '../js/companion-transfer.js';
 
@@ -333,6 +333,7 @@ function showWallet(wallet, message = '') {
         el('div.balance-secondary', {}, [el('span', { text: 'Investimentos' }), el('strong', { text: brl(wallet.invested) })]),
         el('div.balance-secondary', {}, [el('span', { text: 'Patrimônio atual' }), el('strong', { text: brl(BigInt(wallet.balance) + BigInt(wallet.invested)) })]),
       ]),
+      month > todayKey().slice(0, 7) ? projectedBalances(wallet, month) : null,
       month > todayKey().slice(0, 7) ? reserveForecast(wallet, month) : null,
       river(wallet, overview, month),
       overview.expenses.total > 0n ? spendingCalendar(wallet, month) : null,
