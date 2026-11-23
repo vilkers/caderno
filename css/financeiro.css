@@ -97,3 +97,14 @@ body.financeiro:not(.entry) {
 .wallet-entry { width: min(calc(100% - 24px), 480px); max-height: 88dvh; padding: 17px; border: 1px solid var(--line); border-radius: 17px; background: var(--surface); color: inherit; }
 .wallet-entry::backdrop { background: #102217b5; }
 .wallet-entry .status:empty { display: none; }
+
+
+/* Grana: resumo de novembro e investimentos identificados */
+.spending-category-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: .94rem; }
+.spending-category-row strong { font-variant-numeric: tabular-nums; }
+.investment-tag-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; border-top: 1px solid var(--line); padding-top: 9px; margin-top: 9px; font-size: .85rem; }
+.investment-tag-row strong { justify-self: end; font-variant-numeric: tabular-nums; }
+.investment-tag-row small { color: var(--muted); font-size: .68rem; }
+.investment-tag { display: inline-flex; border-radius: 6px; padding: 4px 8px; background: #e1ece3; color: #174f40; font-size: .73rem; font-weight: 750; }
+.plan-edit { display: inline-flex; align-items: center; font: 700 .75rem/1.2 var(--mono); color: #174f40; background: #e1ece3; border: 0; border-radius: 6px; min-height: 31px; padding: 6px 9px; margin-top: 7px; }
+.plan-edit:focus-visible { outline: 2px solid #174f40; outline-offset: 2px; }
