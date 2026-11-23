@@ -138,3 +138,72 @@ body.financeiro:not(.entry) {
 .balance-primary span, .balance-secondary span { color: var(--muted); font-size: .83rem; }
 .balance-secondary strong, .pending-receivable strong { font-variant-numeric: tabular-nums; }
 .pending-receivable { padding: 7px 0; }
+
+
+/* Assinaturas 2.0: editorial financeiro, densidade e tato */
+.subs-page { display: grid; gap: 16px; padding-bottom: 15px; }
+.subs-overview { background: #173f33; color: #f4f5e8; border-radius: 23px; padding: 22px 20px 17px; overflow: hidden; }
+.subs-overview-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.subs-eyebrow { display: block; font: 700 .67rem/1.3 var(--mono); letter-spacing: .1em; color: #bad5c6; margin-bottom: 9px; }
+.subs-amount { display: block; font-size: clamp(2.15rem, 9vw, 3.55rem); font-weight: 780; line-height: 1; letter-spacing: -.067em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.subs-hero-hint { font-size: .78rem; color: #d1dfd1; margin-top: 10px; }
+.subs-hero-mark { font-size: 1.7rem; opacity: .5; line-height: 1; }
+.subs-year-strip { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-top: 1px solid #547367; margin-top: 21px; padding-top: 14px; }
+.subs-year-strip span { font-size: .76rem; color: #cbdbd0; }
+.subs-year-strip strong { font-size: 1.03rem; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.subs-small-note { font-size: .67rem; line-height: 1.5; color: #bad0bf; margin-top: 10px; }
+.subs-category-breakdown { border: 1px solid #d8dfd4; background: #fcfbf7; border-radius: 18px; padding: 17px 16px 19px; display: grid; gap: 12px; }
+.subs-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
+.subs-section-title h3 { font-size: 1.08rem; letter-spacing: -.03em; }
+.subs-section-title > span { font-size: .7rem; color: #728075; }
+.subs-bar-row { display: grid; gap: 6px; }
+.subs-bar-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: .78rem; }
+.subs-bar-heading strong { font-size: .8rem; font-variant-numeric: tabular-nums; }
+.subs-bar-track { height: 7px; background: #e9eee5; border-radius: 7px; overflow: hidden; }
+.subs-bar-track > span { display: block; height: 100%; width: var(--share); background: #527967; border-radius: inherit; }
+.subs-list-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 8px; }
+.subs-list-heading h2 { font-size: 1.38rem; letter-spacing: -.04em; }
+.subs-result-count { font-size: .74rem; color: #65776b; padding-top: 3px; }
+.subs-new { border: 1px solid #174d3d; background: #174d3d; color: white; font-weight: 700; border-radius: 11px; min-height: 42px; padding: 7px 15px; font-size: .83rem; white-space: nowrap; }
+.subs-page .subscription-search { margin: 0; border-color: #cad6ca; padding-left: 15px; border-radius: 12px; min-height: 48px; background: #fffefa; }
+.subs-category-scroll { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 0 5px; margin-right: -14px; }
+.subs-category-scroll::-webkit-scrollbar { display: none; }
+.subs-category-pill { flex: none; scroll-snap-align: start; border: 1px solid #cdd9cf; padding: 9px 13px; background: #f8f9f4; color: #375747; border-radius: 999px; font-size: .77rem; min-height: 38px; white-space: nowrap; font-weight: 650; }
+.subs-category-pill[aria-pressed="true"] { background: #194d3b; border-color: #194d3b; color: #fff; }
+.subs-sort-wrap { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.subs-sort-wrap > span { color: #738374; font: 700 .67rem var(--mono); letter-spacing: .09em; }
+.subs-sort { width: auto; min-height: 38px; max-width: 66%; padding: 6px 30px 6px 12px; font-size: .79rem; color: #174c3a; font-weight: 700; border-radius: 10px; border: 1px solid #cbd7cb; background: #fffefa; }
+.subs-results { display: grid; gap: 19px; }
+.subs-list-group { display: grid; gap: 9px; }
+.subs-group-heading { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 0 2px; }
+.subs-group-heading h3 { font-size: .85rem; letter-spacing: -.015em; font-weight: 770; }
+.subs-group-heading > span { color: #7b897d; font-size: .72rem; }
+.subs-service-list { background: #fffefa; border: 1px solid #d9e0d7; border-radius: 16px; overflow: hidden; }
+.subs-service-wrap + .subs-service-wrap { border-top: 1px solid #e9ede7; }
+.subs-service { display: grid; grid-template-columns: 43px minmax(0, 1fr) auto 10px; align-items: center; gap: 10px; width: 100%; min-height: 73px; border: 0; background: transparent; color: #26332b; text-align: left; padding: 11px 12px; }
+.subs-service:active { background: #edf3ed; transform: scale(.995); }
+.subs-service:focus-visible, .subs-new:focus-visible, .subs-category-pill:focus-visible, .subs-sort:focus-visible { outline: 2px solid #174f40; outline-offset: -2px; }
+.subs-logo { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 12px; position: relative; background: var(--logo-bg); color: var(--logo-fg); overflow: hidden; }
+.subs-monogram { font-size: .79rem; font-weight: 850; letter-spacing: -.055em; }
+.subs-logo img { position: absolute; width: 26px; height: 26px; object-fit: contain; opacity: 0; }
+.subs-logo.logo-loaded img { opacity: 1; }
+.subs-logo.logo-loaded .subs-monogram { opacity: 0; }
+.subs-service-copy { min-width: 0; display: grid; gap: 4px; }
+.subs-service-name { font-size: .89rem; font-weight: 740; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.subs-service-meta { color: #849186; font-size: .69rem; line-height: 1.3; overflow-wrap: anywhere; }
+.subs-service-end { display: grid; gap: 4px; text-align: right; min-width: 0; }
+.subs-service-price { white-space: nowrap; font-weight: 790; font-size: .88rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.subs-service-price.is-missing { color: #ae6d37; font-weight: 660; font-size: .75rem; }
+.subs-service-end small { color: #859388; font-size: .68rem; }
+.subs-service-chevron { color: #98a79b; font-size: 1.35rem; font-weight: 400; }
+.subs-empty { padding: 30px 15px; color: #637466; background: #fffefa; border: 1px solid #dae1da; border-radius: 13px; text-align: center; font-size: .83rem; }
+@media (max-width: 370px) {
+  .subs-service { grid-template-columns: 37px minmax(0, 1fr) auto 7px; gap: 7px; padding: 10px 8px; }
+  .subs-logo { width: 37px; height: 37px; }
+  .subs-service-price { font-size: .8rem; }
+  .subs-service-name { font-size: .82rem; }
+  .subs-amount { font-size: 2.08rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .subs-category-pill, .subs-service { transition: background-color .16s ease, transform .16s ease; }
+}
