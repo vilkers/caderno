@@ -207,3 +207,21 @@ body.financeiro:not(.entry) {
 @media (prefers-reduced-motion: no-preference) {
   .subs-category-pill, .subs-service { transition: background-color .16s ease, transform .16s ease; }
 }
+
+
+/* Reserva necessária: destaque calculado a partir do mês visualizado */
+.reserve-forecast { display: grid; gap: 13px; padding: 20px; background: #fdf6eb; border: 1px solid #e8d1af; border-radius: 20px; color: #483627; }
+.reserve-forecast.is-positive { background: #edf4ec; border-color: #cee0cf; color: #244b36; }
+.reserve-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.reserve-kicker { font: 700 .66rem/1.3 var(--mono); letter-spacing: .07em; color: #9d7555; margin-bottom: 6px; }
+.reserve-forecast.is-positive .reserve-kicker { color: #587961; }
+.reserve-heading h2 { font-size: 1.18rem; letter-spacing: -.03em; }
+.reserve-status { font: 700 .68rem var(--mono); border: 1px solid currentColor; padding: 5px 8px; border-radius: 7px; white-space: nowrap; }
+.reserve-amount { font-size: clamp(2rem, 8vw, 3.2rem); line-height: 1; letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
+.reserve-description { font-size: .84rem; line-height: 1.45; max-width: 36ch; }
+.reserve-details { display: grid; gap: 10px; border-top: 1px solid #ddcdb6; border-bottom: 1px solid #ddcdb6; padding: 13px 0; }
+.reserve-details > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .81rem; }
+.reserve-details strong { font-variant-numeric: tabular-nums; }
+.reserve-warning { font-size: .82rem; font-weight: 700; line-height: 1.45; }
+.reserve-footnote { font-size: .73rem; color: #806d5a; line-height: 1.5; }
+.reserve-forecast.is-positive .reserve-footnote { color: #58725f; }
