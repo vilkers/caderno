@@ -327,9 +327,22 @@ function showWallet(wallet, message = '') {
     content = movements(wallet, movementFilter, filter => { movementFilter = filter; showWallet(wallet); }, () => { launcher.open = true; launcher.querySelector('button')?.focus(); }, item => openWalletEntry(wallet, 'payments', app.querySelector('.finance-nav'), item), item => openWalletEntry(wallet, 'receivables', app.querySelector('.finance-nav'), item), month);
   } else {
     content = el('section.stack', { 'aria-label': 'Fluxo' }, [
+      el('section.panel.stack.balance-priority', {}, [
+        el('p.eyebrow', { text: 'Posição confirmada · ' + humanDay(wallet.date) }),
+        el('div.balance-primary', {}, [el('span', { text: 'Na conta' }), el('strong', { text: brl(wallet.balance) })]),
+        el('div.balance-secondary', {}, [el('span', { text: 'Investimentos' }), el('strong', { text: brl(wallet.invested) })]),
+        el('div.balance-secondary', {}, [el('span', { text: 'Patrimônio atual' }), el('strong', { text: brl(BigInt(wallet.balance) + BigInt(wallet.invested)) })]),
+      ]),
       river(wallet, overview, month),
-      spendingCalendar(wallet, month),
+      overview.expenses.total > 0n ? spendingCalendar(wallet, month) : null,
       spendingBreakdown(wallet, month),
+      wallet.receivables.some(item => item.status === 'pending' && (item.date === null || item.date.slice(0, 7) <= month))
+        ? el('section.panel.stack', {}, [
+          el('h2', { text: 'A receber' }),
+          ...wallet.receivables.filter(item => item.status === 'pending' && (item.date === null || item.date.slice(0, 7) <= month)).map(item =>
+            el('div.pending-receivable', {}, [el('span', { text: item.title }), el('strong', { text: brl(item.amountCents) })])),
+          el('p.finance-hint', { text: 'Valores previstos, ainda não incluídos no saldo em conta.' }),
+        ]) : null,
       month === '2026-12' ? el('section.panel.stack', {}, [el('h2', { text: 'Contas de dezembro' }),
         ...wallet.payments.filter(item => (item.month || wallet.paymentMonth) === month).map(item => el('button.planned-row', { type: 'button', onclick: () => openWalletEntry(wallet, 'payments', app.querySelector('.finance-nav'), item) }, [
           el('span', {}, [el('strong', { text: item.title }), item.note ? el('small', { text: item.note }) : null]),
