@@ -16,6 +16,12 @@ const portion = (amount, sum) => sum ? Number(amount * 10000n / sum) / 100 : 0;
 
 export function river(wallet, overview, month = wallet.paymentMonth) {
   const { income, expenses } = overview;
+  if (income.total === 0n && expenses.total === 0n) {
+    return el('section.panel.stack', {}, [
+      el('div.view-heading', {}, [el('h2', { text: 'Fluxo de ' + monthLabel(month) }), el('span.finance-period', { text: 'Sem fechamento' })]),
+      el('p.finance-hint', { text: 'Sem entradas ou saídas completas registradas neste mês. O saldo confirmado aparece acima e não é alterado por esta visualização.' }),
+    ]);
+  }
   const net = income.total - expenses.total;
   const remaining = net > 0n ? net : 0n;
   const cover = expenses.total > income.total ? expenses.total : income.total;
