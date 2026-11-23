@@ -108,3 +108,21 @@ body.financeiro:not(.entry) {
 .investment-tag { display: inline-flex; border-radius: 6px; padding: 4px 8px; background: #e1ece3; color: #174f40; font-size: .73rem; font-weight: 750; }
 .plan-edit { display: inline-flex; align-items: center; font: 700 .75rem/1.2 var(--mono); color: #174f40; background: #e1ece3; border: 0; border-radius: 6px; min-height: 31px; padding: 6px 9px; margin-top: 7px; }
 .plan-edit:focus-visible { outline: 2px solid #174f40; outline-offset: 2px; }
+
+
+/* Navegação mensal mobile-first */
+.month-nav { display: grid; grid-template-columns: 50px minmax(0,1fr) 50px; align-items: center; background: #e2e9df; border: 1px solid #cad8cd; border-radius: 16px; padding: 6px; gap: 4px; }
+.month-arrow { display: grid; place-items: center; border: 0; border-radius: 11px; background: #f8f9f4; color: #174f40; font-size: 2rem; line-height: 1; min-height: 48px; min-width: 48px; }
+.month-arrow:disabled { opacity: .25; }
+.month-current { text-align: center; display: grid; gap: 2px; }
+.month-current strong { font-size: 1.06rem; letter-spacing: -.025em; text-transform: capitalize; }
+.month-current small { font: 600 .68rem var(--mono); color: #5c7568; text-transform: uppercase; letter-spacing: .045em; }
+.planned-row { display: flex; width: 100%; justify-content: space-between; align-items: center; text-align: left; background: transparent; border: 0; border-radius: 10px; gap: 15px; padding: 12px 6px; color: inherit; }
+.planned-row + .planned-row { border-top: 1px solid var(--line); }
+.planned-row > span:first-child { display: grid; gap: 5px; min-width: 0; }
+.planned-row small { color: var(--muted); max-width: 32ch; font-size: .72rem; line-height: 1.4; }
+.planned-row > span:last-child { text-align: right; white-space: nowrap; font-size: .78rem; font-weight: 700; color: #174f40; }
+.planned-row:focus-visible, .month-arrow:focus-visible { outline: 2px solid #174f40; outline-offset: 2px; }
+.subscription-row { min-height: 58px; }
+.subscription-row:focus-visible { outline: 2px solid #174f40; outline-offset: 2px; }
+.reference-balance { margin-top: 4px; }
