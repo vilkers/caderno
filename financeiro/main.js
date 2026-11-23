@@ -357,12 +357,8 @@ function showWallet(wallet, message = '') {
       ]) : null,
       expensesChart(overview),
       el('details.panel.reference-balance', { open: true }, [
-        el('summary', {}, [el('span', { text: 'Patrimônio de referência' }), el('strong', { text: brl(BigInt(wallet.balance) + BigInt(wallet.invested)) })]),
+        el('summary', {}, [el('span', { text: 'Onde está investido' }), el('strong', { text: brl(wallet.invested) })]),
         el('p.meta.muted', { text: humanDay(wallet.date) + (wallet.balanceEstimated ? ' · saldo em conta estimado' : '') }),
-        el('div.reference-lines', {}, [
-          el('span', { text: 'Em conta' }), el('strong', { text: brl(wallet.balance) }),
-          el('span', { text: 'Investido' }), el('strong', { text: brl(wallet.invested) }),
-        ]),
         ...wallet.investmentAccounts.map(bank => el('div.investment-tag-row', {}, [
           el('span.investment-tag', { text: bank.label }),
           el('strong', { text: brl(bank.amountCents) }),
