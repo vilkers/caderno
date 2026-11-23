@@ -836,7 +836,7 @@ export function centralWalletPlan(data) {
         && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
       && data.investmentAccounts.reduce((sum, entry) => sum + entry.amountCents, 0) === invested
       ? data.investmentAccounts.map(entry => ({ label: entry.label, amountCents: entry.amountCents, estimated: entry.estimated === true })) : [],
-    spendingSummary: data.spendingSummary && /^\\d{4}-\\d{2}$/.test(data.spendingSummary.month || '')
+    spendingSummary: data.spendingSummary && /^\d{4}-\d{2}$/.test(data.spendingSummary.month || '')
       && Array.isArray(data.spendingSummary.categories)
       && data.spendingSummary.categories.every(entry => typeof entry.label === 'string' && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
       ? { month: data.spendingSummary.month, categories: data.spendingSummary.categories.map(entry => ({ label: entry.label, amountCents: entry.amountCents })) } : null };
