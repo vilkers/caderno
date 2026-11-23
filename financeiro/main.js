@@ -190,7 +190,7 @@ function openWalletEntry(wallet, type, button, selected = null) {
       (!title.value.trim() ? title : amount).focus();
       return;
     }
-    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value, ...(!isIncome ? { month: selected?.month || currentMonth } : {}), ...(selected?.note ? { note: selected.note } : {}) };
+    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value, ...(!isIncome ? { month: selected?.month || currentMonth } : {}), ...(selected?.note ? { note: selected.note } : {}), ...(isIncome && selected?.assured ? { assured: true } : {}) };
     saving = true;
     controls.forEach(control => { control.disabled = true; });
     receipt.textContent = 'Salvando na Carteira…';
