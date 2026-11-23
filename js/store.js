@@ -822,21 +822,42 @@ function walletItems(items, statuses, paymentMonth) {
   });
 }
 
+function walletTransfers(items = [], accounts = []) {
+  if (!Array.isArray(items) || items.length > 100) throw new Error('Confira as transferências da Carteira.');
+  const ids = new Set();
+  return items.map(item => {
+    const { id, title, amountCents, destination, date, month, status } = item || {};
+    if (typeof id !== 'string' || !/^[a-z0-9_-]{1,80}$/.test(id) || ids.has(id)
+      || typeof title !== 'string' || !title.trim() || title.length > 120
+      || !Number.isSafeInteger(amountCents) || amountCents <= 0
+      || typeof destination !== 'string' || !accounts.some(account => account.id === destination)
+      || (date != null && !walletDate(date))
+      || typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)
+      || !['planned', 'completed', 'cancelled'].includes(status)
+      || (status === 'completed' && !date)) throw new Error('Transferência inválida na Carteira.');
+    ids.add(id);
+    return { id, title: title.trim(), amountCents, destination, date: date ?? null, month, status };
+  });
+}
+
 export function centralWalletPlan(data) {
   const { version, date, balance, invested, balanceEstimated, paymentMonth, receivables, payments, subscriptions } = data || {};
   if (version !== 1 || !validWallet({ date, balance, invested }) || typeof balanceEstimated !== 'boolean'
       || typeof paymentMonth !== 'string' || !walletDate(`${paymentMonth}-01`)) {
     throw new Error('Confira o saldo e o mês das contas no arquivo da Central.');
   }
+  const investmentAccounts = Array.isArray(data.investmentAccounts) && data.investmentAccounts.length <= 20
+    && data.investmentAccounts.every(entry => typeof entry.id === 'string' && /^[a-z0-9_-]+$/.test(entry.id)
+      && typeof entry.label === 'string' && entry.label.length <= 70
+      && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
+    && data.investmentAccounts.reduce((sum, entry) => sum + entry.amountCents, 0) === invested
+    ? data.investmentAccounts.map(entry => ({ id: entry.id, label: entry.label, amountCents: entry.amountCents, estimated: entry.estimated === true })) : [];
   return { date, balance, invested, balanceEstimated, paymentMonth,
     receivables: walletItems(receivables, ['pending', 'received']),
     payments: walletItems(payments, ['pending', 'paid'], paymentMonth),
     subscriptions: normalizeSubscriptions(subscriptions),
-    investmentAccounts: Array.isArray(data.investmentAccounts) && data.investmentAccounts.length <= 20
-      && data.investmentAccounts.every(entry => typeof entry.label === 'string' && entry.label.length <= 70
-        && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
-      && data.investmentAccounts.reduce((sum, entry) => sum + entry.amountCents, 0) === invested
-      ? data.investmentAccounts.map(entry => ({ label: entry.label, amountCents: entry.amountCents, estimated: entry.estimated === true })) : [],
+    investmentAccounts,
+    transfers: walletTransfers(data.transfers, investmentAccounts),
     spendingSummary: data.spendingSummary && /^\d{4}-\d{2}$/.test(data.spendingSummary.month || '')
       && Array.isArray(data.spendingSummary.categories)
       && data.spendingSummary.categories.every(entry => typeof entry.label === 'string' && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
