@@ -171,7 +171,7 @@ const formatSubAmount = (amount, currency) => {
 };
 function subscriptionIcon(item) {
   const meta = SUBS_META[item.id];
-  const letters = item.title.trim().split(/\\s+/).slice(0, 2).map(word => word.charAt(0)).join('').toUpperCase();
+  const letters = item.title.trim().split(/\s+/).slice(0, 2).map(word => word.charAt(0)).join('').toUpperCase();
   const logo = el('span.subs-logo', { style: { '--logo-bg': meta?.[2] || '#e0e7e1', '--logo-fg': meta?.[3] || '#264534' }, 'aria-hidden': 'true' }, [
     el('span.subs-monogram', { text: letters }),
   ]);
@@ -184,14 +184,15 @@ function subscriptionIcon(item) {
   return logo;
 }
 
+const subsViewState = { category: 'Todas', sort: 'categoria', query: '' };
 export function subscriptions(records, open) {
   const { incomplete } = subscriptionGroups(records, todayKey());
   const countActive = records.filter(item => item.active).length;
   const known = records.filter(item => item.active && item.amountCents !== null);
   const totals = known.reduce((sum, item) => sum + (item.currency === 'BRL' ? item.amountCents : 0), 0);
-  let category = 'Todas';
-  let sort = 'categoria';
-  let query = '';
+  let category = subsViewState.category;
+  let sort = subsViewState.sort;
+  let query = subsViewState.query;
   const add = el('button.subs-new', { type: 'button', text: '+ Nova', onclick: () => open(null, add) });
   const list = el('div.subs-results', {});
   const resultCount = el('p.subs-result-count', { role: 'status' });
@@ -200,15 +201,17 @@ export function subscriptions(records, open) {
   const pills = el('div.subs-category-scroll', { role: 'group', 'aria-label': 'Filtrar assinaturas por categoria' });
   const search = el('input.subscription-search', {
     type: 'search', placeholder: 'Buscar serviço', 'aria-label': 'Buscar assinatura',
-    oninput: () => { query = search.value.trim().toLocaleLowerCase('pt-BR'); redraw(); },
+    value: query, oninput: () => { query = search.value.trim().toLocaleLowerCase('pt-BR'); subsViewState.query = query; redraw(); },
   });
-  const sorter = el('select.subs-sort', { 'aria-label': 'Ordenar assinaturas', onchange: () => { sort = sorter.value; redraw(); } }, [
+  const sorter = el('select.subs-sort', { 'aria-label': 'Ordenar assinaturas', onchange: () => { sort = sorter.value; subsViewState.sort = sort; redraw(); } }, [
     el('option', { value: 'categoria', text: 'Por categoria' }),
     el('option', { value: 'maior', text: 'Maior valor' }),
     el('option', { value: 'menor', text: 'Menor valor' }),
     el('option', { value: 'az', text: 'Nome A–Z' }),
     el('option', { value: 'cartao', text: 'Por cartão' }),
   ]);
+  sorter.value = sort;
+  if (!categories.includes(category)) category = subsViewState.category = 'Todas';
   const categoryTotals = CATEGORY_ORDER.map(name => {
     const members = records.filter(item => item.active && subCategory(item) === name);
     return { name, count: members.length, amount: members.reduce((sum, item) => sum + (item.currency === 'BRL' ? item.amountCents || 0 : 0), 0) };
@@ -262,7 +265,7 @@ export function subscriptions(records, open) {
       const count = name === 'Todas' ? records.length : records.filter(item => subCategory(item) === name).length;
       return el('button.subs-category-pill', {
         type: 'button', text: name + ' ' + count, 'aria-pressed': String(category === name),
-        onclick: () => { category = name; redraw(); },
+        onclick: () => { category = name; subsViewState.category = name; redraw(); },
       });
     }));
     let rows = records.filter(item => (category === 'Todas' || subCategory(item) === category)
