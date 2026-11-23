@@ -1,6 +1,6 @@
 import { addDays, el, humanDay, monthLabel, todayKey } from '../js/utils.js';
 import { centralWalletPlan } from '../js/store.js';
-import { addWalletItemForConnection, readWalletForConnection, saveWalletSubscription, updateWalletPaymentForConnection, updateWalletIncomeForConnection } from '../js/chatgpt.js';
+import { addWalletItemForConnection, readWalletForConnection, saveWalletSubscription, updateWalletPaymentForConnection, updateWalletIncomeForConnection, saveInvestmentTransfer } from '../js/chatgpt.js';
 import { monthOverview, parseCents } from './overview.js';
 import { bindQuickAdd, currencies, money as brl, movements, river, spendingCalendar, spendingBreakdown, reserveForecast, projectedBalances, subscriptions } from './experience.js';
 import { normalizeSubscriptions } from './subscriptions.js';
@@ -226,6 +226,73 @@ function openWalletEntry(wallet, type, button, selected = null) {
   dialog.showModal();
 }
 
+function editTransfer(wallet, selected, from) {
+  if (!access || activeEntry) return;
+  if (selected && selected.status !== 'planned') return;
+  const title = el('input', { type: 'text', value: selected?.title || 'Aplicação para investimento', maxlength: 120, required: true });
+  const amount = el('input', { type: 'text', inputmode: 'decimal', value: selected ? (selected.amountCents / 100).toFixed(2).replace('.', ',') : '', placeholder: '0,00', required: true });
+  const destination = el('select', {}, wallet.investmentAccounts.map(account =>
+    el('option', { value: account.id, text: account.label, selected: account.id === (selected?.destination || 'btg') })));
+  const state = el('select', {}, [
+    el('option', { value: 'planned', text: 'Planejada', selected: true }),
+    el('option', { value: 'completed', text: 'Já aplicada — confirmar transferência' }),
+    el('option', { value: 'cancelled', text: 'Cancelar planejamento' }),
+  ]);
+  const date = el('input', { type: 'date', value: selected?.date || '', max: todayKey() });
+  const status = el('p.status', { role: 'status' });
+  const save = el('button.primary', { type: 'submit', text: 'Salvar transferência' });
+  const cancel = el('button', { type: 'button', text: 'Voltar', onclick: () => dialog.close() });
+  const connection = access;
+  const id = selected?.id || 'transfer-' + crypto.randomUUID();
+  const controls = [title, amount, destination, state, date, save, cancel];
+  let saving = false;
+  const active = () => access === connection && dialog.isConnected;
+  const dialog = el('dialog.wallet-entry', { 'aria-labelledby': 'investment-transfer-title',
+    oncancel: event => { if (saving) event.preventDefault(); },
+    onclose: () => { if (activeEntry === dialog) activeEntry = null; dialog.remove(); from?.isConnected && from.focus(); },
+  }, [el('form.stack', { onsubmit: async event => {
+    event.preventDefault();
+    if (saving || !active()) return;
+    status.classList.remove('error');
+    const amountCents = parseCents(amount.value);
+    if (!amountCents || !title.value.trim()) { status.textContent = 'Informe um valor válido.'; status.classList.add('error'); return; }
+    const completed = state.value === 'completed';
+    if (completed && !date.value) { status.textContent = 'Informe a data da aplicação realizada.'; status.classList.add('error'); date.focus(); return; }
+    if (completed && date.value > todayKey()) { status.textContent = 'A data de aplicação realizada não pode ser futura.'; status.classList.add('error'); return; }
+    const item = { id, title: title.value.trim(), amountCents, destination: destination.value,
+      date: completed ? date.value : (date.value || null),
+      month: selected?.month || selectedMonth, status: state.value };
+    saving = true;
+    controls.forEach(field => { field.disabled = true; });
+    status.textContent = completed ? 'Confirmando transferência…' : 'Salvando planejamento…';
+    try {
+      const result = await saveInvestmentTransfer(connection, item, selected, active);
+      if (!active()) return;
+      revision = result.sha;
+      dialog.close();
+      showWallet(centralWalletPlan(result.data), completed ? 'Aplicação confirmada: conta e investimento atualizados sem alterar patrimônio.'
+        : 'Transferência salva. O saldo atual não foi alterado.');
+    } catch (error) {
+      if (!active()) return;
+      status.classList.add('error');
+      status.textContent = error.message || 'Não foi possível gravar a transferência.';
+    } finally { saving = false; controls.forEach(field => { field.disabled = false; }); }
+  } }, [
+    el('h2', { id: 'investment-transfer-title', text: selected ? 'Editar aplicação' : 'Transferir para investimento' }),
+    el('p.meta.muted', { text: 'Mover dinheiro da conta para um investimento não é gasto. O patrimônio permanece igual.' }),
+    el('label', {}, ['Descrição', title]),
+    el('label', {}, ['Valor', amount]),
+    el('label', {}, ['Destino', destination]),
+    el('label', {}, ['Situação', state]),
+    el('label', {}, ['Data (se já realizada)', date]),
+    el('p.meta.muted', { text: 'Planejada: afeta só a projeção. Já aplicada: desconta da conta, soma ao investimento e não permite uma segunda confirmação.' }),
+    el('div.actions', {}, [save, cancel]), status,
+  ])]);
+  app.append(dialog);
+  activeEntry = dialog;
+  dialog.showModal();
+}
+
 function editSubscription(wallet, selected, from) {
   if (!access || activeEntry) return;
   const previous = selected ? normalizeSubscriptions([selected])[0] : null;
@@ -310,6 +377,7 @@ function showWallet(wallet, message = '') {
     el('div.finance-add-options', {}, [
       addButton('Adicionar renda', 'receivables', 'income'),
       addButton('Adicionar despesa', 'payments', 'expense'),
+      el('button.income', { type: 'button', text: 'Aplicar / transferir', onclick: () => { launcher.open = false; editTransfer(wallet, null, launcher.querySelector('summary')); } }),
     ]),
   ]);
   bindQuickAdd(launcher);
@@ -332,6 +400,19 @@ function showWallet(wallet, message = '') {
         el('div.balance-primary', {}, [el('span', { text: 'Na conta' }), el('strong', { text: brl(wallet.balance) })]),
         el('div.balance-secondary', {}, [el('span', { text: 'Investimentos' }), el('strong', { text: brl(wallet.invested) })]),
         el('div.balance-secondary', {}, [el('span', { text: 'Patrimônio atual' }), el('strong', { text: brl(BigInt(wallet.balance) + BigInt(wallet.invested)) })]),
+      ]),
+      el('section.panel.stack.investment-transfer-panel', {}, [
+        el('div.view-heading', {}, [el('h2', { text: 'Aplicações e transferências' }),
+          el('button.plan-edit', { type: 'button', text: '+ Registrar transferência', onclick: () => editTransfer(wallet, null, app.querySelector('.finance-nav')) })]),
+        ...(wallet.transfers || []).filter(item => item.status !== 'cancelled').map(item =>
+          el('button.transfer-record', { type: 'button', disabled: item.status !== 'planned',
+            onclick: () => editTransfer(wallet, item, app.querySelector('.finance-nav')) }, [
+            el('span', {}, [el('strong', { text: item.title }),
+              el('small', { text: (item.status === 'planned' ? 'Planejada' : 'Realizada') + ' · ' +
+                (wallet.investmentAccounts.find(account => account.id === item.destination)?.label || item.destination) })]),
+            el('span', {}, [el('strong', { text: brl(item.amountCents) }),
+              el('small', { text: item.status === 'planned' ? 'Editar / confirmar ›' : 'Concluída' })]),
+          ])),
       ]),
       month > todayKey().slice(0, 7) ? projectedBalances(wallet, month) : null,
       month > todayKey().slice(0, 7) ? reserveForecast(wallet, month) : null,
