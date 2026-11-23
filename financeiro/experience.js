@@ -115,7 +115,7 @@ export function projectedBalances(wallet, month = wallet.paymentMonth) {
   const investedClosing = invested + transferAmount;
   const missing = wallet.payments.filter(item => item.status === 'pending' && item.amountCents === null
     && (item.month || item.date?.slice(0, 7) || wallet.paymentMonth) <= month);
-  const uncertain = futureIncomes.filter(item => item.title.toLocaleLowerCase('pt-BR').includes('on filmes'));
+  const uncertain = futureIncomes.filter(item => item.assured !== true && item.title.toLocaleLowerCase('pt-BR').includes('on filmes'));
   const uncertainTotal = uncertain.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
   const detail = el('section.projected-balances', { 'aria-label': 'Saldos projetados ao fim do mês' }, [
     el('div.projected-label', {}, [
@@ -178,7 +178,7 @@ export function reserveForecast(wallet, month = wallet.paymentMonth) {
       el('div', {}, [el('span', { text: 'Aplicações planejadas' }), el('strong', { text: money(applications) })]),
     ]),
     unknown.length ? el('p.reserve-warning', { text: 'A completar: ' + unknown.map(item => item.title).join(', ') + '.' }) : null,
-    el('p.reserve-footnote', { text: 'A On Filmes ainda está pendente; confira também o cenário sem esse recebimento acima. Aplicação não é despesa e não altera o patrimônio.' }),
+    el('p.reserve-footnote', { text: 'On Filmes e salário têm recebimento esperado como certo, mas ainda não foram creditados. Aplicação não é despesa e não altera o patrimônio.' }),
   ]);
 }
 
