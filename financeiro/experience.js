@@ -92,6 +92,31 @@ export function spendingCalendar(wallet, month = wallet.paymentMonth) {
   ]);
 }
 
+export function reserveForecast(wallet, month = wallet.paymentMonth) {
+  const incomes = wallet.receivables.filter(item => item.status === 'pending' && item.date?.startsWith(month + '-'));
+  const expenses = wallet.payments.filter(item => (item.month || item.date?.slice(0,7) || wallet.paymentMonth) === month && item.status === 'pending');
+  const knownExpenses = expenses.reduce((sum, item) => sum + BigInt(item.amountCents ?? 0), 0n);
+  const income = incomes.reduce((sum, item) => sum + BigInt(item.amountCents ?? 0), 0n);
+  const gap = knownExpenses - income;
+  const deficit = gap > 0n ? gap : 0n;
+  const missing = expenses.filter(item => item.amountCents === null);
+  const note = missing.length ? 'Ainda falta informar: ' + missing.map(item => item.title).join(', ') + '.' : 'Todas as despesas previstas deste mês têm valor informado.';
+  return el('section.reserve-forecast' + (deficit > 0n ? '.is-negative' : '.is-positive'), { 'aria-label': 'Previsão de complemento do orçamento' }, [
+    el('div.reserve-heading', {}, [
+      el('div', {}, [el('p.reserve-kicker', { text: 'PLANEJAMENTO / ' + monthLabel(month).toUpperCase() }), el('h2', { text: 'Reserva necessária' })]),
+      el('span.reserve-status', { text: missing.length ? 'Parcial' : 'Calculado' }),
+    ]),
+    el('strong.reserve-amount', { text: money(deficit) }),
+    el('p.reserve-description', { text: deficit > 0n ? 'Complemento mínimo para pagar as contas conhecidas com a renda prevista.' : 'A renda prevista cobre as despesas com valor informado.' }),
+    el('div.reserve-details', {}, [
+      el('div', {}, [el('span', { text: 'Renda prevista' }), el('strong', { text: money(income) })]),
+      el('div', {}, [el('span', { text: 'Contas previstas' }), el('strong', { text: money(knownExpenses) })]),
+    ]),
+    el('p.reserve-warning', { text: note }),
+    el('p.reserve-footnote', { text: 'Não inclui receitas sem data, como On Filmes, nem assinaturas que podem estar nas faturas. Não é um débito automático nem exige resgate se houver saldo em conta.' }),
+  ]);
+}
+
 export function spendingBreakdown(wallet, month = wallet.paymentMonth) {
   const summary = wallet.spendingSummary;
   if (!summary?.categories?.length || summary.month !== month) return null;
