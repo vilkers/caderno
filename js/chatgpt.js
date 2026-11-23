@@ -123,8 +123,16 @@ async function saveWalletItem(c, list, item, previous, active = () => true) {
     const record = await readWalletFile(c, branch);
     const entries = record.data[list] || [];
     const found = entries.find(existing => existing.id === item.id);
-    const matches = (recorded, expected) => recorded && expected &&
-      Object.keys(expected).every(key => (recorded[key] ?? (key === 'active' ? true : null)) === (expected[key] ?? null));
+    // Compare apenas campos persistidos. A UI acrescenta metadados de apresentação
+    // (ex.: "kind": "Rendas"), que não existem no JSON e não são conflito.
+    const fields = list === 'subscriptions'
+      ? ['id', 'title', 'amountCents', 'currency', 'day', 'card', 'active']
+      : ['id', 'title', 'amountCents', 'date', 'status', 'month', 'note'];
+    const matches = (recorded, expected) => Boolean(recorded && expected) &&
+      fields.every(key => {
+        const fallback = key === 'active' ? true : null;
+        return (recorded[key] ?? fallback) === (expected[key] ?? fallback);
+      });
     if (matches(found, item)) return record;
     if ((found || previous) && !matches(found, previous)) {
       throw new Error('O registro mudou na Carteira. Atualize o Grana antes de tentar novamente.');
