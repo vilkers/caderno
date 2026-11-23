@@ -179,3 +179,9 @@ resposta, não conquista. Um controle por pergunta.
   proposto no estudo, não construído. O cartão-pôster da Retrospectiva já usa
   a mesma gramática (`.g-cal`), então é reaproveitar. A lista do que eu faria em seguida está no fim de
 `SUGESTOES.md`.
+
+## Grana — fonte privada e continuidade
+
+A interface do Grana é `financeiro/`. Seu código e testes ficam neste repo público; **dados financeiros não**. A carteira conectada está no repo **privado** `vilkers/central-do-vilker`, em `caderno-automacao/carteira.json`. Antes de desenvolver ou alterar o Grana, consultar `caderno-automacao/GRANA-HANDOFF.md` e `caderno-automacao/PLANO-FECHAMENTO-2026.md` na branch main da Central autorizada. O handoff registra UX, previsões, fonte de verdade, bugs recentes, testes faltantes e diretrizes de fechamento; não reproduzir saldos ou lançamentos aqui.
+
+Preservar compatibilidade do app com a Carteira privada; executar `tools/testar.sh` e testes mobile conforme as regras acima antes de publicar. Incrementar a versão do cache PWA em `sw.js` nas alterações. Registrar na Central qualquer mudança em cálculo, contrato de dados, onboarding, projeções ou fechamentos.
