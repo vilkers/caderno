@@ -1,6 +1,6 @@
 import { addDays, el, humanDay, monthLabel, todayKey } from '../js/utils.js';
 import { centralWalletPlan } from '../js/store.js';
-import { addWalletItemForConnection, readWalletForConnection, saveWalletSubscription, updateWalletPaymentForConnection } from '../js/chatgpt.js';
+import { addWalletItemForConnection, readWalletForConnection, saveWalletSubscription, updateWalletPaymentForConnection, updateWalletIncomeForConnection } from '../js/chatgpt.js';
 import { monthOverview, parseCents } from './overview.js';
 import { bindQuickAdd, currencies, money as brl, movements, river, spendingCalendar, spendingBreakdown, subscriptions } from './experience.js';
 import { normalizeSubscriptions } from './subscriptions.js';
@@ -13,7 +13,10 @@ const FACE_KEY = 'caderno.financeiro.face.v1';
 const app = document.querySelector('#app');
 let access, revision, facePassword, lastActivity = 0;
 let activeEntry, refreshing;
-let view = 'fluxo', movementFilter = 'Todos';
+let view = 'fluxo', movementFilter = 'Todos', selectedMonth = todayKey().slice(0, 7);
+const shiftMonth = (month, delta) => { const [year, number] = month.split('-').map(Number); return new Date(Date.UTC(year, number - 1 + delta, 1)).toISOString().slice(0, 7); };
+const monthLimits = { min: '2026-11', max: '2027-01' };
+
 
 function render(...content) {
   document.body.classList.remove('entry');
@@ -140,7 +143,7 @@ function expensesChart(overview) {
 function openWalletEntry(wallet, type, button, selected = null) {
   if (!access || activeEntry) return;
   const isIncome = type === 'receivables';
-  if (selected && isIncome) return;
+
   const label = isIncome ? 'renda' : 'despesa';
   const title = el('input', { type: 'text', name: 'title', maxlength: 120, required: true, autofocus: true });
   const amount = el('input', { type: 'text', name: 'amount', inputmode: 'decimal', placeholder: '0,00', maxlength: 24, required: true });
@@ -187,12 +190,12 @@ function openWalletEntry(wallet, type, button, selected = null) {
       (!title.value.trim() ? title : amount).focus();
       return;
     }
-    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value, ...(selected?.note ? { note: selected.note } : {}) };
+    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value, ...(!isIncome ? { month: selected?.month || currentMonth } : {}), ...(selected?.note ? { note: selected.note } : {}) };
     saving = true;
     controls.forEach(control => { control.disabled = true; });
     receipt.textContent = 'Salvando na Carteira…';
     try {
-      const record = selected ? await updateWalletPaymentForConnection(connection, item, selected, active)
+      const record = selected ? await (isIncome ? updateWalletIncomeForConnection(connection, item, selected, active) : updateWalletPaymentForConnection(connection, item, selected, active))
         : await addWalletItemForConnection(connection, type, item, active);
       if (!active()) return;
       revision = record.sha;
@@ -229,10 +232,10 @@ function editSubscription(wallet, selected, from) {
   const currency = el('select', {}, Object.entries(currencies).map(([key, text]) =>
     el('option', { value: key, text, selected: key === (previous?.currency || 'BRL') })));
   const title = el('input', { value: previous?.title || '', required: true, maxlength: 100, autofocus: true });
-  const amount = el('input', { value: previous ? (previous.amountCents / 100).toFixed(2).replace('.', ',') : '', inputmode: 'decimal', required: true, maxlength: 24 });
-  const day = el('input', { type: 'number', min: 1, max: 31, step: 1, value: previous?.day || '', required: true, inputmode: 'numeric' });
+  const amount = el('input', { value: previous?.amountCents != null ? (previous.amountCents / 100).toFixed(2).replace('.', ',') : '', inputmode: 'decimal', placeholder: 'A definir', maxlength: 24 });
+  const day = el('input', { type: 'number', min: 1, max: 31, step: 1, value: previous?.day || '', placeholder: 'A definir', inputmode: 'numeric' });
   const dataList = el('datalist', { id: 'grana-cards' }, [...new Set(wallet.subscriptions.map(item => item.card))].map(card => el('option', { value: card })));
-  const card = el('input', { value: previous?.card || '', required: true, maxlength: 70, list: 'grana-cards', placeholder: 'Ex. Itaú pessoal' });
+  const card = el('input', { value: previous?.card || '', maxlength: 70, list: 'grana-cards', placeholder: 'A definir' });
   const state = el('select', {}, [
     el('option', { text: 'Ativa', value: 'active', selected: previous?.active !== false }),
     el('option', { text: 'Pausada', value: 'paused', selected: previous?.active === false }),
@@ -253,7 +256,7 @@ function editSubscription(wallet, selected, from) {
     if (saving || !active()) return;
     status.classList.remove('error');
     try {
-      const [item] = normalizeSubscriptions([{ id, title: title.value, amountCents: parseCents(amount.value), currency: currency.value, day: Number(day.value), card: card.value, active: state.value === 'active' }]);
+      const [item] = normalizeSubscriptions([{ id, title: title.value, amountCents: amount.value.trim() ? parseCents(amount.value) : null, currency: currency.value, day: day.value ? Number(day.value) : null, card: card.value, active: state.value === 'active' }]);
       saving = true;
       fields.forEach(field => { field.disabled = true; });
       status.textContent = 'Salvando na Carteira…';
@@ -274,7 +277,8 @@ function editSubscription(wallet, selected, from) {
     el('label', {}, ['Serviço', title]),
     el('div.subscription-columns', {}, [el('label', {}, ['Valor mensal', amount]), el('label', {}, ['Moeda', currency])]),
     el('div.subscription-columns', {}, [el('label', {}, ['Dia da cobrança', day]), el('label', {}, ['Situação', state])]),
-    el('label', {}, ['Apelido do cartão', card, dataList]),
+    el('label', {}, ['Apelido do cartão (opcional)', card, dataList]),
+    el('p.meta.muted', { text: 'Sem valor, dia ou cartão? Deixe em branco para completar depois.' }),
     el('div.actions', {}, [submit, cancel]), status,
   ])]);
   app.append(dialog);
@@ -283,7 +287,8 @@ function editSubscription(wallet, selected, from) {
 }
 
 function showWallet(wallet, message = '') {
-  const overview = monthOverview(wallet);
+  const month = selectedMonth;
+  const overview = monthOverview(wallet, month);
   const feedback = el('p.status.wallet-feedback', { id: 'wallet-feedback', role: 'status', tabindex: -1, text: message });
   const refresh = el('button', { type: 'button', text: 'Atualizar Carteira', onclick: async () => {
     refresh.disabled = true;
@@ -295,6 +300,11 @@ function showWallet(wallet, message = '') {
     finally { refresh.disabled = false; }
   } });
   const next = overview.nextPayment;
+  const monthNav = el('div.month-nav', { role: 'group', 'aria-label': 'Selecionar mês' }, [
+    el('button.month-arrow', { type: 'button', text: '‹', 'aria-label': 'Mês anterior', disabled: month <= monthLimits.min, onclick: () => { selectedMonth = shiftMonth(selectedMonth, -1); showWallet(wallet); } }),
+    el('div.month-current', {}, [el('strong', { text: monthLabel(month) }), el('small', { text: month === todayKey().slice(0,7) ? 'Mês atual' : month > todayKey().slice(0,7) ? 'Planejamento' : 'Histórico' })]),
+    el('button.month-arrow', { type: 'button', text: '›', 'aria-label': 'Próximo mês', disabled: month >= monthLimits.max, onclick: () => { selectedMonth = shiftMonth(selectedMonth, 1); showWallet(wallet); } }),
+  ]);
   const launcher = el('details.finance-add-menu', {}, [
     el('summary', { 'aria-label': 'Novo lançamento', text: '+' }),
     el('div.finance-add-options', {}, [
@@ -314,12 +324,16 @@ function showWallet(wallet, message = '') {
   if (view === 'assinaturas') {
     content = subscriptions(wallet.subscriptions, (item, trigger) => editSubscription(wallet, item, trigger));
   } else if (view === 'movimentos') {
-    content = movements(wallet, movementFilter, filter => { movementFilter = filter; showWallet(wallet); }, () => { launcher.open = true; launcher.querySelector('button')?.focus(); }, item => openWalletEntry(wallet, 'payments', app.querySelector('.finance-nav'), item));
+    content = movements(wallet, movementFilter, filter => { movementFilter = filter; showWallet(wallet); }, () => { launcher.open = true; launcher.querySelector('button')?.focus(); }, item => openWalletEntry(wallet, 'payments', app.querySelector('.finance-nav'), item), item => openWalletEntry(wallet, 'receivables', app.querySelector('.finance-nav'), item), month);
   } else {
     content = el('section.stack', { 'aria-label': 'Fluxo' }, [
-      river(wallet, overview),
-      spendingCalendar(wallet),
-      spendingBreakdown(wallet),
+      river(wallet, overview, month),
+      spendingCalendar(wallet, month),
+      spendingBreakdown(wallet, month),
+      month === '2026-12' ? el('section.panel.stack', {}, [el('h2', { text: 'Contas de dezembro' }),
+        ...wallet.payments.filter(item => (item.month || wallet.paymentMonth) === month).map(item => el('button.planned-row', { type: 'button', onclick: () => openWalletEntry(wallet, 'payments', app.querySelector('.finance-nav'), item) }, [
+          el('span', {}, [el('strong', { text: item.title }), item.note ? el('small', { text: item.note }) : null]),
+          el('span', { text: item.amountCents === null ? 'Definir valor ↗' : brl(item.amountCents) })]))]) : null,
       next ? el('section.panel.wallet-due', {}, [
         el('div', {}, [
           el('p.eyebrow', { text: next.date < todayKey() ? 'Conta atrasada' : 'Próxima conta' }),
@@ -356,8 +370,26 @@ function showWallet(wallet, message = '') {
       } }))),
     launcher,
   ]);
+  // Deslizar entre meses apenas na área de conteúdo, sem interferir no scroll vertical.
+  if (view !== 'assinaturas') {
+    let start = null;
+    content.addEventListener('touchstart', e => {
+      if (e.touches.length === 1 && !e.target.closest('input, button, select, dialog, details')) {
+        start = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    }, { passive: true });
+    content.addEventListener('touchend', e => {
+      if (!start || !e.changedTouches.length) return;
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      start = null;
+      if (Math.abs(dx) < 75 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      const candidate = shiftMonth(selectedMonth, dx < 0 ? 1 : -1);
+      if (candidate >= monthLimits.min && candidate <= monthLimits.max) { selectedMonth = candidate; showWallet(wallet); }
+    }, { passive: true });
+  }
   render(el('div.stack.wallet-layout', {}, [
-    feedback, content,
+    feedback, view !== 'assinaturas' ? monthNav : null, content,
     el('details.finance-settings', {}, [
       el('summary', { text: 'Carteira e acesso' }),
       el('div.actions.wallet-footer', {}, [refresh, facePassword && !biometria.armada(FACE_KEY) ? faceSetupButton(feedback) : null,
