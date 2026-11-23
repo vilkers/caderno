@@ -1,8 +1,8 @@
 import { addDays, el, humanDay, monthLabel, todayKey } from '../js/utils.js';
 import { centralWalletPlan } from '../js/store.js';
-import { addWalletItemForConnection, readWalletForConnection, saveWalletSubscription } from '../js/chatgpt.js';
+import { addWalletItemForConnection, readWalletForConnection, saveWalletSubscription, updateWalletPaymentForConnection } from '../js/chatgpt.js';
 import { monthOverview, parseCents } from './overview.js';
-import { bindQuickAdd, currencies, money as brl, movements, river, spendingCalendar, subscriptions } from './experience.js';
+import { bindQuickAdd, currencies, money as brl, movements, river, spendingCalendar, spendingBreakdown, subscriptions } from './experience.js';
 import { normalizeSubscriptions } from './subscriptions.js';
 import { FINANCE_ACCESS, openTransfer } from '../js/companion-transfer.js';
 
@@ -137,9 +137,10 @@ function expensesChart(overview) {
   ]);
 }
 
-function openWalletEntry(wallet, type, button) {
+function openWalletEntry(wallet, type, button, selected = null) {
   if (!access || activeEntry) return;
   const isIncome = type === 'receivables';
+  if (selected && isIncome) return;
   const label = isIncome ? 'renda' : 'despesa';
   const title = el('input', { type: 'text', name: 'title', maxlength: 120, required: true, autofocus: true });
   const amount = el('input', { type: 'text', name: 'amount', inputmode: 'decimal', placeholder: '0,00', maxlength: 24, required: true });
@@ -154,15 +155,17 @@ function openWalletEntry(wallet, type, button) {
     date.max = addDays(`${nextMonth}-01`, -1);
   }
   if (isIncome || today.startsWith(currentMonth + '-')) date.value = today;
+  if (selected) { title.value = selected.title; amount.value = selected.amountCents == null ? '' : (selected.amountCents / 100).toFixed(2).replace('.', ','); date.value = selected.date || ''; }
   const status = el('select', { name: 'status' }, [
     el('option', { value: 'pending', text: isIncome ? 'A receber' : 'A pagar' }),
     el('option', { value: isIncome ? 'received' : 'paid', text: isIncome ? 'Recebida' : 'Paga' }),
   ]);
+  if (selected) status.value = selected.status;
   const receipt = el('p.status', { role: 'status' });
   const save = el('button.primary', { type: 'submit', text: `Salvar ${label}` });
   const cancel = el('button', { type: 'button', text: 'Cancelar', onclick: () => dialog.close() });
   const connection = access;
-  const id = `grana-${crypto.randomUUID()}`;
+  const id = selected?.id || `grana-${crypto.randomUUID()}`;
   let saving = false;
   const active = () => access === connection && dialog.isConnected;
   const controls = [title, amount, date, status, save, cancel];
@@ -184,12 +187,13 @@ function openWalletEntry(wallet, type, button) {
       (!title.value.trim() ? title : amount).focus();
       return;
     }
-    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value };
+    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value, ...(selected?.note ? { note: selected.note } : {}) };
     saving = true;
     controls.forEach(control => { control.disabled = true; });
     receipt.textContent = 'Salvando na Carteira…';
     try {
-      const record = await addWalletItemForConnection(connection, type, item, active);
+      const record = selected ? await updateWalletPaymentForConnection(connection, item, selected, active)
+        : await addWalletItemForConnection(connection, type, item, active);
       if (!active()) return;
       revision = record.sha;
       dialog.close();
@@ -204,10 +208,11 @@ function openWalletEntry(wallet, type, button) {
       controls.forEach(control => { control.disabled = false; });
     }
   } }, [
-    el('h2', { id: 'wallet-entry-title', text: `Adicionar ${label}` }),
+    el('h2', { id: 'wallet-entry-title', text: selected ? `Editar ${label}` : `Adicionar ${label}` }),
     el('label', {}, ['Descrição', title]),
     el('label', {}, ['Valor em reais', amount]),
     el('div.wallet-entry-fields', {}, [el('label', {}, ['Data', date]), el('label', {}, ['Situação', status])]),
+    selected?.note ? el('p.meta.muted', { text: selected.note }) : null,
     el('p.meta.muted', { text: isIncome ? 'O lançamento entra nos recebimentos e o saldo segue a data de referência da Carteira.'
       : `Contas de ${monthLabel(currentMonth)}. O lançamento entra nas despesas e o saldo segue a data de referência da Carteira.` }),
     el('div.actions', {}, [save, cancel]),
@@ -309,11 +314,12 @@ function showWallet(wallet, message = '') {
   if (view === 'assinaturas') {
     content = subscriptions(wallet.subscriptions, (item, trigger) => editSubscription(wallet, item, trigger));
   } else if (view === 'movimentos') {
-    content = movements(wallet, movementFilter, filter => { movementFilter = filter; showWallet(wallet); }, () => { launcher.open = true; launcher.querySelector('button')?.focus(); });
+    content = movements(wallet, movementFilter, filter => { movementFilter = filter; showWallet(wallet); }, () => { launcher.open = true; launcher.querySelector('button')?.focus(); }, item => openWalletEntry(wallet, 'payments', app.querySelector('.finance-nav'), item));
   } else {
     content = el('section.stack', { 'aria-label': 'Fluxo' }, [
       river(wallet, overview),
       spendingCalendar(wallet),
+      spendingBreakdown(wallet),
       next ? el('section.panel.wallet-due', {}, [
         el('div', {}, [
           el('p.eyebrow', { text: next.date < todayKey() ? 'Conta atrasada' : 'Próxima conta' }),
@@ -330,6 +336,11 @@ function showWallet(wallet, message = '') {
           el('span', { text: 'Em conta' }), el('strong', { text: brl(wallet.balance) }),
           el('span', { text: 'Investido' }), el('strong', { text: brl(wallet.invested) }),
         ]),
+        ...wallet.investmentAccounts.map(bank => el('div.investment-tag-row', {}, [
+          el('span.investment-tag', { text: bank.label }),
+          el('strong', { text: brl(bank.amountCents) }),
+          bank.estimated ? el('small', { text: 'estimado' }) : null,
+        ])),
       ]),
     ]);
   }
