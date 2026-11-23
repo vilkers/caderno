@@ -129,7 +129,7 @@ async function saveWalletItem(c, list, item, previous, active = () => true) {
     if ((found || previous) && !matches(found, previous)) {
       throw new Error('O registro mudou na Carteira. Atualize o Grana antes de tentar novamente.');
     }
-    if (list === 'payments' && item.date && !item.date.startsWith(record.data.paymentMonth + '-')) {
+    if (list === 'payments' && item.date && !item.date.startsWith((item.month || record.data.paymentMonth) + '-')) {
       throw new Error('A data da despesa precisa estar no mês vigente da Carteira.');
     }
     const updated = found ? entries.map(existing => existing.id === item.id ? { ...existing, ...item } : existing) : [...entries, item];
