@@ -92,6 +92,56 @@ export function spendingCalendar(wallet, month = wallet.paymentMonth) {
   ]);
 }
 
+export function projectedBalances(wallet, month = wallet.paymentMonth) {
+  const closingDate = month + '-31';
+  // A posição em conta já contém todos os lançamentos liquidados até wallet.date.
+  // Somar apenas pendências futuras e manter valores sem data fora da projeção.
+  const futureIncomes = wallet.receivables.filter(item => item.status === 'pending'
+    && item.date && item.date > wallet.date && item.date <= closingDate);
+  const futurePayments = wallet.payments.filter(item => item.status === 'pending'
+    && item.amountCents !== null && item.date && item.date > wallet.date && item.date <= closingDate);
+  const undatedPayments = wallet.payments.filter(item => item.status === 'pending'
+    && item.amountCents !== null && !item.date
+    && (item.month || wallet.paymentMonth) <= month);
+  const projectedIncome = futureIncomes.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
+  const projectedExpenses = [...futurePayments, ...undatedPayments].reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
+  const balance = BigInt(wallet.balance);
+  const invested = BigInt(wallet.invested);
+  const closing = balance + projectedIncome - projectedExpenses;
+  const missing = wallet.payments.filter(item => item.status === 'pending' && item.amountCents === null
+    && (item.month || item.date?.slice(0, 7) || wallet.paymentMonth) <= month);
+  const uncertain = futureIncomes.filter(item => item.title.toLocaleLowerCase('pt-BR').includes('on filmes'));
+  const uncertainTotal = uncertain.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
+  const detail = el('section.projected-balances', { 'aria-label': 'Saldos projetados ao fim do mês' }, [
+    el('div.projected-label', {}, [
+      el('span', { text: 'FIM DE ' + monthLabel(month).toUpperCase() }),
+      el('strong', { text: missing.length ? 'Projeção parcial' : 'Projeção' }),
+    ]),
+    el('div.projected-total', {}, [
+      el('span', { text: 'Patrimônio total previsto' }),
+      el('strong', { text: money(closing + invested) }),
+    ]),
+    el('div.projected-accounts', {}, [
+      el('div', {}, [el('span', { text: 'Na conta' }), el('strong', { text: money(closing) })]),
+      el('div', {}, [el('span', { text: 'Investido (valor atual)' }), el('strong', { text: money(invested) })]),
+    ]),
+    el('div.projected-bridge', {}, [
+      el('div', {}, [el('span', { text: 'Saldo de referência' }), el('strong', { text: money(balance) })]),
+      el('div', {}, [el('span', { text: 'Entradas pendentes até o fim do mês' }), el('strong', { text: '+ ' + money(projectedIncome) })]),
+      el('div', {}, [el('span', { text: 'Contas pendentes com valor' }), el('strong', { text: '− ' + money(projectedExpenses) })]),
+    ]),
+    uncertainTotal > 0n ? el('div.projected-alternative', {}, [
+      el('strong', { text: 'Sem o recebimento da On Filmes' }),
+      el('div', {}, [el('span', { text: 'Conta' }), el('strong', { text: money(closing - uncertainTotal) })]),
+      el('div', {}, [el('span', { text: 'Patrimônio' }), el('strong', { text: money(closing + invested - uncertainTotal) })]),
+    ]) : null,
+    el('p.projected-note', { text: missing.length
+      ? 'Ainda não inclui ' + missing.map(item => item.title).join(', ') + ' (sem valor definido). Não soma assinaturas novamente às faturas.'
+      : 'Valores dependem de recebimentos e pagamentos efetivos. Assinaturas não são duplicadas nas faturas.' }),
+  ]);
+  return detail;
+}
+
 export function reserveForecast(wallet, month = wallet.paymentMonth) {
   const incomes = wallet.receivables.filter(item => item.status === 'pending' && item.date?.startsWith(month + '-'));
   const expenses = wallet.payments.filter(item => (item.month || item.date?.slice(0,7) || wallet.paymentMonth) === month && item.status === 'pending');
