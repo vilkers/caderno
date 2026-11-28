@@ -95,11 +95,12 @@ export function spendingCalendar(wallet, month = wallet.paymentMonth) {
 export function projectedBalances(wallet, month = wallet.paymentMonth) {
   const closingDate = month + '-31';
   // A posição em conta já contém todos os lançamentos liquidados até wallet.date.
-  // Somar apenas pendências futuras e manter valores sem data fora da projeção.
+  // Somar pendências a partir da data de referência, inclusive no próprio dia,
+  // se ainda não tiverem sido recebidas/pagas. Excluir lançamentos já liquidados.
   const futureIncomes = wallet.receivables.filter(item => item.status === 'pending'
-    && item.date && item.date > wallet.date && item.date <= closingDate);
+    && item.date && item.date >= wallet.date && item.date <= closingDate);
   const futurePayments = wallet.payments.filter(item => item.status === 'pending'
-    && item.amountCents !== null && item.date && item.date > wallet.date && item.date <= closingDate);
+    && item.amountCents !== null && item.date && item.date >= wallet.date && item.date <= closingDate);
   const undatedPayments = wallet.payments.filter(item => item.status === 'pending'
     && item.amountCents !== null && !item.date
     && (item.month || wallet.paymentMonth) <= month);
@@ -108,7 +109,7 @@ export function projectedBalances(wallet, month = wallet.paymentMonth) {
   const balance = BigInt(wallet.balance);
   const invested = BigInt(wallet.invested);
   const plannedTransfers = (wallet.transfers || []).filter(item => item.status === 'planned'
-    && ((item.date && item.date > wallet.date && item.date <= closingDate)
+    && ((item.date && item.date >= wallet.date && item.date <= closingDate)
       || (!item.date && item.month <= month)));
   const transferAmount = plannedTransfers.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
   const closing = balance + projectedIncome - projectedExpenses - transferAmount;
@@ -156,11 +157,11 @@ export function projectedBalances(wallet, month = wallet.paymentMonth) {
 
 export function reserveForecast(wallet, month = wallet.paymentMonth) {
   const cutoff = month + '-31';
-  const incomes = wallet.receivables.filter(item => item.status === 'pending' && item.date && item.date > wallet.date && item.date <= cutoff);
+  const incomes = wallet.receivables.filter(item => item.status === 'pending' && item.date && item.date >= wallet.date && item.date <= cutoff);
   const expenses = wallet.payments.filter(item => item.status === 'pending' && item.amountCents !== null &&
-    ((item.date && item.date > wallet.date && item.date <= cutoff) || (!item.date && (item.month || wallet.paymentMonth) <= month)));
+    ((item.date && item.date >= wallet.date && item.date <= cutoff) || (!item.date && (item.month || wallet.paymentMonth) <= month)));
   const transfers = (wallet.transfers || []).filter(item => item.status === 'planned'
-    && ((item.date && item.date > wallet.date && item.date <= cutoff) || (!item.date && item.month <= month)));
+    && ((item.date && item.date >= wallet.date && item.date <= cutoff) || (!item.date && item.month <= month)));
   const upcomingIncome = incomes.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
   const upcomingBills = expenses.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
   const applications = transfers.reduce((sum, item) => sum + BigInt(item.amountCents), 0n);
