@@ -7,6 +7,21 @@ const taskPath = id => `/lists/${encodeURIComponent(id)}/tasks`;
 export const dateOf = task => task.due?.slice(0, 10) || '';
 export const highPriority = task => task.notes?.split('\n').includes('Prioridade: alta') ?? false;
 
+// Keep migration identifiers out of the editor, and intact when saving notes.
+const internalNote = line => line.startsWith(marker) || line === 'Prioridade: alta';
+export const editableNotes = task => (task?.notes || '').split('\n').filter(line => !internalNote(line)).join('\n');
+export function editorFields(task, title, due, notes, priority, status = 'needsAction') {
+  if (!['needsAction', 'completed'].includes(status)) throw new Error('Confira o estado da tarefa.');
+  const identifiers = (task?.notes || '').split('\n').filter(line => line.startsWith(marker));
+  const text = [...identifiers, notes, ...(priority ? ['Prioridade: alta'] : [])].filter(Boolean).join('\n');
+  if (text.length > 8192) throw new Error('As notas precisam ter até 8.192 caracteres.');
+  const fields = { ...taskFields(title, due), status };
+  if (text || task?.notes) fields.notes = text;
+  if (status === 'needsAction') fields.completed = null;
+  else if (task?.status !== 'completed') fields.completed = new Date().toISOString();
+  return fields;
+}
+
 function validDate(date) {
   return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && keyOf(parseKey(date)) === date;
 }
@@ -27,6 +42,10 @@ export function createTask(token, board, title, due, notes) {
 
 export function changeTask(token, board, id, fields) {
   return googleRequest(token, `${taskPath(board)}/${encodeURIComponent(id)}`, 'PATCH', fields);
+}
+
+export function changeTaskStatus(token, board, id, status) {
+  return changeTask(token, board, id, { status, completed: status === 'completed' ? new Date().toISOString() : null });
 }
 
 export function taskFields(title, due) {
