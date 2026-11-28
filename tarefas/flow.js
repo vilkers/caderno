@@ -20,6 +20,7 @@ export function taskQueues(boards, area, filter, today) {
     const date = dateOf(task);
     return filter === 'open' || (date && date <= limit);
   });
+  if (filter === 'done') shown.sort((a, b) => (b.task.completed || b.task.updated || '').localeCompare(a.task.completed || a.task.updated || ''));
   return { next, shown };
 }
 
@@ -34,7 +35,7 @@ export function bindCompletionSwipe(track, hint, action) {
     hint.textContent = 'Concluir';
   };
   track.addEventListener('pointerdown', event => {
-    if (action.disabled || !event.isPrimary || event.button !== 0) return;
+    if (action.disabled || action.getAttribute?.('aria-disabled') === 'true' || !event.isPrimary || event.button !== 0) return;
     const { pointerId, clientX, clientY } = event;
     const threshold = Math.min(96, track.clientWidth * .32);
     if (!threshold) return;

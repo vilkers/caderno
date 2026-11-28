@@ -15,7 +15,11 @@ export function editorFields(task, title, due, notes, priority, status = 'needsA
   const identifiers = (task?.notes || '').split('\n').filter(line => line.startsWith(marker));
   const text = [...identifiers, notes, ...(priority ? ['Prioridade: alta'] : [])].filter(Boolean).join('\n');
   if (text.length > 8192) throw new Error('As notas precisam ter até 8.192 caracteres.');
-  return { ...taskFields(title, due), notes: text, status, ...(status === 'needsAction' ? { completed: null } : {}) };
+  const fields = { ...taskFields(title, due), status };
+  if (text || task?.notes) fields.notes = text;
+  if (status === 'needsAction') fields.completed = null;
+  else if (task?.status !== 'completed') fields.completed = new Date().toISOString();
+  return fields;
 }
 
 function validDate(date) {
@@ -38,6 +42,10 @@ export function createTask(token, board, title, due, notes) {
 
 export function changeTask(token, board, id, fields) {
   return googleRequest(token, `${taskPath(board)}/${encodeURIComponent(id)}`, 'PATCH', fields);
+}
+
+export function changeTaskStatus(token, board, id, status) {
+  return changeTask(token, board, id, { status, completed: status === 'completed' ? new Date().toISOString() : null });
 }
 
 export function taskFields(title, due) {

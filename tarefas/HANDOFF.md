@@ -1,5 +1,22 @@
 # Tarefas — continuidade
 
+## Revisão do check em 28/11/2026
+
+- O cartão em destaque e as linhas da lista e do calendário compartilham a
+  mesma trava por tarefa. A escrita invalida leituras do Google que ainda
+  estavam em andamento. O aviso confirma a mudança apenas após a resposta.
+- Ao concluir, o aviso exibe o título e Desfazer. O check seguinte ignora
+  toques repetidos no mesmo ponto e o foco de teclado não passa para o
+  próximo botão de conclusão. Reabrir também limpa a data de conclusão.
+- O editor conserva os campos quando o Google pede reconexão e volta ao
+  filtro e à posição de leitura. O calendário mantém o dia selecionado no
+  mês exibido. Concluídas são ordenadas pela data de conclusão.
+- Verificados no Chromium com Google simulado: toques duplicados, falha 503,
+  conclusão e desfazer, resposta de sincronização atrasada, posição de
+  rolagem e reconexão no editor. A bateria de lógica passou. A bateria
+  Playwright do terminal não conseguiu iniciar o Chromium no ambiente.
+  A validação no Safari do iPhone segue pendente. Cache PWA `caderno-v46`.
+
 Atualizado em 23/11/2026.
 
 ## Edição, calendário e gesto do cartão principal

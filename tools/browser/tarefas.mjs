@@ -22,8 +22,8 @@ try {
   const today = new Date().toLocaleDateString('en-CA');
   const items = [{ id: 'one', title: 'Investir (teste)', status: 'needsAction', due: today + 'T00:00:00.000Z', notes: 'Caderno ID: original\nConferir orçamento\nPrioridade: alta' },
     { id: 'two', title: 'Revisar projeto', status: 'needsAction', due: today + 'T00:00:00.000Z' }];
-  let patches = 0, failSave = false;
-  await page.route('https://tasks.googleapis.com/**', route => {
+  let patches = 0, failSave = false, holdPatch;
+  await page.route('https://tasks.googleapis.com/**', async route => {
     const req = route.request();
     if (req.url().includes('/users/@me/lists')) return route.fulfill({ json: { items: [{ id: 'board', title: 'Pessoal' }] } });
     if (req.method() === 'GET') return route.fulfill({ json: { items } });
@@ -35,6 +35,7 @@ try {
       return route.fulfill({ json: task });
     }
     patches++;
+    if (holdPatch) await holdPatch;
     const task = items.find(item => req.url().endsWith('/' + item.id));
     Object.assign(task, body);
     return route.fulfill({ json: task });
@@ -52,6 +53,26 @@ try {
   await page.locator('#taskCalendar').waitFor();
   assert.equal(await page.locator('.task-calendar-day').count(), 42);
   assert.match(await page.locator(`[data-day="${today}"]`).getAttribute('aria-label'), /2 tarefas pendentes/);
+  // A tarefa em destaque também aparece na agenda. Ambas as ações compartilham a gravação.
+  let releasePatch;
+  holdPatch = new Promise(resolve => { releasePatch = resolve; });
+  const beforeDuplicates = patches;
+  const mainCheck = page.locator('#taskNextComplete');
+  const calendarCheck = page.locator('#taskCalendar').getByRole('button', { name: 'Concluir: Investir (teste)', exact: true });
+  await mainCheck.focus();
+  await mainCheck.press('Enter');
+  await page.waitForFunction(() => document.querySelector('#taskNextComplete')?.getAttribute('aria-busy') === 'true');
+  assert.equal(await calendarCheck.getAttribute('aria-disabled'), 'true');
+  await calendarCheck.evaluate(button => button.click());
+  releasePatch();
+  holdPatch = null;
+  await page.getByText('Tarefa concluída.', { exact: true }).waitFor();
+  assert.equal(patches, beforeDuplicates + 1);
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'nextTaskTitle');
+  assert.ok(items[0].completed);
+  await page.getByRole('button', { name: /Desfazer:/ }).click();
+  await page.getByText('Tarefa reaberta.', { exact: true }).waitFor();
+  assert.equal(items[0].completed, null);
   await page.getByRole('button', { name: 'Próximo mês', exact: true }).click();
   await page.getByRole('button', { name: 'Mês anterior', exact: true }).click();
   for (const width of [360, 393, 440]) {
@@ -76,7 +97,7 @@ try {
   assert.equal(await page.getByLabel('Título', { exact: true }).inputValue(), 'Investir atualizado💰');
   await page.getByRole('button', { name: 'Hoje', exact: true }).click();
   await page.getByRole('button', { name: 'Salvar alterações', exact: true }).click();
-  await page.locator('#taskOverview').waitFor();
+  await page.getByText('Alterações salvas.', { exact: true }).waitFor();
   assert.equal(items[0].notes, 'Caderno ID: original\nNotas editadas\nhttps://example.com🧠');
   assert.equal(items[0].due.slice(0, 10), today);
   // Real touch input exercises browser pointer capture, cancellation and pan-y.
@@ -116,7 +137,7 @@ try {
   await page.getByLabel('Notas', { exact: true }).fill('Contexto 🎨');
   await page.getByLabel('Prioridade', { exact: true }).selectOption('high');
   await page.getByRole('button', { name: 'Criar tarefa', exact: true }).click();
-  await page.locator('#taskOverview').waitFor();
+  await page.getByText('Tarefa criada.', { exact: true }).waitFor();
   assert.equal(items.at(-1).notes, 'Contexto 🎨\nPrioridade: alta');
   await calendar.click();
   await page.screenshot({ path: pastaDeShots('tarefas') + '/calendario.png', fullPage: true });

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { editableNotes, editorFields, highPriority } from '../tarefas/backend.js';
+import { changeTaskStatus, editableNotes, editorFields, highPriority } from '../tarefas/backend.js';
 import { tasksByDay } from '../tarefas/calendar.js';
 import { bindCompletionSwipe, taskQueues } from '../tarefas/flow.js';
 
@@ -33,6 +33,25 @@ assert.equal(tasksByDay(boards, '').has(''), false);
 const { next, shown } = taskQueues(boards, 'a', 'today', '2026-11-23');
 assert.equal(next.task.id, task.id);
 assert.equal(shown.length, 0, 'próxima tarefa continua sem duplicação na lista');
+
+const finished = [{ ...task, id: 'first', status: 'completed', completed: '2026-11-22T00:00:00Z' },
+  { ...task, id: 'last', status: 'completed', completed: '2026-11-23T00:00:00Z' }];
+assert.deepEqual(taskQueues([{ id: 'a', tasks: finished }], 'a', 'done', '2026-11-23').shown.map(entry => entry.task.id), ['last', 'first']);
+
+const originalFetch = globalThis.fetch;
+try {
+  globalThis.fetch = async (url, options) => {
+    assert.equal(options.method, 'PATCH');
+    assert.match(url, /\/lists\/a\/tasks\/one$/);
+    return Response.json({ id: 'one', ...JSON.parse(options.body) });
+  };
+  const done = await changeTaskStatus('token-ficticio', 'a', 'one', 'completed');
+  assert.equal(done.status, 'completed');
+  assert.ok(Number.isFinite(Date.parse(done.completed)));
+  const reopened = await changeTaskStatus('token-ficticio', 'a', 'one', 'needsAction');
+  assert.equal(reopened.status, 'needsAction');
+  assert.equal(reopened.completed, null);
+} finally { globalThis.fetch = originalFetch; }
 
 // Event-level regression checks: no completion on cancellation or vertical scroll.
 const track = new EventTarget();

@@ -21,7 +21,8 @@ export function calendarPanel(boards, area, state, { row, create, connected }) {
     const today = todayKey();
     const move = delta => {
       date.setMonth(date.getMonth() + delta);
-      state.month = keyOf(date).slice(0, 7);
+      state.day = keyOf(date).slice(0, 7) === today.slice(0, 7) ? today : keyOf(date);
+      state.month = state.day.slice(0, 7);
       paint();
       panel.querySelector(delta < 0 ? '.task-calendar-prev' : '.task-calendar-next')?.focus({ preventScroll: true });
     };
@@ -49,7 +50,7 @@ export function calendarPanel(boards, area, state, { row, create, connected }) {
       el('div.task-calendar-agenda', { 'aria-live': 'polite' }, [
         el('div.task-calendar-day-header', {}, [
           el('h3', { text: longDay(state.day) }),
-          connected ? el('button', { type: 'button', text: '+ Tarefa', 'aria-label': 'Nova tarefa em ' + longDay(state.day), onclick: () => create(state.day) }) : null,
+          connected ? el('button', { type: 'button', text: '+ Tarefa', 'data-focus': 'calendar-create', 'aria-label': 'Nova tarefa em ' + longDay(state.day), onclick: () => create(state.day) }) : null,
         ]),
         entries.length ? el('ul.tasks-list', {}, entries.map(({ task, board }) => row(task, board)))
           : el('p.muted', { text: 'Nenhuma tarefa pendente neste dia.' }),
