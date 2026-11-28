@@ -15,16 +15,16 @@ export function money(cents, currency = 'BRL') {
 const portion = (amount, sum) => sum ? Number(amount * 10000n / sum) / 100 : 0;
 
 export function river(wallet, overview, month = wallet.paymentMonth) {
-  const { income, expenses } = overview;
+  const { income, expenses, investmentFunding, net } = overview;
   if (income.total === 0n && expenses.total === 0n) {
     return el('section.panel.stack', {}, [
       el('div.view-heading', {}, [el('h2', { text: 'Fluxo de ' + monthLabel(month) }), el('span.finance-period', { text: 'Sem fechamento' })]),
       el('p.finance-hint', { text: 'Sem entradas ou saídas completas registradas neste mês. O saldo confirmado aparece acima e não é alterado por esta visualização.' }),
     ]);
   }
-  const net = income.total - expenses.total;
+  const inflows = income.total + investmentFunding;
   const remaining = net > 0n ? net : 0n;
-  const cover = expenses.total > income.total ? expenses.total : income.total;
+  const cover = expenses.total > inflows ? expenses.total : inflows;
   const series = [
     ['Pagas', expenses.settled, 'paid'],
     ['A pagar', expenses.pending, 'planned'],
@@ -51,12 +51,17 @@ export function river(wallet, overview, month = wallet.paymentMonth) {
     el('strong.finance-net' + (net < 0n ? '.negative' : ''), { text: money(net) }),
     el('div.river', {}, [
       el('div.river-in', {}, [el('span', { text: 'Rendas do mês' }), el('strong', { text: money(income.total) })]),
+      investmentFunding > 0n ? el('div.river-in', {}, [
+        el('span', { text: 'Resgates usados em despesas' }), el('strong', { text: money(investmentFunding) }),
+      ]) : null,
       el('div.river-branches', { 'aria-hidden': 'true' }, branches),
       el('ul.river-legend', {}, series.map(([label, value, tone]) => el('li.' + tone, {}, [
         el('span', { text: label }), el('strong', { text: label === 'Projeção' ? money(net) : money(value) }),
       ]))),
     ]),
-    el('p.finance-hint', { text: 'Rendas registradas no mês menos despesas pagas e previstas.' }),
+    el('p.finance-hint', { text: investmentFunding > 0n
+      ? 'Rendas do mês mais resgates usados em despesas, menos despesas pagas e previstas.'
+      : 'Rendas registradas no mês menos despesas pagas e previstas.' }),
   ]);
 }
 
@@ -227,7 +232,10 @@ export function movements(wallet, filter, change, add, editPayment = () => {}, e
         const income = item.kind === 'Rendas';
         return el('li.finance-record', {}, [
           el('span.record-symbol.' + (income ? 'income' : 'expense'), { text: income ? '+' : '−', 'aria-hidden': 'true' }),
-          el('div', {}, [el('strong', { text: item.title }), el('p', { text: [income ? 'Renda' : 'Despesa', heading === 'Previstos' && item.date ? humanDay(item.date) : '', item.note || ''].filter(Boolean).join(' · ') }),
+          el('div', {}, [el('strong', { text: item.title }), el('p', { text: [
+            income ? 'Renda' : 'Despesa', item.funding === 'investment' && 'Paga com resgate de investimento',
+            heading === 'Previstos' && item.date ? humanDay(item.date) : '', item.note,
+          ].filter(Boolean).join(' · ') }),
             el('button.plan-edit', { type: 'button', text: item.amountCents === null ? 'Definir valor' : 'Editar', onclick: () => income ? editIncome(item) : editPayment(item) })]),
           el('strong.record-money', { text: item.amountCents === null ? 'A definir' : money(income ? item.amountCents : -item.amountCents) }),
         ]);

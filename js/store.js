@@ -809,7 +809,7 @@ function walletItems(items, statuses, paymentMonth) {
   if (!Array.isArray(items) || items.length > 200) throw new Error('Confira os lançamentos da Carteira na Central.');
   const ids = new Set();
   return items.map(item => {
-    const { id, title, amountCents, date, status, note, month, assured } = item || {};
+    const { id, title, amountCents, date, status, note, month, assured, funding } = item || {};
     if (typeof id !== 'string' || !/^[a-z0-9_-]{1,80}$/.test(id) || ids.has(id) || typeof title !== 'string'
       || !title.trim() || title.length > 120 || !(Number.isSafeInteger(amountCents) && amountCents > 0 || paymentMonth && amountCents === null)
       || !statuses.includes(status) || (date != null && (!walletDate(date) || (paymentMonth && !date.startsWith(month || paymentMonth))))) {
@@ -817,9 +817,16 @@ function walletItems(items, statuses, paymentMonth) {
     }
     if (month !== undefined && (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month))) throw new Error('Mês inválido.');
     if (assured !== undefined && (statuses[1] !== 'received' || typeof assured !== 'boolean')) throw new Error('Confiança da receita inválida.');
+    if (funding != null && (funding !== 'investment' || !paymentMonth || status !== 'paid' || amountCents === null)) {
+      throw new Error('Origem de pagamento inválida na Carteira.');
+    }
     ids.add(id);
     if (note !== undefined && (typeof note !== 'string' || note.length > 500)) throw new Error('Observação inválida na Carteira.');
-    return { id, title: title.trim(), amountCents, date: date ?? null, status, ...(month ? { month } : {}), ...(note ? { note } : {}), ...(assured === true ? { assured: true } : {}) };
+    return {
+      id, title: title.trim(), amountCents, date: date ?? null, status,
+      ...(month ? { month } : {}), ...(note ? { note } : {}),
+      ...(assured === true ? { assured: true } : {}), ...(funding ? { funding } : {}),
+    };
   });
 }
 

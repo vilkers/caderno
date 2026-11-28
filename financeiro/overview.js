@@ -28,9 +28,14 @@ export function monthOverview(wallet, month = wallet.paymentMonth) {
   const paymentsByValue = knownPayments.toSorted((a, b) => b.amountCents - a.amountCents);
   const largestPayments = paymentsByValue.slice(0, 5);
   const otherPayments = sumCents(paymentsByValue.slice(5));
+  const income = byState(incomes);
+  const expenses = byState(knownPayments);
+  const investmentFunding = sumCents(knownPayments.filter(item => item.status === 'paid' && item.funding === 'investment'));
   return {
-    income: byState(incomes),
-    expenses: byState(knownPayments),
+    income,
+    expenses,
+    investmentFunding,
+    net: income.total + investmentFunding - expenses.total,
     largestPayments,
     otherPayments,
     undatedIncome: wallet.receivables.filter(item => !item.date).length,

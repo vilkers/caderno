@@ -164,6 +164,14 @@ function openWalletEntry(wallet, type, button, selected = null) {
     el('option', { value: isIncome ? 'received' : 'paid', text: isIncome ? 'Recebida' : 'Paga' }),
   ]);
   if (selected) status.value = selected.status;
+  const funding = el('select', { name: 'funding' }, [
+    el('option', { value: '', text: 'Fluxo do mês' }),
+    el('option', { value: 'investment', text: 'Resgate de investimento' }),
+  ]);
+  funding.value = selected?.funding || '';
+  const fundingField = el('label', {}, ['Origem do pagamento', funding]);
+  fundingField.hidden = status.value !== 'paid';
+  status.addEventListener('change', () => { fundingField.hidden = status.value !== 'paid'; });
   const receipt = el('p.status', { role: 'status' });
   const save = el('button.primary', { type: 'submit', text: `Salvar ${label}` });
   const cancel = el('button', { type: 'button', text: 'Cancelar', onclick: () => dialog.close() });
@@ -171,7 +179,7 @@ function openWalletEntry(wallet, type, button, selected = null) {
   const id = selected?.id || `grana-${crypto.randomUUID()}`;
   let saving = false;
   const active = () => access === connection && dialog.isConnected;
-  const controls = [title, amount, date, status, save, cancel];
+  const controls = [title, amount, date, status, funding, save, cancel];
   const dialog = el('dialog.wallet-entry', { 'aria-labelledby': 'wallet-entry-title',
     oncancel: event => { if (saving) event.preventDefault(); },
     onclose: () => {
@@ -190,7 +198,15 @@ function openWalletEntry(wallet, type, button, selected = null) {
       (!title.value.trim() ? title : amount).focus();
       return;
     }
-    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value, ...(!isIncome ? { month: selected?.month || currentMonth } : {}), ...(selected?.note ? { note: selected.note } : {}), ...(isIncome && selected?.assured ? { assured: true } : {}) };
+    const item = {
+      id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value,
+      ...(!isIncome ? {
+        month: selected?.month || currentMonth,
+        funding: status.value === 'paid' ? funding.value || null : null,
+      } : {}),
+      ...(selected?.note ? { note: selected.note } : {}),
+      ...(isIncome && selected?.assured ? { assured: true } : {}),
+    };
     saving = true;
     controls.forEach(control => { control.disabled = true; });
     receipt.textContent = 'Salvando na Carteira…';
@@ -215,6 +231,7 @@ function openWalletEntry(wallet, type, button, selected = null) {
     el('label', {}, ['Descrição', title]),
     el('label', {}, ['Valor em reais', amount]),
     el('div.wallet-entry-fields', {}, [el('label', {}, ['Data', date]), el('label', {}, ['Situação', status])]),
+    isIncome ? null : fundingField,
     selected?.note ? el('p.meta.muted', { text: selected.note }) : null,
     el('p.meta.muted', { text: isIncome ? 'O lançamento entra nos recebimentos e o saldo segue a data de referência da Carteira.'
       : `Contas de ${monthLabel(currentMonth)}. O lançamento entra nas despesas e o saldo segue a data de referência da Carteira.` }),
