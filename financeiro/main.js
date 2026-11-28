@@ -396,8 +396,12 @@ function showWallet(wallet, message = '') {
   } else {
     content = el('section.stack', { 'aria-label': 'Fluxo' }, [
       el('section.panel.stack.balance-priority', {}, [
-        el('p.eyebrow', { text: 'Posição confirmada · ' + humanDay(wallet.date) }),
+        el('p.eyebrow', { text: (wallet.balanceEstimated ? 'Posição informada · ' : 'Posição confirmada · ') + humanDay(wallet.date) }),
         el('div.balance-primary', {}, [el('span', { text: 'Na conta' }), el('strong', { text: brl(wallet.balance) })]),
+        ...(wallet.cashAccounts || []).map(bank => el('div.balance-secondary.cash-bank-row', {}, [
+          el('span', { text: bank.label }),
+          el('strong', { text: brl(bank.amountCents) }),
+        ])),
         el('div.balance-secondary', {}, [el('span', { text: 'Investimentos' }), el('strong', { text: brl(wallet.invested) })]),
         el('div.balance-secondary', {}, [el('span', { text: 'Patrimônio atual' }), el('strong', { text: brl(BigInt(wallet.balance) + BigInt(wallet.invested)) })]),
       ]),
