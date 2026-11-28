@@ -161,7 +161,14 @@ function openWalletEntry(wallet, type, button) {
   // Lançamento com data de hoje ou passada já aconteceu: começa como pago/recebido.
   const syncStatus = () => { status.value = date.value && date.value <= today ? (isIncome ? 'received' : 'paid') : 'pending'; };
   syncStatus();
-  date.addEventListener('change', syncStatus);
+  const funding = el('select', { name: 'funding' }, [
+    el('option', { value: '', text: 'Fluxo do mês' }),
+    el('option', { value: 'investment', text: 'Resgate de investimento' }),
+  ]);
+  const fundingField = el('label', {}, ['Origem do pagamento', funding]);
+  fundingField.hidden = status.value !== 'paid';
+  status.addEventListener('change', () => { fundingField.hidden = status.value !== 'paid'; });
+  date.addEventListener('change', () => { syncStatus(); fundingField.hidden = status.value !== 'paid'; });
   const receipt = el('p.status', { role: 'status' });
   const save = el('button.primary', { type: 'submit', text: `Salvar ${label}` });
   const cancel = el('button', { type: 'button', text: 'Cancelar', onclick: () => dialog.close() });
@@ -169,7 +176,7 @@ function openWalletEntry(wallet, type, button) {
   const id = `grana-${crypto.randomUUID()}`;
   let saving = false;
   const active = () => access === connection && dialog.isConnected;
-  const controls = [title, amount, date, status, save, cancel];
+  const controls = [title, amount, date, status, funding, save, cancel];
   const dialog = el('dialog.wallet-entry', { 'aria-labelledby': 'wallet-entry-title',
     oncancel: event => { if (saving) event.preventDefault(); },
     onclose: () => {
@@ -188,7 +195,10 @@ function openWalletEntry(wallet, type, button) {
       (!title.value.trim() ? title : amount).focus();
       return;
     }
-    const item = { id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value };
+    const item = {
+      id, title: title.value.trim(), amountCents, date: date.value || null, status: status.value,
+      ...(!isIncome && status.value === 'paid' && funding.value ? { funding: funding.value } : {}),
+    };
     saving = true;
     controls.forEach(control => { control.disabled = true; });
     receipt.textContent = 'Salvando na Carteira…';
@@ -212,6 +222,7 @@ function openWalletEntry(wallet, type, button) {
     el('label', {}, ['Descrição', title]),
     el('label', {}, ['Valor em reais', amount]),
     el('div.wallet-entry-fields', {}, [el('label', {}, ['Data', date]), el('label', {}, ['Situação', status])]),
+    isIncome ? null : fundingField,
     el('p.meta.muted', { text: isIncome ? 'O lançamento entra nos recebimentos e o saldo segue a data de referência da Carteira.'
       : `Contas de ${monthLabel(currentMonth)}. O lançamento entra nas despesas e o saldo segue a data de referência da Carteira.` }),
     el('div.actions', {}, [save, cancel]),

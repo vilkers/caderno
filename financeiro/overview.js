@@ -21,20 +21,26 @@ function byState(items) {
   return { pending, settled, total: pending + settled };
 }
 
-export function monthOverview(wallet) {
-  const incomes = wallet.receivables.filter(item => item.date?.startsWith(wallet.paymentMonth + '-'));
-  const knownPayments = wallet.payments.filter(item => item.amountCents !== null);
+export function monthOverview(wallet, month = wallet.paymentMonth) {
+  const incomes = wallet.receivables.filter(item => item.date?.startsWith(month + '-'));
+  const monthPayments = wallet.payments.filter(item => (item.month || item.date?.slice(0,7) || wallet.paymentMonth) === month);
+  const knownPayments = monthPayments.filter(item => item.amountCents !== null);
   const paymentsByValue = knownPayments.toSorted((a, b) => b.amountCents - a.amountCents);
   const largestPayments = paymentsByValue.slice(0, 5);
   const otherPayments = sumCents(paymentsByValue.slice(5));
+  const income = byState(incomes);
+  const expenses = byState(knownPayments);
+  const investmentFunding = sumCents(knownPayments.filter(item => item.status === 'paid' && item.funding === 'investment'));
   return {
-    income: byState(incomes),
-    expenses: byState(knownPayments),
+    income,
+    expenses,
+    investmentFunding,
+    net: income.total + investmentFunding - expenses.total,
     largestPayments,
     otherPayments,
     undatedIncome: wallet.receivables.filter(item => !item.date).length,
-    unpricedExpenses: wallet.payments.length - knownPayments.length,
-    nextPayment: wallet.payments.filter(item => item.status === 'pending' && item.date)
+    unpricedExpenses: monthPayments.length - knownPayments.length,
+    nextPayment: monthPayments.filter(item => item.status === 'pending' && item.date)
       .sort((a, b) => a.date.localeCompare(b.date))[0],
   };
 }
