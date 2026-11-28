@@ -853,11 +853,19 @@ export function centralWalletPlan(data) {
       && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
     && data.investmentAccounts.reduce((sum, entry) => sum + entry.amountCents, 0) === invested
     ? data.investmentAccounts.map(entry => ({ id: entry.id, label: entry.label, amountCents: entry.amountCents, estimated: entry.estimated === true })) : [];
+  const cashAccounts = Array.isArray(data.cashAccounts) && data.cashAccounts.length <= 20
+    && data.cashAccounts.every(entry => typeof entry.id === 'string' && /^[a-z0-9_-]+$/.test(entry.id)
+      && typeof entry.label === 'string' && entry.label.length <= 70
+      && Number.isSafeInteger(entry.amountCents) && entry.amountCents >= 0)
+    && data.cashAccounts.reduce((sum, entry) => sum + entry.amountCents, 0) === balance
+    ? data.cashAccounts.map(entry => ({ id: entry.id, label: entry.label,
+      amountCents: entry.amountCents, estimated: entry.estimated === true })) : [];
   return { date, balance, invested, balanceEstimated, paymentMonth,
     receivables: walletItems(receivables, ['pending', 'received']),
     payments: walletItems(payments, ['pending', 'paid'], paymentMonth),
     subscriptions: normalizeSubscriptions(subscriptions),
     investmentAccounts,
+    cashAccounts,
     transfers: walletTransfers(data.transfers, investmentAccounts),
     spendingSummary: data.spendingSummary && /^\d{4}-\d{2}$/.test(data.spendingSummary.month || '')
       && Array.isArray(data.spendingSummary.categories)
